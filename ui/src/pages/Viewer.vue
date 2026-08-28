@@ -10,35 +10,48 @@
     <div v-if="loading" class="text-gray-500">Loading...</div>
     <div v-else-if="error" class="text-red-600">{{ error }}</div>
     <div v-else-if="app" class="bg-white p-6 rounded shadow border border-gray-200">
-      <div class="mb-6">
-        <h2 class="text-2xl font-bold mb-2">{{ app.reference }}</h2>
-        <p class="text-lg text-gray-700 mb-2">{{ app.address }}</p>
-        <p class="text-gray-600">{{ app.description }}</p>
-        <div class="mt-4">
-          <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">{{ app.status }}</span>
+      <div class="grid md:grid-cols-2 gap-8 mb-8">
+        <div>
+          <h2 class="text-2xl font-bold mb-2">{{ app.reference }}</h2>
+          <p class="text-lg text-gray-700 mb-2">{{ app.address }}</p>
+          <p class="text-gray-600">{{ app.description }}</p>
+          <div class="mt-4">
+            <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">{{ app.status }}</span>
+          </div>
         </div>
-      </div>
 
-      <div class="grid md:grid-cols-2 gap-8">
         <div>
           <h3 class="text-lg font-semibold mb-3 border-b pb-2">Key Dates</h3>
           <dl class="divide-y divide-gray-100">
             <div v-for="(value, key) in app.dates" :key="key" class="px-2 py-3 sm:grid sm:grid-cols-3 sm:gap-4">
               <dt class="text-sm font-medium text-gray-900">{{ key }}</dt>
-              <dd class="text-sm text-gray-700 sm:col-span-2">{{ value }}</dd>
+              <dd class="text-sm text-gray-700 sm:col-span-2 sm:mt-0">{{ value }}</dd>
             </div>
           </dl>
         </div>
+      </div>
 
-        <div>
-          <div class="flex items-center justify-between mb-3 border-b pb-2">
-            <h3 class="text-lg font-semibold">Documents ({{ filteredDocs?.length || 0 }})</h3>
-            <select v-if="docTypes.length > 1" v-model="selectedDocType" class="text-sm border-gray-300 rounded-md py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500">
-              <option v-for="t in (docTypes as string[])" :key="t" :value="t">{{ t }}</option>
-            </select>
-          </div>
+      <div class="mt-8">
+        <div class="border-b border-gray-200">
+          <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <button @click="activeTab = 'documents'" :class="[activeTab === 'documents' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
+              Documents ({{ filteredDocs?.length || 0 }})
+            </button>
+            <button v-if="app.hasComments" @click="activeTab = 'comments'" :class="[activeTab === 'comments' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
+              Comments ({{ commentsList.length > 0 ? commentsList.length : (commentsError ? '!' : '...') }})
+            </button>
+          </nav>
+        </div>
+
+        <div class="pt-6">
+          <div v-show="activeTab === 'documents'">
+            <div class="flex items-center justify-end mb-3 border-b pb-2" v-if="docTypes.length > 1">
+              <select v-model="selectedDocType" class="text-sm border-gray-300 rounded-md py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500">
+                <option v-for="t in (docTypes as string[])" :key="t" :value="t">{{ t }}</option>
+              </select>
+            </div>
           
-          <ul class="divide-y divide-gray-100 max-h-96 overflow-y-auto pr-2">
+          <ul class="divide-y divide-gray-100">
             <li v-for="doc in filteredDocs" :key="doc.localFilename" class="py-3 flex justify-between gap-x-6">
               <div class="min-w-0 flex-auto">
                 <p class="text-sm font-medium text-gray-900 truncate flex items-center gap-2" :title="doc.description">
@@ -64,10 +77,10 @@
               </div>
             </li>
           </ul>
+          </div>
 
-          <div v-if="app.hasComments" class="mt-6 pt-4 border-t">
-            <h3 class="text-lg font-semibold mb-3 border-b pb-2">Comments</h3>
-            <div v-if="commentsList.length > 0" class="mt-2 max-h-96 overflow-y-auto space-y-4 pr-2">
+          <div v-show="activeTab === 'comments'" v-if="app.hasComments">
+            <div v-if="commentsList.length > 0" class="mt-2 space-y-4">
               <div v-for="(comment, idx) in commentsList" :key="idx" class="bg-gray-50 p-3 rounded border text-sm">
                 <div class="flex justify-between items-start mb-2">
                   <div class="font-medium text-gray-900">{{ comment.address }}</div>
@@ -80,7 +93,6 @@
               </div>
             </div>
             <div v-else-if="commentsError" class="text-sm text-red-600">{{ commentsError }}</div>
-            <div v-else class="text-sm text-gray-500">Loading comments...</div>
           </div>
         </div>
       </div>
@@ -97,6 +109,7 @@ const loading = ref(true)
 const error = ref('')
 
 const commentsList = ref<any[]>([])
+const activeTab = ref('documents')
 const commentsError = ref('')
 const selectedDocType = ref('All')
 const syncing = ref(false)

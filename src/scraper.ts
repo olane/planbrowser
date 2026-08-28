@@ -218,11 +218,11 @@ export async function scrapeComments(page: Page, outDir: string): Promise<boolea
       while (true) {
         await page.waitForSelector('.comment', { timeout: 5000 }).catch(() => {});
         const commentsOnPage = await page.$$eval('.comment', nodes => nodes.map(node => {
-          const address = node.querySelector('.consultationAddress')?.textContent?.trim() || '';
-          const stance = node.querySelector('.consultationStance')?.textContent?.replace(/[()]/g, '').trim() || '';
-          let dateText = node.querySelector('.comment-wrapper h2')?.textContent?.trim() || '';
+          const address = (node.querySelector('.consultationAddress') as HTMLElement)?.innerText?.trim() || '';
+          const stance = (node.querySelector('.consultationStance') as HTMLElement)?.innerText?.replace(/[()]/g, '').trim() || '';
+          let dateText = (node.querySelector('.comment-wrapper h2') as HTMLElement)?.innerText?.trim() || '';
           dateText = dateText.replace('Comment submitted date:', '').trim();
-          const text = node.querySelector('.comment-text')?.textContent?.trim() || '';
+          const text = (node.querySelector('.comment-text') as HTMLElement)?.innerText?.trim() || '';
           return { address, stance, date: dateText, text };
         }));
         
