@@ -45,7 +45,10 @@
               <div class="text-sm text-gray-600">{{ res.description }}</div>
               <div class="text-xs text-gray-500 mt-1">{{ res.name }} - {{ res.app_state }}</div>
             </div>
-            <button @click="downloadApp(res.uid)" :disabled="downloading[res.uid]" class="whitespace-nowrap bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 disabled:opacity-50">
+            <router-link v-if="isDownloaded(res.uid)" :to="`/app/${encodeURIComponent(res.uid)}`" class="whitespace-nowrap bg-blue-100 text-blue-700 px-3 py-1 rounded-md text-sm hover:bg-blue-200">
+              View
+            </router-link>
+            <button v-else @click="downloadApp(res.uid)" :disabled="downloading[res.uid]" class="whitespace-nowrap bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 disabled:opacity-50">
               {{ downloading[res.uid] ? 'Downloading...' : 'Download' }}
             </button>
           </div>
@@ -60,6 +63,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const downloadedApps = ref<any[]>([])
 const loadingApps = ref(true)
@@ -81,6 +87,10 @@ const fetchApps = async () => {
   } finally {
     loadingApps.value = false
   }
+}
+
+const isDownloaded = (reference: string) => {
+  return downloadedApps.value.some(app => app.reference === reference)
 }
 
 const searchPlanIt = async () => {
@@ -111,6 +121,7 @@ const downloadApp = async (reference: string) => {
     })
     if (res.ok) {
       await fetchApps() // refresh the downloaded list
+      router.push(`/app/${encodeURIComponent(reference)}`)
     } else {
       const err = await res.json()
       alert(`Failed to download: ${err.error}`)
