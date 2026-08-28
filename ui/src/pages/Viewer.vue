@@ -38,11 +38,20 @@
           <ul class="divide-y divide-gray-100 max-h-96 overflow-y-auto pr-2">
             <li v-for="doc in filteredDocs" :key="doc.localFilename" class="py-3 flex justify-between gap-x-6">
               <div class="min-w-0 flex-auto">
-                <p class="text-sm font-medium text-gray-900 truncate" :title="doc.description">{{ doc.description || doc.documentType }}</p>
+                <p class="text-sm font-medium text-gray-900 truncate" :class="{'line-through text-gray-500': doc.isSuperseded}" :title="doc.description">{{ doc.description || doc.documentType }}</p>
                 <p class="mt-1 flex text-xs text-gray-500">
                   <span class="mr-2">{{ doc.datePublished }}</span>
-                  <span>{{ doc.documentType }}</span>
+                  <span class="mr-2 font-medium" :class="{'text-red-600': doc.isSuperseded}">{{ doc.documentType }}</span>
                 </p>
+                <p v-if="doc.supersededBy" class="mt-1 text-xs text-blue-600">
+                  Superseded by: <a :href="doc.supersededBy.url" target="_blank" class="hover:underline">{{ doc.supersededBy.datePublished }} version</a>
+                </p>
+                <div v-if="doc.replaces && doc.replaces.length > 0" class="mt-1 text-xs text-gray-500">
+                  Replaces: 
+                  <span v-for="(old, idx) in doc.replaces" :key="old.localFilename">
+                    <a :href="old.url" target="_blank" class="hover:underline text-gray-400">{{ old.datePublished }} version</a><span v-if="Number(idx) < doc.replaces.length - 1">, </span>
+                  </span>
+                </div>
               </div>
               <div class="flex items-center">
                 <a :href="`/api/documents/${encodeURIComponent(app.reference.replace(/\//g, '-'))}/${encodeURIComponent(doc.localFilename)}`" target="_blank" class="text-sm text-blue-600 hover:underline shrink-0">View PDF</a>
@@ -74,17 +83,42 @@ const error = ref('')
 const commentsText = ref('')
 const selectedDocType = ref('All')
 
+const enhancedAppDocuments = computed(() => {
+  if (!app.value?.documents) return []
+  const docs = app.value.documents.map((d: any) => ({
+    ...d,
+    url: `/api/documents/${encodeURIComponent(app.value.reference.replace(/\//g, '-'))}/${encodeURIComponent(d.localFilename)}`,
+    isSuperseded: d.documentType.toLowerCase().includes('superseded'),
+    supersededBy: null,
+    replaces: []
+  }))
+
+  // Find relationships based on matching descriptions
+  docs.forEach((doc: any) => {
+    if (doc.isSuperseded && doc.description) {
+      // Find newer active document with same description
+      const active = docs.find((d: any) => !d.isSuperseded && d.description?.toLowerCase() === doc.description.toLowerCase())
+      if (active) {
+        doc.supersededBy = active
+        active.replaces.push(doc)
+      }
+    }
+  })
+  return docs
+})
+
 const docTypes = computed(() => {
-  if (!app.value?.documents) return ['All']
-  const types = new Set(app.value.documents.map((d: any) => d.documentType).filter(Boolean))
+  if (!enhancedAppDocuments.value.length) return ['All']
+  const types = new Set(enhancedAppDocuments.value.map((d: any) => d.documentType).filter(Boolean))
   return ['All', ...Array.from(types)] as string[]
 })
 
 const filteredDocs = computed(() => {
-  if (!app.value?.documents) return []
-  if (selectedDocType.value === 'All') return app.value.documents
-  return app.value.documents.filter((d: any) => d.documentType === selectedDocType.value)
+  if (!enhancedAppDocuments.value.length) return []
+  if (selectedDocType.value === 'All') return enhancedAppDocuments.value
+  return enhancedAppDocuments.value.filter((d: any) => d.documentType === selectedDocType.value)
 })
+
 
 onMounted(async () => {
   const refParam = route.params.ref as string
