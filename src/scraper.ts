@@ -4,7 +4,6 @@ import fs from 'fs';
 import { saveApplicationMeta, saveComments } from './storage.js';
 import { chromium, Page } from 'playwright';
 import path from 'path';
-import { setTimeout } from 'timers/promises';
 
 const BASE_URL = 'https://applications.greatercambridgeplanning.org/online-applications';
 
@@ -98,14 +97,14 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
       }
       
       const btn = page.locator('#downloadFiles');
-      if (await btn.isDisabled()) {
-          await page.evaluate(() => {
-              // @ts-ignore
-              if (typeof buttonSwitch === 'function') buttonSwitch(25);
-          });
-          if (await btn.isDisabled()) {
-              await btn.evaluate(node => node.removeAttribute('disabled'));
-          }
+      try {
+        await page.waitForFunction(() => {
+          const b = document.querySelector<HTMLInputElement>('#downloadFiles');
+          return b && !b.disabled;
+        }, undefined, { timeout: 5000 });
+      } catch (e) {
+        // Force enable if the page scripts failed to do so
+        await btn.evaluate(node => node.removeAttribute('disabled'));
       }
       
       try {
@@ -152,7 +151,6 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
           await doc.bulkCheckLocator.uncheck();
       }
       
-      await setTimeout(2000);
   }
 
   for (const doc of individualDownloadable) {
@@ -171,8 +169,6 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
           documentType: doc.documentType,
           description: doc.description
         });
-        console.log(`Saved ${finalName}, waiting 2 seconds...`);
-        await setTimeout(2000);
       } catch (e) {
         console.error(`Failed to download ${doc.baseName}:`, e);
       }
