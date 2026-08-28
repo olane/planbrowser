@@ -40,6 +40,43 @@
         </div>
       </div>
 
+      <!-- Additional Metadata -->
+      <div v-if="app.furtherInformation" class="mb-8 p-4 bg-gray-50 rounded border border-gray-100">
+        <h3 class="text-lg font-semibold mb-3 border-b border-gray-200 pb-2 text-gray-800">Additional Details</h3>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div v-if="app.furtherInformation?.['Application Type']">
+            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Application Type</dt>
+            <dd class="text-sm text-gray-900 mt-1">{{ app.furtherInformation['Application Type'] }}</dd>
+          </div>
+          <div v-if="app.furtherInformation?.['Case Officer']">
+            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Case Officer</dt>
+            <dd class="text-sm text-gray-900 mt-1">{{ app.furtherInformation['Case Officer'] }}</dd>
+          </div>
+          <div v-if="app.furtherInformation?.['Ward']">
+            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Ward</dt>
+            <dd class="text-sm text-gray-900 mt-1">{{ app.furtherInformation['Ward'] }}</dd>
+          </div>
+          <div v-if="app.importantDates?.['Determination Deadline']">
+            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Determination Deadline</dt>
+            <dd class="text-sm text-gray-900 mt-1">{{ app.importantDates['Determination Deadline'] }}</dd>
+          </div>
+          <div v-if="app.importantDates?.['Actual Committee Date']">
+            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Meeting Date</dt>
+            <dd class="text-sm text-gray-900 mt-1">
+              {{ app.importantDates['Actual Committee Date'] }}
+            </dd>
+          </div>
+          <div v-if="app.furtherInformation?.['Decision']">
+            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Decision</dt>
+            <dd class="text-sm text-gray-900 mt-1">{{ app.furtherInformation['Decision'] }}</dd>
+          </div>
+          <div v-if="app.importantDates?.['Decision Issued Date']">
+            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Decision Date</dt>
+            <dd class="text-sm text-gray-900 mt-1">{{ app.importantDates['Decision Issued Date'] }}</dd>
+          </div>
+        </div>
+      </div>
+
       <div class="mt-8">
         <div class="border-b border-gray-200">
           <nav class="-mb-px flex space-x-8" aria-label="Tabs">

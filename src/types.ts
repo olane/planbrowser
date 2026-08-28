@@ -14,8 +14,10 @@ export interface ApplicationMeta {
   documents: DocumentMeta[];
   hasComments: boolean;
   scrapedAt: string;
-}
+  furtherInformation?: Record<string, string>;
+  importantDates?: Record<string, string>;
 
+}
 export interface Comment {
   address: string;
   stance: string;

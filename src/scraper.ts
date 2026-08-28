@@ -323,9 +323,43 @@ export async function downloadApplication(reference: string) {
       }
     }
 
+
+    // Get tab URLs before we navigate away
+    const tabLinks = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('a')).filter(a => a.href.includes('activeTab=')).map(a => ({
+        text: a.textContent.trim(),
+        href: a.href
+      }));
+    });
+
+    const scrapeTabTable = async (tabName: string) => {
+      const tab = tabLinks.find(t => t.text.includes(tabName) || t.text === tabName);
+      if (tab) {
+        console.log(`Navigating to ${tabName} tab...`);
+        await Promise.all([
+          page.waitForNavigation(),
+          page.goto(tab.href)
+        ]);
+        return await page.evaluate(() => {
+          const rows = document.querySelectorAll('table tr');
+          return Array.from(rows).reduce((acc, tr) => {
+            const th = tr.querySelector('th')?.textContent.trim();
+            const td = tr.querySelector('td')?.textContent.trim();
+            if (th && td) {
+              acc[th.replace(/:$/, '')] = td;
+            }
+            return acc;
+          }, {} as Record<string, string>);
+        });
+      }
+      return undefined;
+    };
+
+    meta.furtherInformation = await scrapeTabTable('Further Information') || await scrapeTabTable('Details');
+    meta.importantDates = await scrapeTabTable('Important Dates');
+
     meta.documents = await downloadDocuments(page, outDir);
     meta.hasComments = await scrapeComments(page, outDir);
-
     saveApplicationMeta(reference, meta);
     console.log('Saved metadata.json');
 
