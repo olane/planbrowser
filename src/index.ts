@@ -364,7 +364,7 @@ program
     try {
       const res = await fetch(`https://www.planit.org.uk/api/applics/json?pcode=${encodeURIComponent(postcode)}&krad=${options.radius}&pg_sz=50`, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          'User-Agent': 'planbrowser/1.0 (https://github.com/olane/planbrowser)'
         }
       });
       if (!res.ok) {
