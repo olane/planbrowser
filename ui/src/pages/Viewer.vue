@@ -38,7 +38,10 @@
           <ul class="divide-y divide-gray-100 max-h-96 overflow-y-auto pr-2">
             <li v-for="doc in filteredDocs" :key="doc.localFilename" class="py-3 flex justify-between gap-x-6">
               <div class="min-w-0 flex-auto">
-                <p class="text-sm font-medium text-gray-900 truncate" :class="{'line-through text-gray-500': doc.isSuperseded}" :title="doc.description">{{ doc.description || doc.documentType }}</p>
+                <p class="text-sm font-medium text-gray-900 truncate flex items-center gap-2" :title="doc.description">
+                  <span :class="{'line-through text-gray-500': doc.isSuperseded}">{{ doc.description || doc.documentType }}</span>
+                  <span v-if="doc.replaces && doc.replaces.length > 0" class="inline-flex items-center rounded-md bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Updated</span>
+                </p>
                 <p class="mt-1 flex text-xs text-gray-500">
                   <span class="mr-2">{{ doc.datePublished }}</span>
                   <span class="mr-2 font-medium" :class="{'text-red-600': doc.isSuperseded}">{{ doc.documentType }}</span>
