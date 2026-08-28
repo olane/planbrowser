@@ -128,7 +128,11 @@
             <div>
               <div class="font-bold">{{ res.uid }}<span v-if="res.app_type" class="ml-2 text-xs font-normal text-gray-500">({{ res.app_type }})</span></div>
               <div class="text-sm text-gray-600">{{ res.description }}</div>
-              <div class="text-xs text-gray-500 mt-1">{{ res.name }} - {{ res.app_state }}</div>
+              <div class="text-xs text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+                <span>{{ res.name }}</span>
+                <span>{{ res.app_state }}</span>
+                <span v-if="res.start_date">· {{ timeAgo(res.start_date) }}</span>
+              </div>
             </div>
             <router-link v-if="isDownloaded(res.uid)" :to="`/app/${encodeURIComponent(res.uid)}`" class="whitespace-nowrap bg-blue-100 text-blue-700 px-3 py-1 rounded-md text-sm hover:bg-blue-200">
               View

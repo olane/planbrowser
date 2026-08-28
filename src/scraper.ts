@@ -378,7 +378,8 @@ export async function searchPlanIt(postcode: string, radius: string, filters: Se
   const params = new URLSearchParams({
     pcode: postcode,
     krad: radius,
-    pg_sz: '50'
+    pg_sz: '50',
+    sort: '-start_date'
   });
   for (const [key, value] of Object.entries(filters)) {
     if (value) {

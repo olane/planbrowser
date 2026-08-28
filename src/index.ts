@@ -79,9 +79,11 @@ program
           const state = app.app_state || 'Unknown';
           const desc = app.description || 'Unknown';
           const url = app.url || 'Unknown';
+          const date = app.start_date || 'Unknown';
           console.log(`Reference: ${ref}`);
           console.log(`Council:   ${auth}`);
           console.log(`Status:    ${state}`);
+          console.log(`Date:      ${date}`);
           console.log(`Desc:      ${desc}`);
           console.log(`Link:      ${url}`);
           console.log('-'.repeat(40));
