@@ -36,6 +36,10 @@
         </button>
       </form>
 
+      <div v-if="searchError" class="mb-6 p-4 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
+        {{ searchError }}
+      </div>
+
       <div v-if="searchResults.length > 0">
         <h3 class="font-medium text-lg mb-3">Results</h3>
         <div class="space-y-4">
@@ -65,8 +69,9 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
-const router = useRouter()
-
+const isSearching = ref(false)
+const hasSearched = ref(false)
+const searchError = ref('')
 const downloadedApps = ref<any[]>([])
 const loadingApps = ref(true)
 
@@ -95,17 +100,28 @@ const isDownloaded = (reference: string) => {
 
 const searchPlanIt = async () => {
   if (!searchForm.value.postcode) return
+  
+  searchForm.value.postcode = searchForm.value.postcode.toUpperCase()
+  
   isSearching.value = true
   hasSearched.value = false
+  searchError.value = ''
+  
   try {
     const res = await fetch(`/api/search?postcode=${encodeURIComponent(searchForm.value.postcode)}&radius=${encodeURIComponent(searchForm.value.radius)}`)
     if (res.ok) {
       const data = await res.json()
       searchResults.value = data.records || []
       hasSearched.value = true
+    } else {
+      const err = await res.json()
+      searchError.value = err.error || 'Failed to search'
+      searchResults.value = []
     }
-  } catch (e) {
+  } catch (e: any) {
     console.error(e)
+    searchError.value = e.message || 'Network error occurred'
+    searchResults.value = []
   } finally {
     isSearching.value = false
   }
