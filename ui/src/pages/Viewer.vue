@@ -2,9 +2,12 @@
   <div>
     <div class="mb-4 flex items-center justify-between">
       <router-link to="/" class="text-sm text-blue-600 hover:underline">&larr; Back to all applications</router-link>
-      <button v-if="app" @click="syncApp" :disabled="syncing" class="text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm disabled:opacity-50">
-        {{ syncing ? 'Syncing...' : 'Sync / Update' }}
-      </button>
+      <div class="flex items-center gap-4">
+        <span v-if="app" class="text-sm text-gray-500">Last Synced: {{ formatDate(app.scrapedAt) }}</span>
+        <button v-if="app" @click="syncApp" :disabled="syncing" class="text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm disabled:opacity-50">
+          {{ syncing ? 'Syncing...' : 'Sync / Update' }}
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="text-gray-500">Loading...</div>
@@ -32,10 +35,6 @@
             <div v-for="(value, key) in app.dates" :key="key" class="px-2 py-3 sm:grid sm:grid-cols-3 sm:gap-4">
               <dt class="text-sm font-medium text-gray-900">{{ key }}</dt>
               <dd class="text-sm text-gray-700 sm:col-span-2 sm:mt-0">{{ value }}</dd>
-            </div>
-            <div class="px-2 py-3 sm:grid sm:grid-cols-3 sm:gap-4 bg-gray-50 border-t border-gray-200">
-              <dt class="text-sm font-medium text-gray-900">Last Synced</dt>
-              <dd class="text-sm text-gray-700 sm:col-span-2 sm:mt-0">{{ formatDate(app.scrapedAt) }}</dd>
             </div>
           </dl>
         </div>
