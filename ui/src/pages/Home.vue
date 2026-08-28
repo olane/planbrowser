@@ -85,11 +85,13 @@
           {{ lookupError }}
         </div>
       </form>
+    </section>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import type { ApplicationMeta, PlanItRecord } from '../../src/types.js'
+import type { ApplicationMeta, PlanItRecord } from '../../../src/types.js'
 import * as api from '../api'
 import { useRouter } from 'vue-router'
 

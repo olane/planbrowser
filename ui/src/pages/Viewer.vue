@@ -151,7 +151,7 @@
 </template>
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import type { ApplicationMeta, Comment, EnhancedDocument } from '../../src/types.js'
+import type { ApplicationMeta, Comment, EnhancedDocument } from '../../../src/types.js'
 import * as api from '../api'
 import { useRoute } from 'vue-router'
 
