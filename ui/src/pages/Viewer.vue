@@ -28,9 +28,15 @@
         </div>
 
         <div>
-          <h3 class="text-lg font-semibold mb-3 border-b pb-2">Documents ({{ app.documents?.length || 0 }})</h3>
+          <div class="flex items-center justify-between mb-3 border-b pb-2">
+            <h3 class="text-lg font-semibold">Documents ({{ filteredDocs?.length || 0 }})</h3>
+            <select v-if="docTypes.length > 1" v-model="selectedDocType" class="text-sm border-gray-300 rounded-md py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500">
+              <option v-for="t in (docTypes as string[])" :key="t" :value="t">{{ t }}</option>
+            </select>
+          </div>
+          
           <ul class="divide-y divide-gray-100 max-h-96 overflow-y-auto pr-2">
-            <li v-for="doc in app.documents" :key="doc.localFilename" class="py-3 flex justify-between gap-x-6">
+            <li v-for="doc in filteredDocs" :key="doc.localFilename" class="py-3 flex justify-between gap-x-6">
               <div class="min-w-0 flex-auto">
                 <p class="text-sm font-medium text-gray-900 truncate" :title="doc.description">{{ doc.description || doc.documentType }}</p>
                 <p class="mt-1 flex text-xs text-gray-500">
@@ -45,19 +51,19 @@
           </ul>
 
           <div v-if="app.hasComments" class="mt-6 pt-4 border-t">
-            <h3 class="text-lg font-semibold mb-3">Comments</h3>
-            <a :href="`/api/documents/${encodeURIComponent(app.reference.replace(/\//g, '-'))}/comments.txt`" target="_blank" class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 hover:bg-gray-100">
-              View comments.txt
-            </a>
+            <h3 class="text-lg font-semibold mb-3 border-b pb-2">Comments</h3>
+            <div v-if="commentsText" class="mt-2 text-sm text-gray-700 bg-gray-50 p-3 rounded border whitespace-pre-wrap max-h-96 overflow-y-auto">
+              {{ commentsText }}
+            </div>
+            <div v-else class="text-sm text-gray-500">Loading comments...</div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -65,12 +71,38 @@ const app = ref<any>(null)
 const loading = ref(true)
 const error = ref('')
 
+const commentsText = ref('')
+const selectedDocType = ref('All')
+
+const docTypes = computed(() => {
+  if (!app.value?.documents) return ['All']
+  const types = new Set(app.value.documents.map((d: any) => d.documentType).filter(Boolean))
+  return ['All', ...Array.from(types)] as string[]
+})
+
+const filteredDocs = computed(() => {
+  if (!app.value?.documents) return []
+  if (selectedDocType.value === 'All') return app.value.documents
+  return app.value.documents.filter((d: any) => d.documentType === selectedDocType.value)
+})
+
 onMounted(async () => {
   const refParam = route.params.ref as string
   try {
     const res = await fetch(`/api/applications/${encodeURIComponent(refParam)}`)
     if (res.ok) {
       app.value = await res.json()
+      document.title = `PlanBrowser | ${app.value.reference}`
+      
+      if (app.value.hasComments) {
+        const safeRef = encodeURIComponent(app.value.reference.replace(/\//g, '-'))
+        const commentRes = await fetch(`/api/documents/${safeRef}/comments.txt`)
+        if (commentRes.ok) {
+          commentsText.value = await commentRes.text()
+        } else {
+          commentsText.value = 'Failed to load comments text.'
+        }
+      }
     } else {
       const data = await res.json()
       error.value = data.error || 'Failed to load'

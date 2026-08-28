@@ -201,6 +201,7 @@ const downloadApp = async (reference: string) => {
 }
 
 onMounted(() => {
+  document.title = 'PlanBrowser | Home'
   fetchApps()
 })
 </script>
