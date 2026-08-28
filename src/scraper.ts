@@ -216,6 +216,7 @@ export async function scrapeComments(page: Page, outDir: string): Promise<boolea
       const allComments = [];
       
       while (true) {
+        await page.waitForSelector('.comment', { timeout: 5000 }).catch(() => {});
         const commentsOnPage = await page.$$eval('.comment', nodes => nodes.map(node => {
           const address = node.querySelector('.consultationAddress')?.textContent?.trim() || '';
           const stance = node.querySelector('.consultationStance')?.textContent?.replace(/[()]/g, '').trim() || '';
