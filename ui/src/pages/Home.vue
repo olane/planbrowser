@@ -69,8 +69,8 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
-const isSearching = ref(false)
-const hasSearched = ref(false)
+const router = useRouter()
+
 const searchError = ref('')
 const downloadedApps = ref<any[]>([])
 const loadingApps = ref(true)
