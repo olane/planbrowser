@@ -1,8 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-import fs from 'fs';
 import path from 'path';
 import { downloadApplication, searchPlanIt } from './scraper.js';
+import { getApplications, getApplication } from './storage.js';
 
 const app = express();
 app.use(cors());
@@ -39,21 +39,7 @@ app.post('/api/download', async (req, res) => {
 
 app.get('/api/applications', (req, res) => {
   try {
-    if (!fs.existsSync(DOWNLOADS_DIR)) {
-      return res.json([]);
-    }
-    const dirs = fs.readdirSync(DOWNLOADS_DIR);
-    const apps = dirs.map(dir => {
-      const metaPath = path.join(DOWNLOADS_DIR, dir, 'metadata.json');
-      if (fs.existsSync(metaPath)) {
-        try {
-          return JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
-        } catch (e) {
-          return null;
-        }
-      }
-      return null;
-    }).filter(Boolean);
+    const apps = getApplications();
     res.json(apps);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -62,11 +48,10 @@ app.get('/api/applications', (req, res) => {
 
 app.get('/api/applications/:ref', (req, res) => {
   try {
-    const ref = req.params.ref.replace(/\//g, '-');
-    const metaPath = path.join(DOWNLOADS_DIR, ref, 'metadata.json');
-    if (fs.existsSync(metaPath)) {
-      const data = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
-      res.json(data);
+    const ref = req.params.ref;
+    const app = getApplication(ref);
+    if (app) {
+      res.json(app);
     } else {
       res.status(404).json({ error: 'Application not found' });
     }

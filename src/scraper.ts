@@ -1,6 +1,7 @@
 import type { DocumentMeta, ApplicationMeta, Comment } from './types.js';
 import AdmZip from 'adm-zip';
 import fs from 'fs';
+import { saveApplicationMeta, saveComments } from './storage.js';
 import { chromium, Page } from 'playwright';
 import path from 'path';
 import { setTimeout } from 'timers/promises';
@@ -221,10 +222,9 @@ export async function scrapeComments(page: Page, outDir: string): Promise<boolea
           break;
         }
       }
-
       if (allComments.length > 0) {
-        fs.writeFileSync(path.join(outDir, 'comments.json'), JSON.stringify(allComments, null, 2));
-        console.log(`Saved ${allComments.length} comments to comments.json`);
+        saveComments(path.basename(outDir), allComments);
+        console.log(`Saved ${allComments.length} comments`);
         return true;
       } else {
         console.log('No comments found on the comments tab.');
@@ -330,7 +330,7 @@ export async function downloadApplication(reference: string) {
     meta.documents = await downloadDocuments(page, outDir);
     meta.hasComments = await scrapeComments(page, outDir);
 
-    fs.writeFileSync(path.join(outDir, 'metadata.json'), JSON.stringify(meta, null, 2));
+    saveApplicationMeta(reference, meta);
     console.log('Saved metadata.json');
 
     console.log(`Done! Files saved in ${outDir}`);
