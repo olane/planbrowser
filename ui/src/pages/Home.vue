@@ -10,7 +10,7 @@
         <div v-for="app in downloadedApps" :key="app.reference" class="bg-white p-4 rounded shadow border border-gray-200">
           <h3 class="font-bold text-lg mb-1">{{ app.reference }}</h3>
           <p class="text-sm text-gray-600 mb-2 truncate">{{ app.address }}</p>
-          <p class="text-xs text-gray-500 mb-2">Synced: {{ formatDate(app.scrapedAt) }}</p>
+          <p class="text-xs text-gray-500 mb-2">Synced: {{ timeAgo(app.scrapedAt) }}</p>
           <div class="flex justify-between items-center mt-2">
             <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">{{ app.status }}</span>
             <router-link :to="`/app/${encodeURIComponent(app.reference)}`" class="text-sm text-blue-600 hover:underline">View details</router-link>
@@ -89,9 +89,9 @@
     </section>
   </div>
 </template>
-
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { timeAgo } from '../utils'
 import type { ApplicationMeta, PlanItRecord, QueueItem } from '../../../src/types.js'
 import * as api from '../api'
 import { useRouter } from 'vue-router'
@@ -113,10 +113,6 @@ const directReference = ref('')
 const isLookingUp = ref(false)
 const lookupError = ref('')
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return 'Unknown'
-  return new Date(dateStr).toLocaleString()
-}
 
 const fetchQueue = async () => {
   try {

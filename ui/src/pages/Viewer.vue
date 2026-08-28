@@ -3,7 +3,7 @@
     <div class="mb-4 flex items-center justify-between">
       <router-link to="/" class="text-sm text-blue-600 hover:underline">&larr; Back to all applications</router-link>
       <div class="flex items-center gap-4">
-        <span v-if="app" class="text-sm text-gray-500">Last Synced: {{ formatDate(app.scrapedAt) }}</span>
+        <span v-if="app" class="text-sm text-gray-500">Last Synced: {{ timeAgo(app.scrapedAt) }}</span>
         <button v-if="app" @click="syncApp" :disabled="syncing" class="text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm disabled:opacity-50">
           {{ syncing ? 'Syncing...' : 'Sync / Update' }}
         </button>
@@ -157,13 +157,10 @@
 </template>
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { timeAgo } from '../utils'
 import type { ApplicationMeta, Comment, EnhancedDocument } from '../../../src/types.js'
 import * as api from '../api'
 import { useRoute } from 'vue-router'
-const formatDate = (dateStr: string | undefined) => {
-  if (!dateStr) return 'Unknown'
-  return new Date(dateStr).toLocaleString()
-}
 
 const route = useRoute()
 const app = ref<ApplicationMeta | null>(null)
@@ -193,7 +190,7 @@ const syncApp = async () => {
   syncMessage.value = ''
   try {
     await api.downloadApplication(app.value.reference)
-    syncMessage.value = 'Sync queued. Check the Home page for progress.'
+    syncMessage.value = 'Sync queued. Check the Queue page for progress.'
   } catch (err: any) {
     syncError.value = err.message || 'Failed to sync'
   } finally {

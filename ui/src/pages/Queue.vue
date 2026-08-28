@@ -15,8 +15,8 @@
           <div>
             <div class="font-medium">{{ item.reference }}</div>
             <div class="text-xs text-gray-500">
-              Enqueued: {{ formatDate(item.enqueuedAt) }}
-              <span v-if="item.completedAt"> • Finished: {{ formatDate(item.completedAt) }}</span>
+              Enqueued: {{ timeAgo(item.enqueuedAt) }}
+              <span v-if="item.completedAt"> • Finished: {{ timeAgo(item.completedAt) }}</span>
             </div>
           </div>
           <div class="flex flex-col items-end">
@@ -33,17 +33,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
 import type { QueueItem } from '../../../src/types.js'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { timeAgo } from '../utils'
 import * as api from '../api'
 
 const queueItems = ref<QueueItem[]>([])
 let pollInterval: any = null
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return 'Unknown'
-  return new Date(dateStr).toLocaleString()
-}
 
 const fetchQueue = async () => {
   try {
