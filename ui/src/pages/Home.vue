@@ -62,6 +62,22 @@
         No results found.
       </div>
     </section>
+
+    <hr class="border-gray-200" />
+
+    <!-- Direct Lookup -->
+    <section>
+      <h2 class="text-xl font-semibold mb-4">Direct Reference Lookup</h2>
+      <form @submit.prevent="lookupReference" class="flex gap-4 items-end mb-6">
+        <div class="flex-1 max-w-sm">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Application Reference</label>
+          <input v-model="directReference" required type="text" placeholder="e.g. 24/02737/FUL" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+        </div>
+        <button type="submit" :disabled="isLookingUp" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
+          {{ isLookingUp ? 'Fetching...' : 'Fetch' }}
+        </button>
+      </form>
+    </section>
   </div>
 </template>
 
@@ -81,6 +97,40 @@ const hasSearched = ref(false)
 const searchResults = ref<any[]>([])
 const downloading = ref<Record<string, boolean>>({})
 
+
+const directReference = ref('')
+const isLookingUp = ref(false)
+
+const lookupReference = async () => {
+  if (!directReference.value) return
+  const refValue = directReference.value.trim().toUpperCase()
+  
+  if (isDownloaded(refValue)) {
+    router.push(`/app/${encodeURIComponent(refValue)}`)
+    return
+  }
+  
+  isLookingUp.value = true
+  try {
+    const res = await fetch('/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reference: refValue })
+    })
+    if (res.ok) {
+      await fetchApps()
+      router.push(`/app/${encodeURIComponent(refValue)}`)
+    } else {
+      const err = await res.json()
+      alert(`Failed to fetch: ${err.error}`)
+    }
+  } catch (e) {
+    console.error(e)
+    alert('Failed to fetch')
+  } finally {
+    isLookingUp.value = false
+  }
+}
 const fetchApps = async () => {
   try {
     const res = await fetch('/api/applications')
