@@ -81,15 +81,22 @@
 
           <div v-show="activeTab === 'comments'" v-if="app.hasComments">
             <div v-if="commentsList.length > 0" class="mt-2 space-y-4">
-              <div v-for="(comment, idx) in commentsList" :key="idx" class="bg-gray-50 p-3 rounded border text-sm">
-                <div class="flex justify-between items-start mb-2">
-                  <div class="font-medium text-gray-900">{{ comment.address }}</div>
-                  <div class="text-xs text-gray-500 whitespace-nowrap ml-2">{{ comment.date }}</div>
+              <div v-for="(comment, idx) in commentsList" :key="idx" class="bg-gray-50 rounded border text-sm overflow-hidden">
+                <div class="flex flex-col p-3 cursor-pointer hover:bg-gray-50 transition-colors" @click="comment.expanded = !comment.expanded">
+                  <div class="flex justify-between items-start mb-2">
+                    <div class="font-medium text-gray-900 pr-4">{{ comment.address }}</div>
+                    <div class="flex items-center gap-3 shrink-0">
+                      <div class="text-xs text-gray-500 whitespace-nowrap">{{ comment.date }}</div>
+                      <svg :class="['w-4 h-4 text-gray-400 transition-transform', comment.expanded ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                  </div>
+                  <div v-if="comment.stance">
+                    <span :class="['inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset', getStanceClass(comment.stance)]">{{ comment.stance }}</span>
+                  </div>
                 </div>
-                <div v-if="comment.stance" class="mb-2">
-                  <span class="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{{ comment.stance }}</span>
+                <div v-show="comment.expanded" class="p-3 pt-0 border-t border-gray-200">
+                  <div class="text-gray-700 whitespace-pre-wrap mt-3">{{ comment.text }}</div>
                 </div>
-                <div class="text-gray-700 whitespace-pre-wrap">{{ comment.text }}</div>
               </div>
             </div>
             <div v-else-if="commentsError" class="text-sm text-red-600">{{ commentsError }}</div>
@@ -111,6 +118,14 @@ const error = ref('')
 const commentsList = ref<any[]>([])
 const activeTab = ref('documents')
 const commentsError = ref('')
+const getStanceClass = (stance?: string) => {
+  if (!stance) return 'bg-gray-100 text-gray-600 ring-gray-500/10'
+  const lower = stance.toLowerCase()
+  if (lower.includes('object')) return 'bg-red-50 text-red-700 ring-red-600/10'
+  if (lower.includes('support')) return 'bg-green-50 text-green-700 ring-green-600/20'
+  if (lower.includes('neutral')) return 'bg-yellow-50 text-yellow-800 ring-yellow-600/20'
+  return 'bg-gray-100 text-gray-600 ring-gray-500/10'
+}
 const selectedDocType = ref('All')
 const syncing = ref(false)
 
@@ -133,7 +148,8 @@ const syncApp = async () => {
           const safeRef = encodeURIComponent(app.value.reference.replace(/\//g, '-'))
           const commentRes = await fetch(`/api/documents/${safeRef}/comments.json`)
           if (commentRes.ok) {
-            commentsList.value = await commentRes.json()
+            const data = await commentRes.json()
+            commentsList.value = data.map((c: any) => ({ ...c, expanded: false }))
           }
         }
       }
@@ -198,7 +214,8 @@ onMounted(async () => {
         const safeRef = encodeURIComponent(app.value.reference.replace(/\//g, '-'))
         const commentRes = await fetch(`/api/documents/${safeRef}/comments.json`)
         if (commentRes.ok) {
-          commentsList.value = await commentRes.json()
+          const data = await commentRes.json()
+          commentsList.value = data.map((c: any) => ({ ...c, expanded: false }))
         } else {
           commentsError.value = 'Failed to load comments.'
         }
