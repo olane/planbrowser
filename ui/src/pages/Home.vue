@@ -27,18 +27,94 @@
     <!-- Search & Download -->
     <section>
       <h2 class="text-xl font-semibold mb-4">Search PlanIt API</h2>
-      <form @submit.prevent="searchPlanIt" class="flex gap-4 items-end mb-6">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Postcode</label>
-          <input v-model="searchForm.postcode" required type="text" placeholder="e.g. CB1 2JW" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+      <form @submit.prevent="searchPlanIt" class="mb-6">
+        <div class="flex gap-4 items-end">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Postcode</label>
+            <input v-model="searchForm.postcode" required type="text" placeholder="e.g. CB1 2JW" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Radius (km)</label>
+            <input v-model="searchForm.radius" required type="number" step="0.1" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+          </div>
+          <button type="submit" :disabled="isSearching" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
+            {{ isSearching ? 'Searching...' : 'Search' }}
+          </button>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Radius (km)</label>
-          <input v-model="searchForm.radius" required type="number" step="0.1" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
-        </div>
-        <button type="submit" :disabled="isSearching" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
-          {{ isSearching ? 'Searching...' : 'Search' }}
-        </button>
+
+        <details class="mt-4">
+          <summary class="text-sm text-blue-600 cursor-pointer hover:underline select-none">Advanced filters</summary>
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-3 p-4 bg-gray-50 rounded-md border border-gray-200">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Keyword</label>
+              <input v-model="searchForm.search" type="text" placeholder='e.g. "solar panel" or photovoltaic' class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Developer / Agent</label>
+              <input v-model="searchForm.developer" type="text" placeholder="e.g. company name" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Application type</label>
+              <MultiSelect v-model="searchForm.app_type" :options="APP_TYPES" placeholder="Any type" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Decision status</label>
+              <MultiSelect v-model="searchForm.app_state" :options="APP_STATES" placeholder="Any status" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Development size</label>
+              <MultiSelect v-model="searchForm.app_size" :options="APP_SIZES" placeholder="Any size" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Recent (days)</label>
+              <input v-model="searchForm.recent" type="number" min="0" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Start date from</label>
+              <input v-model="searchForm.start_date" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Start date to</label>
+              <input v-model="searchForm.end_date" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Last changed (days)</label>
+              <input v-model="searchForm.changed" type="number" min="0" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Changed from</label>
+              <input v-model="searchForm.changed_start" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Changed to</label>
+              <input v-model="searchForm.changed_end" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Decided (days)</label>
+              <input v-model="searchForm.decided" type="number" min="0" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Decided from</label>
+              <input v-model="searchForm.decided_start" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Decided to</label>
+              <input v-model="searchForm.decided_end" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Data changed (days)</label>
+              <input v-model="searchForm.different" type="number" min="0" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Data changed from</label>
+              <input v-model="searchForm.different_start" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Data changed to</label>
+              <input v-model="searchForm.different_end" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            </div>
+          </div>
+        </details>
       </form>
 
       <div v-if="searchError" class="mb-6 p-4 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
@@ -79,7 +155,7 @@
         <div class="flex gap-4 items-end">
         <div class="flex-1 max-w-sm">
           <label class="block text-sm font-medium text-gray-700 mb-1">Application Reference</label>
-          <input v-model="directReference" required type="text" placeholder="e.g. 24/02737/FUL" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+          <input v-model="directReference" required type="text" placeholder="e.g. 24/02737/FUL" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
         </div>
         <button type="submit" :disabled="isLookingUp" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
           {{ isLookingUp ? 'Fetching...' : 'Fetch' }}
@@ -95,17 +171,42 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { timeAgo, statusLabel, statusBadgeClass } from '../utils'
-import type { ApplicationMeta, PlanItRecord, QueueItem } from '../../../src/types.js'
+import type { ApplicationMeta, PlanItRecord, QueueItem, SearchFilters } from '../../../src/types.js'
 import * as api from '../api'
 import { useRouter } from 'vue-router'
+import MultiSelect from '../components/MultiSelect.vue'
 
 const router = useRouter()
+
+const APP_TYPES = ['Full', 'Outline', 'Amendment', 'Conditions', 'Heritage', 'Trees', 'Advertising', 'Telecoms', 'Other']
+const APP_STATES = ['Undecided', 'Permitted', 'Conditions', 'Rejected', 'Withdrawn', 'Referred', 'Unresolved', 'Other']
+const APP_SIZES = ['Large', 'Medium', 'Small']
 
 const searchError = ref('')
 const downloadedApps = ref<ApplicationMeta[]>([])
 const loadingApps = ref(true)
 
-const searchForm = ref({ postcode: '', radius: '2' })
+const searchForm = ref({
+  postcode: '',
+  radius: '2',
+  search: '',
+  developer: '',
+  app_type: '',
+  app_state: '',
+  app_size: '',
+  recent: '',
+  start_date: '',
+  end_date: '',
+  changed: '',
+  changed_start: '',
+  changed_end: '',
+  decided: '',
+  decided_start: '',
+  decided_end: '',
+  different: '',
+  different_start: '',
+  different_end: ''
+})
 const isSearching = ref(false)
 const hasSearched = ref(false)
 const searchResults = ref<PlanItRecord[]>([])
@@ -198,7 +299,21 @@ const searchPlanIt = async () => {
   searchError.value = ''
   
   try {
-    const data = await api.searchPlanIt(searchForm.value.postcode, searchForm.value.radius)
+    const filterKeys: (keyof SearchFilters)[] = [
+      'search', 'developer', 'app_type', 'app_state', 'app_size',
+      'recent', 'start_date', 'end_date',
+      'changed', 'changed_start', 'changed_end',
+      'decided', 'decided_start', 'decided_end',
+      'different', 'different_start', 'different_end'
+    ]
+    const filters: SearchFilters = {}
+    for (const key of filterKeys) {
+      const value = searchForm.value[key]
+      if (value) {
+        filters[key] = value
+      }
+    }
+    const data = await api.searchPlanIt(searchForm.value.postcode, searchForm.value.radius, filters)
     searchResults.value = data.records || []
     hasSearched.value = true
   } catch (e: any) {

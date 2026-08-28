@@ -1,4 +1,4 @@
-import type { DocumentMeta, ApplicationMeta, Comment } from './types.js';
+import type { DocumentMeta, ApplicationMeta, Comment, SearchFilters } from './types.js';
 import AdmZip from 'adm-zip';
 import fs from 'fs';
 import { saveApplicationMeta, saveComments } from './storage.js';
@@ -374,8 +374,18 @@ export async function downloadApplication(reference: string) {
   }
 }
 
-export async function searchPlanIt(postcode: string, radius: string) {
-  const res = await fetch(`https://www.planit.org.uk/api/applics/json?pcode=${encodeURIComponent(postcode)}&krad=${radius}&pg_sz=50`, {
+export async function searchPlanIt(postcode: string, radius: string, filters: SearchFilters = {}) {
+  const params = new URLSearchParams({
+    pcode: postcode,
+    krad: radius,
+    pg_sz: '50'
+  });
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) {
+      params.set(key, value);
+    }
+  }
+  const res = await fetch(`https://www.planit.org.uk/api/applics/json?${params.toString()}`, {
     headers: {
       'User-Agent': 'planbrowser/1.0 (https://github.com/olane/planbrowser)'
     }

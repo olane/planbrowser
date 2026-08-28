@@ -4,12 +4,33 @@ import path from 'path';
 import { downloadApplication, searchPlanIt } from './scraper.js';
 import { getApplications, getApplication } from './storage.js';
 import { downloadQueue } from './queue.js';
+import type { SearchFilters } from './types.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const DOWNLOADS_DIR = path.join(process.cwd(), 'downloads');
+
+const FILTER_KEYS = [
+  'search',
+  'developer',
+  'app_type',
+  'app_state',
+  'app_size',
+  'recent',
+  'start_date',
+  'end_date',
+  'changed',
+  'changed_start',
+  'changed_end',
+  'decided',
+  'decided_start',
+  'decided_end',
+  'different',
+  'different_start',
+  'different_end'
+] as const;
 
 app.get('/api/search', async (req, res) => {
   try {
@@ -18,7 +39,14 @@ app.get('/api/search', async (req, res) => {
     if (!postcode) {
       return res.status(400).json({ error: 'Postcode is required' });
     }
-    const data = await searchPlanIt(postcode, radius);
+    const filters: SearchFilters = {};
+    for (const key of FILTER_KEYS) {
+      const value = req.query[key];
+      if (typeof value === 'string' && value !== '') {
+        filters[key] = value;
+      }
+    }
+    const data = await searchPlanIt(postcode, radius, filters);
     res.json(data);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

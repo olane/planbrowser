@@ -1,4 +1,4 @@
-import type { ApplicationMeta, PlanItResponse, Comment, QueueItem } from '../../src/types.js';
+import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters } from '../../src/types.js';
 
 export async function fetchApplications(): Promise<ApplicationMeta[]> {
   const res = await fetch('/api/applications');
@@ -15,8 +15,14 @@ export async function fetchApplication(reference: string): Promise<ApplicationMe
   return res.json();
 }
 
-export async function searchPlanIt(postcode: string, radius: string): Promise<PlanItResponse> {
-  const res = await fetch(`/api/search?postcode=${encodeURIComponent(postcode)}&radius=${encodeURIComponent(radius)}`);
+export async function searchPlanIt(postcode: string, radius: string, filters: SearchFilters = {}): Promise<PlanItResponse> {
+  const params = new URLSearchParams({ postcode, radius });
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) {
+      params.set(key, value);
+    }
+  }
+  const res = await fetch(`/api/search?${params.toString()}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Failed to search PlanIt');

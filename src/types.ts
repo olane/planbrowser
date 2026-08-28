@@ -26,6 +26,26 @@ export interface Comment {
   expanded?: boolean;
 }
 
+export interface SearchFilters {
+  search?: string;
+  developer?: string;
+  app_type?: string;
+  app_state?: string;
+  app_size?: string;
+  recent?: string;
+  start_date?: string;
+  end_date?: string;
+  changed?: string;
+  changed_start?: string;
+  changed_end?: string;
+  decided?: string;
+  decided_start?: string;
+  decided_end?: string;
+  different?: string;
+  different_start?: string;
+  different_end?: string;
+}
+
 export interface PlanItRecord {
   uid: string;
   name: string;
