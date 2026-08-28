@@ -64,9 +64,19 @@
 
           <div v-if="app.hasComments" class="mt-6 pt-4 border-t">
             <h3 class="text-lg font-semibold mb-3 border-b pb-2">Comments</h3>
-            <div v-if="commentsText" class="mt-2 text-sm text-gray-700 bg-gray-50 p-3 rounded border whitespace-pre-wrap max-h-96 overflow-y-auto">
-              {{ commentsText }}
+            <div v-if="commentsList.length > 0" class="mt-2 max-h-96 overflow-y-auto space-y-4 pr-2">
+              <div v-for="(comment, idx) in commentsList" :key="idx" class="bg-gray-50 p-3 rounded border text-sm">
+                <div class="flex justify-between items-start mb-2">
+                  <div class="font-medium text-gray-900">{{ comment.address }}</div>
+                  <div class="text-xs text-gray-500 whitespace-nowrap ml-2">{{ comment.date }}</div>
+                </div>
+                <div v-if="comment.stance" class="mb-2">
+                  <span class="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{{ comment.stance }}</span>
+                </div>
+                <div class="text-gray-700 whitespace-pre-wrap">{{ comment.text }}</div>
+              </div>
             </div>
+            <div v-else-if="commentsError" class="text-sm text-red-600">{{ commentsError }}</div>
             <div v-else class="text-sm text-gray-500">Loading comments...</div>
           </div>
         </div>
@@ -83,7 +93,8 @@ const app = ref<any>(null)
 const loading = ref(true)
 const error = ref('')
 
-const commentsText = ref('')
+const commentsList = ref<any[]>([])
+const commentsError = ref('')
 const selectedDocType = ref('All')
 
 const enhancedAppDocuments = computed(() => {
@@ -133,11 +144,11 @@ onMounted(async () => {
       
       if (app.value.hasComments) {
         const safeRef = encodeURIComponent(app.value.reference.replace(/\//g, '-'))
-        const commentRes = await fetch(`/api/documents/${safeRef}/comments.txt`)
+        const commentRes = await fetch(`/api/documents/${safeRef}/comments.json`)
         if (commentRes.ok) {
-          commentsText.value = await commentRes.text()
+          commentsList.value = await commentRes.json()
         } else {
-          commentsText.value = 'Failed to load comments text.'
+          commentsError.value = 'Failed to load comments.'
         }
       }
     } else {

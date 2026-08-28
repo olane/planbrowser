@@ -213,12 +213,34 @@ export async function scrapeComments(page: Page, outDir: string): Promise<boolea
         page.waitForNavigation(),
         neighbourCommentsTab.click()
       ]);
+      const allComments = [];
+      
+      while (true) {
+        const commentsOnPage = await page.$$eval('.comment', nodes => nodes.map(node => {
+          const address = node.querySelector('.consultationAddress')?.textContent?.trim() || '';
+          const stance = node.querySelector('.consultationStance')?.textContent?.replace(/[()]/g, '').trim() || '';
+          let dateText = node.querySelector('.comment-wrapper h2')?.textContent?.trim() || '';
+          dateText = dateText.replace('Comment submitted date:', '').trim();
+          const text = node.querySelector('.comment-text')?.textContent?.trim() || '';
+          return { address, stance, date: dateText, text };
+        }));
+        
+        allComments.push(...commentsOnPage);
+        
+        const nextBtn = page.locator('p.pager.bottom a.next');
+        if (await nextBtn.count() > 0) {
+          await Promise.all([
+            page.waitForNavigation(),
+            nextBtn.click()
+          ]);
+        } else {
+          break;
+        }
+      }
 
-      const commentsList = page.locator('.comments, #neighbourComments');
-      if (await commentsList.count() > 0) {
-        const commentsText = await commentsList.innerText();
-        fs.writeFileSync(path.join(outDir, 'comments.txt'), commentsText);
-        console.log('Saved comments.txt');
+      if (allComments.length > 0) {
+        fs.writeFileSync(path.join(outDir, 'comments.json'), JSON.stringify(allComments, null, 2));
+        console.log(`Saved ${allComments.length} comments to comments.json`);
         return true;
       } else {
         console.log('No comments found on the comments tab.');
