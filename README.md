@@ -28,3 +28,6 @@ npx tsx src/index.ts download 24/02737/FUL
 - [Playwright](https://playwright.dev/) for headless browser automation
 - [Commander](https://github.com/tj/commander.js/) for the CLI interface
 - [AdmZip](https://github.com/cthackers/adm-zip) for handling document archives
+
+## Acknowledgements
+This tool uses the [PlanIt API](https://www.planit.org.uk/) to search for planning applications.
