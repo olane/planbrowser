@@ -45,9 +45,9 @@
 
         <div class="pt-6">
           <div v-show="activeTab === 'documents'">
-            <div class="flex items-center justify-end mb-3 border-b pb-2" v-if="docTypes.length > 1">
+            <div class="flex items-center justify-end mb-3 border-b pb-2" v-if="docTypesWithCounts.length > 1">
               <select v-model="selectedDocType" class="text-sm border-gray-300 rounded-md py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500">
-                <option v-for="t in (docTypes as string[])" :key="t" :value="t">{{ t }}</option>
+                <option v-for="t in docTypesWithCounts" :key="t.value" :value="t.value">{{ t.label }} ({{ t.count }})</option>
               </select>
             </div>
           
@@ -80,8 +80,14 @@
           </div>
 
           <div v-show="activeTab === 'comments'" v-if="app.hasComments">
-            <div v-if="commentsList.length > 0" class="mt-2 space-y-4">
-              <div v-for="(comment, idx) in commentsList" :key="idx" class="bg-gray-50 rounded border text-sm overflow-hidden">
+            <div v-if="commentsList.length > 0">
+              <div class="flex items-center justify-end mb-3 border-b pb-2" v-if="commentStancesWithCounts.length > 1">
+                <select v-model="selectedStance" class="text-sm border-gray-300 rounded-md py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500">
+                  <option v-for="t in commentStancesWithCounts" :key="t.value" :value="t.value">{{ t.label }} ({{ t.count }})</option>
+                </select>
+              </div>
+              <div v-if="filteredComments.length > 0" class="mt-2 space-y-4">
+                <div v-for="(comment, idx) in filteredComments" :key="idx" class="bg-gray-50 rounded border text-sm overflow-hidden">
                 <div class="flex flex-col p-3 cursor-pointer hover:bg-gray-50 transition-colors" @click="comment.expanded = !comment.expanded">
                   <div class="flex justify-between items-start mb-2">
                     <div class="font-medium text-gray-900 pr-4">{{ comment.address }}</div>
@@ -98,6 +104,8 @@
                   <div class="text-gray-700 whitespace-pre-wrap mt-3">{{ comment.text }}</div>
                 </div>
               </div>
+              </div>
+              <div v-else class="text-sm text-gray-500 py-4 text-center">No comments match the selected filter.</div>
             </div>
             <div v-else-if="commentsError" class="text-sm text-red-600">{{ commentsError }}</div>
           </div>
@@ -127,6 +135,7 @@ const getStanceClass = (stance?: string) => {
   return 'bg-gray-100 text-gray-600 ring-gray-500/10'
 }
 const selectedDocType = ref('All')
+const selectedStance = ref('All')
 const syncing = ref(false)
 
 const syncApp = async () => {
@@ -189,10 +198,39 @@ const enhancedAppDocuments = computed(() => {
   return docs
 })
 
-const docTypes = computed(() => {
-  if (!enhancedAppDocuments.value.length) return ['All']
-  const types = new Set(enhancedAppDocuments.value.map((d: any) => d.documentType).filter(Boolean))
-  return ['All', ...Array.from(types)] as string[]
+const docTypesWithCounts = computed(() => {
+  if (!enhancedAppDocuments.value.length) return []
+  const counts: Record<string, number> = { 'All': enhancedAppDocuments.value.length }
+  enhancedAppDocuments.value.forEach((d: any) => {
+    const type = d.documentType
+    if (type) counts[type] = (counts[type] || 0) + 1
+  })
+  const types = Array.from(new Set(enhancedAppDocuments.value.map((d: any) => d.documentType).filter(Boolean))).sort() as string[]
+  
+  return [
+    { value: 'All', label: 'All', count: counts['All'] },
+    ...types.map(t => ({ value: t, label: t, count: counts[t] }))
+  ]
+})
+
+const commentStancesWithCounts = computed(() => {
+  if (!commentsList.value.length) return []
+  const counts: Record<string, number> = { 'All': commentsList.value.length }
+  commentsList.value.forEach(c => {
+    const stance = c.stance || 'None'
+    counts[stance] = (counts[stance] || 0) + 1
+  })
+  
+  const stances = Array.from(new Set(commentsList.value.map(c => c.stance || 'None'))).sort() as string[]
+  return [
+    { value: 'All', label: 'All', count: counts['All'] },
+    ...stances.map(s => ({ value: s, label: s, count: counts[s] }))
+  ]
+})
+
+const filteredComments = computed(() => {
+  if (selectedStance.value === 'All') return commentsList.value
+  return commentsList.value.filter(c => (c.stance || 'None') === selectedStance.value)
 })
 
 const filteredDocs = computed(() => {
