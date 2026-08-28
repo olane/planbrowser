@@ -57,7 +57,7 @@
                 </div>
               </div>
               <div class="flex items-center">
-                <a :href="`/api/documents/${encodeURIComponent(app.reference.replace(/\//g, '-'))}/${encodeURIComponent(doc.localFilename)}`" target="_blank" class="text-sm text-blue-600 hover:underline shrink-0">View PDF</a>
+                <a :href="`/api/documents/${encodeURIComponent(app.reference.replace(/\//g, '-'))}/${encodeURIComponent(doc.localFilename)}`" target="_blank" class="text-sm text-blue-600 hover:underline shrink-0">Open Document</a>
               </div>
             </li>
           </ul>

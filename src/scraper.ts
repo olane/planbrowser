@@ -52,8 +52,8 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
     
     const linkLocator = row.locator('td').nth(6).locator('a');
     if (await linkLocator.count() > 0) {
-      const fileName = `${date.replace(/\//g, '-')} - ${type.replace(/\//g, '-').trim()} - ${description.replace(/[^a-zA-Z0-9 -]/g, '').trim()}.pdf`;
-      const filePath = path.join(outDir, fileName);
+      const baseName = `${date.replace(/\//g, '-')} - ${type.replace(/\//g, '-').trim()} - ${description.replace(/[^a-zA-Z0-9 -]/g, '').trim()}`;
+      
       
       const bulkCheckLocator = row.locator('.bulkCheck');
       const hasBulkCheck = await bulkCheckLocator.count() > 0;
@@ -67,8 +67,7 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
       
       allDocs.push({
           row,
-          fileName,
-          filePath,
+          baseName,
           datePublished: date.trim(),
           documentType: type.trim(),
           description: description.trim(),
@@ -82,11 +81,13 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
 
   const missingDocs = [];
   
+  const existingFiles = fs.existsSync(outDir) ? fs.readdirSync(outDir) : [];
   for (const doc of allDocs) {
-      if (fs.existsSync(doc.filePath)) {
-          console.log(`Skipping existing: ${doc.fileName}`);
+      const existing = existingFiles.find(f => f.startsWith(doc.baseName + '.'));
+      if (existing) {
+          console.log(`Skipping existing: ${existing}`);
           docs.push({
-              localFilename: doc.fileName,
+              localFilename: existing,
               datePublished: doc.datePublished,
               documentType: doc.documentType,
               description: doc.description
@@ -138,14 +139,16 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
             const entry = zip.getEntry(doc.zipFilename);
             if (entry) {
                 const data = entry.getData();
-                fs.writeFileSync(doc.filePath, data);
+                const ext = path.extname(doc.zipFilename) || '.pdf';
+                const finalName = `${doc.baseName}${ext}`;
+                fs.writeFileSync(path.join(outDir, finalName), data);
                 docs.push({
-                    localFilename: doc.fileName,
+                    localFilename: finalName,
                     datePublished: doc.datePublished,
                     documentType: doc.documentType,
                     description: doc.description
                 });
-                console.log(`Extracted: ${doc.fileName}`);
+                console.log(`Extracted: ${finalName}`);
             } else {
                 console.warn(`Could not find ${doc.zipFilename} in the downloaded zip! Falling back to individual for this item.`);
                 individualDownloadable.push(doc);
@@ -169,23 +172,25 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
   }
 
   for (const doc of individualDownloadable) {
-      console.log(`Downloading individually: ${doc.fileName}`);
+      console.log(`Downloading individually: ${doc.baseName}`);
       try {
         const [download] = await Promise.all([
           page.waitForEvent('download', { timeout: 30000 }),
           doc.linkLocator.click()
         ]);
-        await download.saveAs(doc.filePath);
+        const suggestedExt = path.extname(download.suggestedFilename()) || '.pdf';
+        const finalName = `${doc.baseName}${suggestedExt}`;
+        await download.saveAs(path.join(outDir, finalName));
         docs.push({
-          localFilename: doc.fileName,
+          localFilename: finalName,
           datePublished: doc.datePublished,
           documentType: doc.documentType,
           description: doc.description
         });
-        console.log(`Saved ${doc.fileName}, waiting 2 seconds...`);
+        console.log(`Saved ${finalName}, waiting 2 seconds...`);
         await setTimeout(2000);
       } catch (e) {
-        console.error(`Failed to download ${doc.fileName}:`, e);
+        console.error(`Failed to download ${doc.baseName}:`, e);
       }
   }
 
