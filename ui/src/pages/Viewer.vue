@@ -148,14 +148,15 @@
 </template>
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import type { ApplicationMeta, Comment, EnhancedDocument } from '../../src/types.js'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const app = ref<any>(null)
+const app = ref<ApplicationMeta | null>(null)
 const loading = ref(true)
 const error = ref('')
 
-const commentsList = ref<any[]>([])
+const commentsList = ref<Comment[]>([])
 const activeTab = ref('documents')
 const commentsError = ref('')
 const getStanceClass = (stance?: string) => {
@@ -190,7 +191,7 @@ const syncApp = async () => {
           const commentRes = await fetch(`/api/documents/${safeRef}/comments.json`)
           if (commentRes.ok) {
             const data = await commentRes.json()
-            commentsList.value = data.map((c: any) => ({ ...c, expanded: false }))
+            commentsList.value = data.map((c: Comment) => ({ ...c, expanded: false }))
           }
         }
       }
@@ -209,21 +210,21 @@ const syncApp = async () => {
   }
 }
 
-const enhancedAppDocuments = computed(() => {
+const enhancedAppDocuments = computed<EnhancedDocument[]>(() => {
   if (!app.value?.documents) return []
-  const docs = app.value.documents.map((d: any) => ({
+  const docs: EnhancedDocument[] = app.value.documents.map((d) => ({
     ...d,
-    url: `/api/documents/${encodeURIComponent(app.value.reference.replace(/\//g, '-'))}/${encodeURIComponent(d.localFilename)}`,
+    url: `/api/documents/${encodeURIComponent(app.value!.reference.replace(/\//g, '-'))}/${encodeURIComponent(d.localFilename)}`,
     isSuperseded: d.documentType.toLowerCase().includes('superseded'),
     supersededBy: null,
     replaces: []
   }))
 
   // Find relationships based on matching descriptions
-  docs.forEach((doc: any) => {
+  docs.forEach((doc) => {
     if (doc.isSuperseded && doc.description) {
       // Find newer active document with same description
-      const active = docs.find((d: any) => !d.isSuperseded && d.description?.toLowerCase() === doc.description.toLowerCase())
+      const active = docs.find((d) => !d.isSuperseded && d.description?.toLowerCase() === doc.description.toLowerCase())
       if (active) {
         doc.supersededBy = active
         active.replaces.push(doc)
@@ -233,7 +234,7 @@ const enhancedAppDocuments = computed(() => {
   return docs
 })
 
-const isKeyDoc = (doc: any) => {
+const isKeyDoc = (doc: EnhancedDocument) => {
   const text = `${doc.documentType || ''} ${doc.description || ''}`.toLowerCase()
   return [
     'design and access',
@@ -255,11 +256,11 @@ const keyDocs = computed(() => {
 const docTypesWithCounts = computed(() => {
   if (!enhancedAppDocuments.value.length) return []
   const counts: Record<string, number> = { 'All': enhancedAppDocuments.value.length }
-  enhancedAppDocuments.value.forEach((d: any) => {
+  enhancedAppDocuments.value.forEach((d) => {
     const type = d.documentType
     if (type) counts[type] = (counts[type] || 0) + 1
   })
-  const types = Array.from(new Set(enhancedAppDocuments.value.map((d: any) => d.documentType).filter(Boolean))).sort() as string[]
+  const types = Array.from(new Set(enhancedAppDocuments.value.map((d) => d.documentType).filter(Boolean))).sort() as string[]
   
   return [
     { value: 'All', label: 'All', count: counts['All'] },
@@ -290,7 +291,7 @@ const filteredComments = computed(() => {
 const filteredDocs = computed(() => {
   if (!enhancedAppDocuments.value.length) return []
   if (selectedDocType.value === 'All') return enhancedAppDocuments.value
-  return enhancedAppDocuments.value.filter((d: any) => d.documentType === selectedDocType.value)
+  return enhancedAppDocuments.value.filter((d) => d.documentType === selectedDocType.value)
 })
 
 
@@ -307,7 +308,7 @@ onMounted(async () => {
         const commentRes = await fetch(`/api/documents/${safeRef}/comments.json`)
         if (commentRes.ok) {
           const data = await commentRes.json()
-          commentsList.value = data.map((c: any) => ({ ...c, expanded: false }))
+          commentsList.value = data.map((c: Comment) => ({ ...c, expanded: false }))
         } else {
           commentsError.value = 'Failed to load comments.'
         }

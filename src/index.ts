@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { downloadApplication, searchPlanIt } from './scraper.js';
+import type { PlanItResponse, PlanItRecord } from './types.js';
 
 const program = new Command();
 
@@ -23,19 +24,19 @@ program
   .action(async (postcode, options) => {
     console.log(`Searching for applications near ${postcode} within ${options.radius}km...`);
     try {
-      const data = await searchPlanIt(postcode, options.radius);
-      if (!data || typeof data !== 'object' || !('records' in data) || !Array.isArray(data.records) || data.records.length === 0) {
+      const data: PlanItResponse = await searchPlanIt(postcode, options.radius);
+      if (!data || !data.records || data.records.length === 0) {
         console.log('No applications found matching those criteria.');
         return;
       }
       console.log(`\nFound ${data.records.length} applications:\n`);
-      data.records.forEach((app: any) => {
+      data.records.forEach((app: PlanItRecord) => {
         if (app && typeof app === 'object') {
-          const ref = 'uid' in app ? app.uid : 'Unknown';
-          const auth = 'name' in app && typeof app.name === 'string' ? app.name.split('/')[0] : 'Unknown';
-          const state = 'app_state' in app ? app.app_state : 'Unknown';
-          const desc = 'description' in app ? app.description : 'Unknown';
-          const url = 'url' in app ? app.url : 'Unknown';
+          const ref = app.uid || 'Unknown';
+          const auth = app.name ? app.name.split('/')[0] : 'Unknown';
+          const state = app.app_state || 'Unknown';
+          const desc = app.description || 'Unknown';
+          const url = app.url || 'Unknown';
           console.log(`Reference: ${ref}`);
           console.log(`Council:   ${auth}`);
           console.log(`Status:    ${state}`);

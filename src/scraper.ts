@@ -1,21 +1,4 @@
-export interface DocumentMeta {
-  localFilename: string;
-  datePublished: string;
-  documentType: string;
-  description: string;
-}
-
-export interface ApplicationMeta {
-  reference: string;
-  address: string;
-  description: string;
-  status: string;
-  dates: Record<string, string>;
-  documents: DocumentMeta[];
-  hasComments: boolean;
-  scrapedAt: string;
-}
-
+import type { DocumentMeta, ApplicationMeta, Comment } from './types.js';
 import AdmZip from 'adm-zip';
 import fs from 'fs';
 import { chromium, Page } from 'playwright';
@@ -213,7 +196,7 @@ export async function scrapeComments(page: Page, outDir: string): Promise<boolea
         page.waitForNavigation(),
         neighbourCommentsTab.click()
       ]);
-      const allComments = [];
+      const allComments: Comment[] = [];
       
       while (true) {
         await page.waitForSelector('.comment', { timeout: 5000 }).catch(() => {});

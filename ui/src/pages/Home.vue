@@ -83,18 +83,19 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import type { ApplicationMeta, PlanItRecord } from '../../src/types.js'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
 const searchError = ref('')
-const downloadedApps = ref<any[]>([])
+const downloadedApps = ref<ApplicationMeta[]>([])
 const loadingApps = ref(true)
 
 const searchForm = ref({ postcode: '', radius: '2' })
 const isSearching = ref(false)
 const hasSearched = ref(false)
-const searchResults = ref<any[]>([])
+const searchResults = ref<PlanItRecord[]>([])
 const downloading = ref<Record<string, boolean>>({})
 
 
