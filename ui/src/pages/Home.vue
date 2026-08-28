@@ -52,9 +52,12 @@
             <router-link v-if="isDownloaded(res.uid)" :to="`/app/${encodeURIComponent(res.uid)}`" class="whitespace-nowrap bg-blue-100 text-blue-700 px-3 py-1 rounded-md text-sm hover:bg-blue-200">
               View
             </router-link>
-            <button v-else @click="downloadApp(res.uid)" :disabled="downloading[res.uid]" class="whitespace-nowrap bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 disabled:opacity-50">
-              {{ downloading[res.uid] ? 'Downloading...' : 'Download' }}
-            </button>
+            <div v-else class="flex flex-col items-end">
+              <button @click="downloadApp(res.uid)" :disabled="downloading[res.uid]" class="whitespace-nowrap bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 disabled:opacity-50">
+                {{ downloading[res.uid] ? 'Downloading...' : 'Download' }}
+              </button>
+              <div v-if="downloadErrors[res.uid]" class="text-xs text-red-600 mt-1">{{ downloadErrors[res.uid] }}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -68,7 +71,8 @@
     <!-- Direct Lookup -->
     <section>
       <h2 class="text-xl font-semibold mb-4">Direct Reference Lookup</h2>
-      <form @submit.prevent="lookupReference" class="flex gap-4 items-end mb-6">
+      <form @submit.prevent="lookupReference" class="flex flex-col gap-4 mb-6">
+        <div class="flex gap-4 items-end">
         <div class="flex-1 max-w-sm">
           <label class="block text-sm font-medium text-gray-700 mb-1">Application Reference</label>
           <input v-model="directReference" required type="text" placeholder="e.g. 24/02737/FUL" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
@@ -76,14 +80,17 @@
         <button type="submit" :disabled="isLookingUp" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
           {{ isLookingUp ? 'Fetching...' : 'Fetch' }}
         </button>
+        </div>
+        <div v-if="lookupError" class="p-4 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
+          {{ lookupError }}
+        </div>
       </form>
-    </section>
-  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import type { ApplicationMeta, PlanItRecord } from '../../src/types.js'
+import * as api from '../api'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -97,10 +104,25 @@ const isSearching = ref(false)
 const hasSearched = ref(false)
 const searchResults = ref<PlanItRecord[]>([])
 const downloading = ref<Record<string, boolean>>({})
-
+const downloadErrors = ref<Record<string, string>>({})
 
 const directReference = ref('')
 const isLookingUp = ref(false)
+const lookupError = ref('')
+
+const fetchApps = async () => {
+  try {
+    downloadedApps.value = await api.fetchApplications()
+  } catch (e) {
+    console.error(e)
+  } finally {
+    loadingApps.value = false
+  }
+}
+
+const isDownloaded = (reference: string) => {
+  return downloadedApps.value.some(app => app.reference === reference)
+}
 
 const lookupReference = async () => {
   if (!directReference.value) return
@@ -112,41 +134,18 @@ const lookupReference = async () => {
   }
   
   isLookingUp.value = true
+  lookupError.value = ''
+  
   try {
-    const res = await fetch('/api/download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reference: refValue })
-    })
-    if (res.ok) {
-      await fetchApps()
-      router.push(`/app/${encodeURIComponent(refValue)}`)
-    } else {
-      const err = await res.json()
-      alert(`Failed to fetch: ${err.error}`)
-    }
-  } catch (e) {
+    await api.downloadApplication(refValue)
+    await fetchApps()
+    router.push(`/app/${encodeURIComponent(refValue)}`)
+  } catch (e: any) {
     console.error(e)
-    alert('Failed to fetch')
+    lookupError.value = e.message || 'Failed to fetch application'
   } finally {
     isLookingUp.value = false
   }
-}
-const fetchApps = async () => {
-  try {
-    const res = await fetch('/api/applications')
-    if (res.ok) {
-      downloadedApps.value = await res.json()
-    }
-  } catch (e) {
-    console.error(e)
-  } finally {
-    loadingApps.value = false
-  }
-}
-
-const isDownloaded = (reference: string) => {
-  return downloadedApps.value.some(app => app.reference === reference)
 }
 
 const searchPlanIt = async () => {
@@ -159,19 +158,12 @@ const searchPlanIt = async () => {
   searchError.value = ''
   
   try {
-    const res = await fetch(`/api/search?postcode=${encodeURIComponent(searchForm.value.postcode)}&radius=${encodeURIComponent(searchForm.value.radius)}`)
-    if (res.ok) {
-      const data = await res.json()
-      searchResults.value = data.records || []
-      hasSearched.value = true
-    } else {
-      const err = await res.json()
-      searchError.value = err.error || 'Failed to search'
-      searchResults.value = []
-    }
+    const data = await api.searchPlanIt(searchForm.value.postcode, searchForm.value.radius)
+    searchResults.value = data.records || []
+    hasSearched.value = true
   } catch (e: any) {
     console.error(e)
-    searchError.value = e.message || 'Network error occurred'
+    searchError.value = e.message || 'Failed to search'
     searchResults.value = []
   } finally {
     isSearching.value = false
@@ -180,22 +172,14 @@ const searchPlanIt = async () => {
 
 const downloadApp = async (reference: string) => {
   downloading.value[reference] = true
+  downloadErrors.value[reference] = ''
   try {
-    const res = await fetch('/api/download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reference })
-    })
-    if (res.ok) {
-      await fetchApps() // refresh the downloaded list
-      router.push(`/app/${encodeURIComponent(reference)}`)
-    } else {
-      const err = await res.json()
-      alert(`Failed to download: ${err.error}`)
-    }
-  } catch (e) {
+    await api.downloadApplication(reference)
+    await fetchApps() // refresh the downloaded list
+    router.push(`/app/${encodeURIComponent(reference)}`)
+  } catch (e: any) {
     console.error(e)
-    alert('Failed to download')
+    downloadErrors.value[reference] = e.message || 'Failed to download'
   } finally {
     downloading.value[reference] = false
   }

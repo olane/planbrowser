@@ -9,6 +9,9 @@
 
     <div v-if="loading" class="text-gray-500">Loading...</div>
     <div v-else-if="error" class="text-red-600">{{ error }}</div>
+    <div v-if="syncError" class="mb-4 p-4 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
+      {{ syncError }}
+    </div>
     <div v-else-if="app" class="bg-white p-6 rounded shadow border border-gray-200">
       <div class="grid md:grid-cols-2 gap-8 mb-8">
         <div>
@@ -149,12 +152,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import type { ApplicationMeta, Comment, EnhancedDocument } from '../../src/types.js'
+import * as api from '../api'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const app = ref<ApplicationMeta | null>(null)
 const loading = ref(true)
 const error = ref('')
+const syncError = ref('')
 
 const commentsList = ref<Comment[]>([])
 const activeTab = ref('documents')
@@ -174,37 +179,26 @@ const syncing = ref(false)
 const syncApp = async () => {
   if (!app.value) return
   syncing.value = true
+  syncError.value = ''
   try {
-    const res = await fetch('/api/download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reference: app.value.reference })
-    })
-    if (res.ok) {
-      // Reload the page data
-      const refParam = route.params.ref as string
-      const fetchRes = await fetch(`/api/applications/${encodeURIComponent(refParam)}`)
-      if (fetchRes.ok) {
-        app.value = await fetchRes.json()
-        if (app.value.hasComments) {
-          const safeRef = encodeURIComponent(app.value.reference.replace(/\//g, '-'))
-          const commentRes = await fetch(`/api/documents/${safeRef}/comments.json`)
-          if (commentRes.ok) {
-            const data = await commentRes.json()
-            commentsList.value = data.map((c: Comment) => ({ ...c, expanded: false }))
-          }
-        }
+    await api.downloadApplication(app.value.reference)
+    // Reload the page data
+    const refParam = route.params.ref as string
+    app.value = await api.fetchApplication(refParam)
+    if (app.value.hasComments) {
+      try {
+        const data = await api.fetchComments(app.value.reference)
+        commentsList.value = data.map((c: Comment) => ({ ...c, expanded: false }))
+      } catch (err) {
+        console.error(err)
       }
-      if (keyDocs.value.length > 0 && activeTab.value === 'documents') {
-        activeTab.value = 'key-documents'
-      }
-    } else {
-      const err = await res.json()
-      alert(`Sync failed: ${err.error}`)
     }
-  } catch (e) {
+    if (keyDocs.value.length > 0 && activeTab.value === 'documents') {
+      activeTab.value = 'key-documents'
+    }
+  } catch (e: any) {
     console.error(e)
-    alert('Sync failed due to network error')
+    syncError.value = e.message || 'Sync failed'
   } finally {
     syncing.value = false
   }
@@ -294,36 +288,27 @@ const filteredDocs = computed(() => {
   return enhancedAppDocuments.value.filter((d) => d.documentType === selectedDocType.value)
 })
 
-
 onMounted(async () => {
   const refParam = route.params.ref as string
   try {
-    const res = await fetch(`/api/applications/${encodeURIComponent(refParam)}`)
-    if (res.ok) {
-      app.value = await res.json()
-      document.title = `PlanBrowser | ${app.value.reference}`
-      
-      if (app.value.hasComments) {
-        const safeRef = encodeURIComponent(app.value.reference.replace(/\//g, '-'))
-        const commentRes = await fetch(`/api/documents/${safeRef}/comments.json`)
-        if (commentRes.ok) {
-          const data = await commentRes.json()
-          commentsList.value = data.map((c: Comment) => ({ ...c, expanded: false }))
-        } else {
-          commentsError.value = 'Failed to load comments.'
-        }
+    app.value = await api.fetchApplication(refParam)
+    document.title = `PlanBrowser | ${app.value.reference}`
+    
+    if (app.value.hasComments) {
+      try {
+        const data = await api.fetchComments(app.value.reference)
+        commentsList.value = data.map((c: Comment) => ({ ...c, expanded: false }))
+      } catch (err) {
+        commentsError.value = 'Failed to load comments.'
       }
-
-      if (keyDocs.value.length > 0 && activeTab.value === 'documents') {
-        activeTab.value = 'key-documents'
-      }
-    } else {
-      const data = await res.json()
-      error.value = data.error || 'Failed to load'
     }
-  } catch (e) {
+
+    if (keyDocs.value.length > 0 && activeTab.value === 'documents') {
+      activeTab.value = 'key-documents'
+    }
+  } catch (e: any) {
     console.error(e)
-    error.value = 'Failed to load'
+    error.value = e.message || 'Failed to load'
   } finally {
     loading.value = false
   }
