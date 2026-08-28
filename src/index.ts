@@ -1,10 +1,29 @@
+export interface DocumentMeta {
+  localFilename: string;
+  datePublished: string;
+  documentType: string;
+  description: string;
+}
+
+export interface ApplicationMeta {
+  reference: string;
+  address: string;
+  description: string;
+  status: string;
+  dates: Record<string, string>;
+  documents: DocumentMeta[];
+  hasComments: boolean;
+  scrapedAt: string;
+}
+
+import AdmZip from 'adm-zip';
 import fs from 'fs';
 import { chromium, Page } from 'playwright';
 import { Command } from 'commander';
 import path from 'path';
 import { setTimeout } from 'timers/promises';
 const BASE_URL = 'https://applications.greatercambridgeplanning.org/online-applications';
-async function downloadDocuments(page: Page, outDir: string) {
+async function downloadDocuments(page: Page, outDir: string): Promise<DocumentMeta[]> {
   console.log('Navigating to Documents tab...');
   // Try to find and click the documents tab
   const docsTab = page.locator('#tab_documents');
@@ -15,13 +34,16 @@ async function downloadDocuments(page: Page, outDir: string) {
     ]);
   } else {
     console.log('No documents tab found. Maybe there are no documents.');
-    return;
+    return [];
   }
+  const docs: DocumentMeta[] = [];
 
   // The document table
   const rows = page.locator('#Documents tbody tr:not(:first-child)'); // skip header
   const count = await rows.count();
   console.log(`Found ${count} documents.`);
+
+  const allDocs = [];
 
   for (let i = 0; i < count; i++) {
     const row = rows.nth(i);
@@ -31,26 +53,147 @@ async function downloadDocuments(page: Page, outDir: string) {
     
     const linkLocator = row.locator('td').nth(6).locator('a');
     if (await linkLocator.count() > 0) {
-      const fileName = `${date.replace(/\//g, '-')} - ${type.trim()} - ${description.replace(/[^a-zA-Z0-9 -]/g, '').trim()}.pdf`;
+      const fileName = `${date.replace(/\//g, '-')} - ${type.replace(/\//g, '-').trim()} - ${description.replace(/[^a-zA-Z0-9 -]/g, '').trim()}.pdf`;
       const filePath = path.join(outDir, fileName);
       
-      console.log(`Downloading: ${fileName}`);
+      const bulkCheckLocator = row.locator('.bulkCheck');
+      const hasBulkCheck = await bulkCheckLocator.count() > 0;
+      let zipFilename = '';
+      if (hasBulkCheck) {
+        const value = await bulkCheckLocator.getAttribute('value');
+        if (value) {
+            zipFilename = value.split('/').pop() || '';
+        }
+      }
+      
+      allDocs.push({
+          row,
+          fileName,
+          filePath,
+          datePublished: date.trim(),
+          documentType: type.trim(),
+          description: description.trim(),
+          hasBulkCheck,
+          bulkCheckLocator,
+          linkLocator,
+          zipFilename
+      });
+    }
+  }
+
+  const missingDocs = [];
+  
+  for (const doc of allDocs) {
+      if (fs.existsSync(doc.filePath)) {
+          console.log(`Skipping existing: ${doc.fileName}`);
+          docs.push({
+              localFilename: doc.fileName,
+              datePublished: doc.datePublished,
+              documentType: doc.documentType,
+              description: doc.description
+          });
+      } else {
+          missingDocs.push(doc);
+      }
+  }
+
+  const bulkDownloadable = missingDocs.filter(d => d.hasBulkCheck && d.zipFilename);
+  const individualDownloadable = missingDocs.filter(d => !d.hasBulkCheck || !d.zipFilename);
+
+  if (missingDocs.length > 0) {
+      console.log(`Need to download ${bulkDownloadable.length} in bulk, and ${individualDownloadable.length} individually.`);
+  }
+
+  const CHUNK_SIZE = 25;
+  for (let i = 0; i < bulkDownloadable.length; i += CHUNK_SIZE) {
+      const chunk = bulkDownloadable.slice(i, i + CHUNK_SIZE);
+      console.log(`Downloading bulk batch ${Math.floor(i/CHUNK_SIZE) + 1} with ${chunk.length} documents...`);
+      
+      for (const doc of chunk) {
+          await doc.bulkCheckLocator.check();
+      }
+      
+      const btn = page.locator('#downloadFiles');
+      if (await btn.isDisabled()) {
+          await page.evaluate(() => {
+              // @ts-ignore
+              if (typeof buttonSwitch === 'function') buttonSwitch(25);
+          });
+          if (await btn.isDisabled()) {
+              await btn.evaluate(node => node.removeAttribute('disabled'));
+          }
+      }
+      
+      try {
+        const [download] = await Promise.all([
+            page.waitForEvent('download', { timeout: 60000 }),
+            btn.click()
+        ]);
+        
+        const zipPath = path.join(outDir, `batch-${Date.now()}.zip`);
+        await download.saveAs(zipPath);
+        
+        const zip = new AdmZip(zipPath);
+        
+        for (const doc of chunk) {
+            const entry = zip.getEntry(doc.zipFilename);
+            if (entry) {
+                const data = entry.getData();
+                fs.writeFileSync(doc.filePath, data);
+                docs.push({
+                    localFilename: doc.fileName,
+                    datePublished: doc.datePublished,
+                    documentType: doc.documentType,
+                    description: doc.description
+                });
+                console.log(`Extracted: ${doc.fileName}`);
+            } else {
+                console.warn(`Could not find ${doc.zipFilename} in the downloaded zip! Falling back to individual for this item.`);
+                individualDownloadable.push(doc);
+            }
+        }
+        
+        fs.unlinkSync(zipPath);
+        
+      } catch (e) {
+          console.error(`Failed to download batch:`, e);
+          for (const doc of chunk) {
+              individualDownloadable.push(doc);
+          }
+      }
+      
+      for (const doc of chunk) {
+          await doc.bulkCheckLocator.uncheck();
+      }
+      
+      await setTimeout(2000);
+  }
+
+  for (const doc of individualDownloadable) {
+      console.log(`Downloading individually: ${doc.fileName}`);
       try {
         const [download] = await Promise.all([
           page.waitForEvent('download', { timeout: 30000 }),
-          linkLocator.click()
+          doc.linkLocator.click()
         ]);
-        await download.saveAs(filePath);
-        console.log(`Saved ${fileName}, waiting 2 seconds...`);
-        await setTimeout(2000); // Polite delay to avoid IP blocks
+        await download.saveAs(doc.filePath);
+        docs.push({
+          localFilename: doc.fileName,
+          datePublished: doc.datePublished,
+          documentType: doc.documentType,
+          description: doc.description
+        });
+        console.log(`Saved ${doc.fileName}, waiting 2 seconds...`);
+        await setTimeout(2000);
       } catch (e) {
-        console.error(`Failed to download ${fileName}:`, e);
+        console.error(`Failed to download ${doc.fileName}:`, e);
       }
-    }
   }
+
+  return docs;
 }
 
-async function scrapeComments(page: Page, outDir: string) {
+async function scrapeComments(page: Page, outDir: string): Promise<boolean> {
   console.log('Navigating to Comments tab...');
   
   const commentsTab = page.locator('#tab_makeComment');
@@ -72,6 +215,7 @@ async function scrapeComments(page: Page, outDir: string) {
         const commentsText = await commentsList.innerText();
         fs.writeFileSync(path.join(outDir, 'comments.txt'), commentsText);
         console.log('Saved comments.txt');
+        return true;
       } else {
         console.log('No comments found on the comments tab.');
       }
@@ -81,6 +225,7 @@ async function scrapeComments(page: Page, outDir: string) {
   } else {
     console.log('No comments tab found.');
   }
+  return false;
 }
 
 
@@ -143,12 +288,47 @@ async function run(reference: string) {
     }
 
     // Save summary details
-    const summary = await page.locator('#simpleDetailsTable').innerText();
-    fs.writeFileSync(path.join(outDir, 'summary.txt'), summary);
-    console.log('Saved summary.txt');
+    const meta: ApplicationMeta = {
+      reference: reference,
+      address: '',
+      description: '',
+      status: '',
+      dates: {},
+      documents: [],
+      hasComments: false,
+      scrapedAt: new Date().toISOString()
+    };
 
-    await downloadDocuments(page, outDir);
-    await scrapeComments(page, outDir);
+    const detailsTable = page.locator('#simpleDetailsTable tr');
+    const rowCount = await detailsTable.count();
+    for (let i = 0; i < rowCount; i++) {
+      const row = detailsTable.nth(i);
+      if (await row.locator('th').count() > 0 && await row.locator('td').count() > 0) {
+        const th = await row.locator('th').innerText();
+        const td = await row.locator('td').innerText();
+        
+        const key = th.trim().replace(/:$/, '');
+        const value = td.trim();
+        
+        if (key === 'Reference') {
+          meta.reference = value || meta.reference;
+        } else if (key === 'Address') {
+          meta.address = value;
+        } else if (key === 'Proposal') {
+          meta.description = value;
+        } else if (key === 'Status') {
+          meta.status = value;
+        } else {
+          meta.dates[key] = value;
+        }
+      }
+    }
+
+    meta.documents = await downloadDocuments(page, outDir);
+    meta.hasComments = await scrapeComments(page, outDir);
+
+    fs.writeFileSync(path.join(outDir, 'metadata.json'), JSON.stringify(meta, null, 2));
+    console.log('Saved metadata.json');
 
     console.log(`Done! Files saved in ${outDir}`);
 
