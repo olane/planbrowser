@@ -8,11 +8,14 @@
       <div v-else-if="downloadedApps.length === 0" class="text-gray-500">No applications downloaded yet.</div>
       <div v-else class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div v-for="app in downloadedApps" :key="app.reference" class="bg-white p-4 rounded shadow border border-gray-200">
-          <h3 class="font-bold text-lg mb-1">{{ app.reference }}</h3>
+          <div class="flex justify-between items-start mb-1">
+            <h3 class="font-bold text-lg">{{ app.reference }}</h3>
+            <span v-if="app.furtherInformation?.['Application Type']" class="text-xs text-gray-500 whitespace-nowrap">{{ app.furtherInformation['Application Type'] }}</span>
+          </div>
           <p class="text-sm text-gray-600 mb-2 truncate">{{ app.address }}</p>
           <p class="text-xs text-gray-500 mb-2">Synced: {{ timeAgo(app.scrapedAt) }}</p>
           <div class="flex justify-between items-center mt-2">
-            <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">{{ app.status }}</span>
+            <span :class="['inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset', statusBadgeClass(app)]">{{ statusLabel(app) }}</span>
             <router-link :to="`/app/${encodeURIComponent(app.reference)}`" class="text-sm text-blue-600 hover:underline">View details</router-link>
           </div>
         </div>
@@ -47,7 +50,7 @@
         <div class="space-y-4">
           <div v-for="res in searchResults" :key="res.uid" class="bg-white p-4 rounded shadow border border-gray-200 flex justify-between items-start gap-4">
             <div>
-              <div class="font-bold">{{ res.uid }}</div>
+              <div class="font-bold">{{ res.uid }}<span v-if="res.app_type" class="ml-2 text-xs font-normal text-gray-500">({{ res.app_type }})</span></div>
               <div class="text-sm text-gray-600">{{ res.description }}</div>
               <div class="text-xs text-gray-500 mt-1">{{ res.name }} - {{ res.app_state }}</div>
             </div>
@@ -91,7 +94,7 @@
 </template>
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { timeAgo } from '../utils'
+import { timeAgo, statusLabel, statusBadgeClass } from '../utils'
 import type { ApplicationMeta, PlanItRecord, QueueItem } from '../../../src/types.js'
 import * as api from '../api'
 import { useRouter } from 'vue-router'

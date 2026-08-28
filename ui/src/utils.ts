@@ -24,3 +24,21 @@ export function timeAgo(dateStr: string | undefined): string {
   // Fallback to a clean date format for older dates
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+export function statusLabel(app: { status?: string; furtherInformation?: Record<string, string> }): string {
+  const status = app.status || '';
+  const decision = app.furtherInformation?.['Decision'] || '';
+  if (status.toLowerCase().includes('decided') && decision) {
+    const d = decision.toLowerCase();
+    if (d.includes('grant') || d.includes('permit') || d.includes('approv')) return 'Permitted';
+    if (d.includes('refus')) return 'Refused';
+  }
+  return status;
+}
+
+export function statusBadgeClass(app: { status?: string; furtherInformation?: Record<string, string> }): string {
+  const label = statusLabel(app).toLowerCase();
+  if (label.includes('refus')) return 'bg-red-50 text-red-700 ring-red-600/10';
+  if (label.includes('permit') || label.includes('grant')) return 'bg-green-50 text-green-700 ring-green-600/20';
+  return 'bg-blue-50 text-blue-700 ring-blue-700/10';
+}
