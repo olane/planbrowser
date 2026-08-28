@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { downloadApplication, searchPlanIt } from './scraper.js';
 import { getApplications, getApplication } from './storage.js';
+import { downloadQueue } from './queue.js';
 
 const app = express();
 app.use(cors());
@@ -24,17 +25,26 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-app.post('/api/download', async (req, res) => {
+app.post('/api/download', (req, res) => {
   try {
     const { reference } = req.body;
     if (!reference) {
       return res.status(400).json({ error: 'Reference is required' });
     }
-    const meta = await downloadApplication(reference);
-    res.json({ success: true, meta });
+    const item = downloadQueue.enqueue(reference);
+    res.json({ success: true, item });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
+});
+
+app.get('/api/queue', (req, res) => {
+  res.json(downloadQueue.getQueue());
+});
+
+app.post('/api/queue/clear', (req, res) => {
+  downloadQueue.clearCompleted();
+  res.json({ success: true });
 });
 
 app.get('/api/applications', (req, res) => {

@@ -12,6 +12,9 @@
     <div v-if="syncError" class="mb-4 p-4 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
       {{ syncError }}
     </div>
+    <div v-if="syncMessage" class="mb-4 p-4 text-sm text-green-700 bg-green-50 rounded-md border border-green-200">
+      {{ syncMessage }}
+    </div>
     <div v-else-if="app" class="bg-white p-6 rounded shadow border border-gray-200">
       <div class="grid md:grid-cols-2 gap-8 mb-8">
         <div>
@@ -29,6 +32,10 @@
             <div v-for="(value, key) in app.dates" :key="key" class="px-2 py-3 sm:grid sm:grid-cols-3 sm:gap-4">
               <dt class="text-sm font-medium text-gray-900">{{ key }}</dt>
               <dd class="text-sm text-gray-700 sm:col-span-2 sm:mt-0">{{ value }}</dd>
+            </div>
+            <div class="px-2 py-3 sm:grid sm:grid-cols-3 sm:gap-4 bg-gray-50 border-t border-gray-200">
+              <dt class="text-sm font-medium text-gray-900">Last Synced</dt>
+              <dd class="text-sm text-gray-700 sm:col-span-2 sm:mt-0">{{ formatDate(app.scrapedAt) }}</dd>
             </div>
           </dl>
         </div>
@@ -154,12 +161,19 @@ import { ref, onMounted, computed } from 'vue'
 import type { ApplicationMeta, Comment, EnhancedDocument } from '../../../src/types.js'
 import * as api from '../api'
 import { useRoute } from 'vue-router'
+const formatDate = (dateStr: string | undefined) => {
+  if (!dateStr) return 'Unknown'
+  return new Date(dateStr).toLocaleString()
+}
 
 const route = useRoute()
 const app = ref<ApplicationMeta | null>(null)
 const loading = ref(true)
-const error = ref('')
 const syncError = ref('')
+const syncMessage = ref('')
+const error = ref('')
+const syncing = ref(false)
+const selectedStance = ref('All')
 
 const commentsList = ref<Comment[]>([])
 const activeTab = ref('documents')
@@ -173,32 +187,16 @@ const getStanceClass = (stance?: string) => {
   return 'bg-gray-100 text-gray-600 ring-gray-500/10'
 }
 const selectedDocType = ref('All')
-const selectedStance = ref('All')
-const syncing = ref(false)
-
 const syncApp = async () => {
   if (!app.value) return
   syncing.value = true
   syncError.value = ''
+  syncMessage.value = ''
   try {
     await api.downloadApplication(app.value.reference)
-    // Reload the page data
-    const refParam = route.params.ref as string
-    app.value = await api.fetchApplication(refParam)
-    if (app.value.hasComments) {
-      try {
-        const data = await api.fetchComments(app.value.reference)
-        commentsList.value = data.map((c: Comment) => ({ ...c, expanded: false }))
-      } catch (err) {
-        console.error(err)
-      }
-    }
-    if (keyDocs.value.length > 0 && activeTab.value === 'documents') {
-      activeTab.value = 'key-documents'
-    }
-  } catch (e: any) {
-    console.error(e)
-    syncError.value = e.message || 'Sync failed'
+    syncMessage.value = 'Sync queued. Check the Home page for progress.'
+  } catch (err: any) {
+    syncError.value = err.message || 'Failed to sync'
   } finally {
     syncing.value = false
   }

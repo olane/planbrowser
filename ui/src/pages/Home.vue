@@ -1,5 +1,6 @@
 <template>
   <div class="space-y-8">
+
     <!-- Downloaded Applications -->
     <section>
       <h2 class="text-xl font-semibold mb-4">Downloaded Applications</h2>
@@ -9,7 +10,8 @@
         <div v-for="app in downloadedApps" :key="app.reference" class="bg-white p-4 rounded shadow border border-gray-200">
           <h3 class="font-bold text-lg mb-1">{{ app.reference }}</h3>
           <p class="text-sm text-gray-600 mb-2 truncate">{{ app.address }}</p>
-          <div class="flex justify-between items-center mt-4">
+          <p class="text-xs text-gray-500 mb-2">Synced: {{ formatDate(app.scrapedAt) }}</p>
+          <div class="flex justify-between items-center mt-2">
             <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">{{ app.status }}</span>
             <router-link :to="`/app/${encodeURIComponent(app.reference)}`" class="text-sm text-blue-600 hover:underline">View details</router-link>
           </div>
@@ -53,10 +55,9 @@
               View
             </router-link>
             <div v-else class="flex flex-col items-end">
-              <button @click="downloadApp(res.uid)" :disabled="downloading[res.uid]" class="whitespace-nowrap bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 disabled:opacity-50">
-                {{ downloading[res.uid] ? 'Downloading...' : 'Download' }}
+              <button @click="downloadApp(res.uid)" :disabled="getQueueStatus(res.uid) !== 'none'" class="whitespace-nowrap bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 disabled:opacity-50">
+                {{ getQueueStatusText(res.uid) }}
               </button>
-              <div v-if="downloadErrors[res.uid]" class="text-xs text-red-600 mt-1">{{ downloadErrors[res.uid] }}</div>
             </div>
           </div>
         </div>
@@ -91,7 +92,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import type { ApplicationMeta, PlanItRecord } from '../../../src/types.js'
+import type { ApplicationMeta, PlanItRecord, QueueItem } from '../../../src/types.js'
 import * as api from '../api'
 import { useRouter } from 'vue-router'
 
@@ -105,12 +106,49 @@ const searchForm = ref({ postcode: '', radius: '2' })
 const isSearching = ref(false)
 const hasSearched = ref(false)
 const searchResults = ref<PlanItRecord[]>([])
-const downloading = ref<Record<string, boolean>>({})
-const downloadErrors = ref<Record<string, string>>({})
+const queueItems = ref<QueueItem[]>([])
+let pollInterval: any = null
 
 const directReference = ref('')
 const isLookingUp = ref(false)
 const lookupError = ref('')
+
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return 'Unknown'
+  return new Date(dateStr).toLocaleString()
+}
+
+const fetchQueue = async () => {
+  try {
+    const queue = await api.fetchQueue()
+    
+    // If we have items that just completed, we might need to refresh apps
+    const previousCompleted = queueItems.value.filter(q => q.status === 'completed').map(q => q.id)
+    const currentCompleted = queue.filter(q => q.status === 'completed').map(q => q.id)
+    
+    queueItems.value = queue
+    
+    if (currentCompleted.some(id => !previousCompleted.includes(id))) {
+      fetchApps()
+    }
+  } catch (e) {
+    console.error('Failed to fetch queue', e)
+  }
+}
+
+
+const getQueueStatus = (reference: string) => {
+  const item = queueItems.value.find(q => q.reference === reference && (q.status === 'pending' || q.status === 'in_progress'))
+  if (item) return item.status
+  return 'none'
+}
+
+const getQueueStatusText = (reference: string) => {
+  const status = getQueueStatus(reference)
+  if (status === 'pending') return 'Queued'
+  if (status === 'in_progress') return 'Downloading...'
+  return 'Download'
+}
 
 const fetchApps = async () => {
   try {
@@ -140,8 +178,9 @@ const lookupReference = async () => {
   
   try {
     await api.downloadApplication(refValue)
-    await fetchApps()
-    router.push(`/app/${encodeURIComponent(refValue)}`)
+    await fetchQueue()
+    // It will be added to the queue, don't redirect yet
+    directReference.value = ''
   } catch (e: any) {
     console.error(e)
     lookupError.value = e.message || 'Failed to fetch application'
@@ -173,22 +212,23 @@ const searchPlanIt = async () => {
 }
 
 const downloadApp = async (reference: string) => {
-  downloading.value[reference] = true
-  downloadErrors.value[reference] = ''
   try {
     await api.downloadApplication(reference)
-    await fetchApps() // refresh the downloaded list
-    router.push(`/app/${encodeURIComponent(reference)}`)
+    await fetchQueue()
   } catch (e: any) {
     console.error(e)
-    downloadErrors.value[reference] = e.message || 'Failed to download'
-  } finally {
-    downloading.value[reference] = false
   }
 }
 
 onMounted(() => {
   document.title = 'PlanBrowser | Home'
   fetchApps()
+  fetchQueue()
+  pollInterval = setInterval(fetchQueue, 2000)
+})
+
+import { onUnmounted } from 'vue'
+onUnmounted(() => {
+  if (pollInterval) clearInterval(pollInterval)
 })
 </script>

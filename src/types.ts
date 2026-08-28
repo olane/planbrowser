@@ -44,3 +44,13 @@ export interface EnhancedDocument extends DocumentMeta {
   supersededBy: EnhancedDocument | null;
   replaces: EnhancedDocument[];
 }
+
+export interface QueueItem {
+  id: string;
+  reference: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  error?: string;
+  enqueuedAt: string;
+  startedAt?: string;
+  completedAt?: string;
+}

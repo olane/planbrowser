@@ -1,4 +1,4 @@
-import type { ApplicationMeta, PlanItResponse, Comment } from '../../src/types.js';
+import type { ApplicationMeta, PlanItResponse, Comment, QueueItem } from '../../src/types.js';
 
 export async function fetchApplications(): Promise<ApplicationMeta[]> {
   const res = await fetch('/api/applications');
@@ -41,4 +41,15 @@ export async function fetchComments(reference: string): Promise<Comment[]> {
   const res = await fetch(`/api/documents/${safeRef}/comments.json`);
   if (!res.ok) throw new Error('Failed to load comments');
   return res.json();
+}
+
+export async function fetchQueue(): Promise<QueueItem[]> {
+  const res = await fetch('/api/queue');
+  if (!res.ok) throw new Error('Failed to fetch queue');
+  return res.json();
+}
+
+export async function clearQueue(): Promise<void> {
+  const res = await fetch('/api/queue/clear', { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to clear queue');
 }
