@@ -1,7 +1,10 @@
 <template>
   <div>
-    <div class="mb-4">
+    <div class="mb-4 flex items-center justify-between">
       <router-link to="/" class="text-sm text-blue-600 hover:underline">&larr; Back to all applications</router-link>
+      <button v-if="app" @click="syncApp" :disabled="syncing" class="text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm disabled:opacity-50">
+        {{ syncing ? 'Syncing...' : 'Sync / Update' }}
+      </button>
     </div>
 
     <div v-if="loading" class="text-gray-500">Loading...</div>
@@ -96,6 +99,42 @@ const error = ref('')
 const commentsList = ref<any[]>([])
 const commentsError = ref('')
 const selectedDocType = ref('All')
+const syncing = ref(false)
+
+const syncApp = async () => {
+  if (!app.value) return
+  syncing.value = true
+  try {
+    const res = await fetch('/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reference: app.value.reference })
+    })
+    if (res.ok) {
+      // Reload the page data
+      const refParam = route.params.ref as string
+      const fetchRes = await fetch(`/api/applications/${encodeURIComponent(refParam)}`)
+      if (fetchRes.ok) {
+        app.value = await fetchRes.json()
+        if (app.value.hasComments) {
+          const safeRef = encodeURIComponent(app.value.reference.replace(/\//g, '-'))
+          const commentRes = await fetch(`/api/documents/${safeRef}/comments.json`)
+          if (commentRes.ok) {
+            commentsList.value = await commentRes.json()
+          }
+        }
+      }
+    } else {
+      const err = await res.json()
+      alert(`Sync failed: ${err.error}`)
+    }
+  } catch (e) {
+    console.error(e)
+    alert('Sync failed due to network error')
+  } finally {
+    syncing.value = false
+  }
+}
 
 const enhancedAppDocuments = computed(() => {
   if (!app.value?.documents) return []
