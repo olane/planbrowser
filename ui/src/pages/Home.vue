@@ -123,8 +123,11 @@
 
       <div v-if="searchResults.length > 0">
         <h3 class="font-medium text-lg mb-3">Results</h3>
+        <div ref="mapWrapRef">
+          <SearchResultsMap v-if="resultsWithLocations.length > 0" ref="mapRef" :results="searchResults" class="mb-6" @select="scrollToResult" />
+        </div>
         <div class="space-y-4">
-          <div v-for="res in searchResults" :key="res.uid" class="bg-white p-4 rounded shadow border border-gray-200 flex justify-between items-start gap-4">
+          <div v-for="res in searchResults" :key="res.uid" :ref="(el) => setResultRef(res.uid, el)" class="bg-white p-4 rounded shadow border border-gray-200 flex justify-between items-start gap-4">
             <div>
               <div class="font-bold">{{ res.uid }}<span v-if="res.app_type" class="ml-2 text-xs font-normal text-gray-500">({{ res.app_type }})</span></div>
               <div class="text-sm text-gray-600">{{ res.description }}</div>
@@ -134,13 +137,14 @@
                 <span v-if="res.start_date">· {{ timeAgo(res.start_date) }}</span>
               </div>
             </div>
-            <router-link v-if="isDownloaded(res.uid)" :to="`/app/${encodeURIComponent(res.uid)}`" class="whitespace-nowrap bg-blue-100 text-blue-700 px-3 py-1 rounded-md text-sm hover:bg-blue-200">
-              View
-            </router-link>
-            <div v-else class="flex flex-col items-end">
-              <button @click="downloadApp(res.uid)" :disabled="getQueueStatus(res.uid) !== 'none'" class="whitespace-nowrap bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 disabled:opacity-50">
+            <div class="flex flex-col items-end gap-2 shrink-0">
+              <router-link v-if="isDownloaded(res.uid)" :to="`/app/${encodeURIComponent(res.uid)}`" class="whitespace-nowrap bg-blue-100 text-blue-700 px-3 py-1 rounded-md text-sm hover:bg-blue-200">
+                View
+              </router-link>
+              <button v-else @click="downloadApp(res.uid)" :disabled="getQueueStatus(res.uid) !== 'none'" class="whitespace-nowrap bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 disabled:opacity-50">
                 {{ getQueueStatusText(res.uid) }}
               </button>
+              <button v-if="hasLocation(res)" @click="showOnMap(res.uid)" class="text-xs text-blue-600 hover:underline">Show on map</button>
             </div>
           </div>
         </div>
@@ -173,12 +177,13 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { timeAgo, statusLabel, statusBadgeClass } from '../utils'
 import type { ApplicationMeta, PlanItRecord, QueueItem, SearchFilters } from '../../../src/types.js'
 import * as api from '../api'
 import { useRouter } from 'vue-router'
 import MultiSelect from '../components/MultiSelect.vue'
+import SearchResultsMap from '../components/SearchResultsMap.vue'
 
 const router = useRouter()
 
@@ -216,6 +221,34 @@ const hasSearched = ref(false)
 const searchResults = ref<PlanItRecord[]>([])
 const queueItems = ref<QueueItem[]>([])
 let pollInterval: any = null
+
+const resultsWithLocations = computed(() => searchResults.value.filter(hasLocation))
+
+const hasLocation = (r: PlanItRecord) => {
+  const lat = typeof r.location_y === 'number' ? r.location_y : r.location?.coordinates?.[1]
+  const lon = typeof r.location_x === 'number' ? r.location_x : r.location?.coordinates?.[0]
+  return typeof lat === 'number' && typeof lon === 'number'
+}
+
+const mapRef = ref<InstanceType<typeof SearchResultsMap> | null>(null)
+const mapWrapRef = ref<HTMLElement | null>(null)
+const showOnMap = (uid: string) => {
+  mapWrapRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  mapRef.value?.focus(uid)
+}
+
+const resultRefs = new Map<string, HTMLElement>()
+const setResultRef = (uid: string, el: unknown) => {
+  if (el instanceof HTMLElement) resultRefs.set(uid, el)
+  else resultRefs.delete(uid)
+}
+const scrollToResult = (uid: string) => {
+  const el = resultRefs.get(uid)
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  el.classList.add('ring-2', 'ring-blue-500')
+  setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500'), 2000)
+}
 
 const directReference = ref('')
 const isLookingUp = ref(false)

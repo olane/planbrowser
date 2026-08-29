@@ -58,6 +58,9 @@ export interface PlanItRecord {
   app_state: string;
   description: string;
   url: string;
+  location_x?: number;
+  location_y?: number;
+  location?: { type: string; coordinates: [number, number] };
   [key: string]: any;
 }
 
