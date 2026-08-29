@@ -340,11 +340,22 @@ export async function downloadApplication(reference: string) {
 
     if (await page.locator('#searchResultsContainer').count() > 0) {
       console.log('Multiple results found. Finding exact match...');
-      const resultLink = page.locator(`a:has-text("${reference}")`);
-      if (await resultLink.count() > 0) {
+      const matchedHref = await page.evaluate((searchRef) => {
+        const rows = Array.from(document.querySelectorAll('#searchresults li.searchresult'));
+        for (const row of rows) {
+          const meta = row.querySelector('p.metaInfo')?.textContent || '';
+          const m = meta.match(/Ref\. No:\s*(\S+)/);
+          const ref = m?.[1];
+          if (ref && ref.toUpperCase() === searchRef.toUpperCase()) {
+            return (row.querySelector('a.summaryLink') as HTMLAnchorElement | null)?.href || null;
+          }
+        }
+        return null;
+      }, reference);
+      if (matchedHref) {
         await Promise.all([
           page.waitForNavigation(),
-          resultLink.first().click()
+          page.goto(matchedHref)
         ]);
       } else {
         console.error(`Reference "${reference}" not found in the search results list.`);
@@ -390,6 +401,10 @@ export async function downloadApplication(reference: string) {
         
         if (key === 'Reference') {
           meta.reference = value || meta.reference;
+          if (meta.reference.toUpperCase() !== reference.toUpperCase()) {
+            console.error(`Landing page reference "${meta.reference}" does not match requested reference "${reference}". Aborting.`);
+            return;
+          }
         } else if (key === 'Address') {
           meta.address = value;
         } else if (key === 'Proposal') {
