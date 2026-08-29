@@ -4,7 +4,8 @@ import fs from 'fs';
 import * as cheerio from 'cheerio';
 import proj4 from 'proj4';
 import { saveApplicationMeta, saveComments } from './storage.js';
-import { chromium, Page } from 'playwright';
+import { chromium } from 'playwright';
+import type { Page } from 'playwright';
 import path from 'path';
 
 const BASE_URL = 'https://applications.greatercambridgeplanning.org/online-applications';
@@ -433,8 +434,14 @@ export async function downloadApplication(reference: string) {
       return undefined;
     };
 
-    meta.furtherInformation = await scrapeTabTable('Further Information') || await scrapeTabTable('Details');
-    meta.importantDates = await scrapeTabTable('Important Dates');
+    const further = await scrapeTabTable('Further Information') || await scrapeTabTable('Details');
+    if (further) {
+      meta.furtherInformation = further;
+    }
+    const dates = await scrapeTabTable('Important Dates');
+    if (dates) {
+      meta.importantDates = dates;
+    }
 
     const location = await scrapeLocation(page, meta.reference);
     if (location) {

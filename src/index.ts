@@ -89,7 +89,7 @@ program
           console.log('-'.repeat(40));
         }
       });
-      console.log(`\nTo download documents for any of these, run:\n  npx tsx src/index.ts download <reference>`);
+      console.log(`\nTo download documents for any of these, run:\n  npm start download <reference>`);
     } catch (e) {
       console.error('Failed to search PlanIt API:', e);
     }

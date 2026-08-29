@@ -4,14 +4,14 @@ A CLI tool to search for and download documents for Cambridgeshire planning appl
 
 ## Usage
 
-You can run the CLI using `npx tsx src/index.ts` (or build/install it).
+You can run the CLI using `npm start` (which builds then runs it), or directly with `node dist/index.js`.
 
 ### Search
 
 Search for large planning applications near a UK postcode using the PlanIt API:
 
 ```bash
-npx tsx src/index.ts search "CB1 2JW"
+npm start search "CB1 2JW"
 ```
 Options:
 * `-r, --radius <km>`: Search radius in km (default: 2)
@@ -21,7 +21,7 @@ Options:
 Download documents and comments for a specific planning application reference:
 
 ```bash
-npx tsx src/index.ts download 24/02737/FUL
+npm start download 24/02737/FUL
 ```
 
 
