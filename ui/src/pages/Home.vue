@@ -133,7 +133,6 @@
               <div class="text-sm text-gray-600">{{ res.description }}</div>
               <div v-if="res.address" class="text-xs text-gray-500 mt-1">{{ firstLine(res.address) }}</div>
               <div class="text-xs text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
-                <span>{{ res.name }}</span>
                 <span>{{ res.app_state }}</span>
                 <span v-if="res.start_date">· {{ timeAgo(res.start_date) }}</span>
               </div>
