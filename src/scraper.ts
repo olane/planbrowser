@@ -113,9 +113,9 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
       }
       
       try {
-        const [download] = await Promise.all([
+            const [download] = await Promise.all([
             page.waitForEvent('download', { timeout: 60000 }),
-            btn.click()
+            btn.click({ noWaitAfter: true, timeout: 60000 })
         ]);
         
         const zipPath = path.join(outDir, `batch-${Date.now()}.zip`);
