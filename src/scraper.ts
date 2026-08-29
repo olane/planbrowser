@@ -330,37 +330,17 @@ export async function downloadApplication(reference: string) {
   const page = await context.newPage();
   
   try {
-    await page.goto(`${BASE_URL}/search.do?action=simple&searchType=Application`);
+    await page.goto(`${BASE_URL}/search.do?action=advanced&searchType=Application`);
     
-    await page.fill('#simpleSearchString', reference);
+    await page.fill('#reference', reference);
     await Promise.all([
       page.waitForNavigation(),
       page.click('input[type="submit"]')
     ]);
 
     if (await page.locator('#searchResultsContainer').count() > 0) {
-      console.log('Multiple results found. Finding exact match...');
-      const matchedHref = await page.evaluate((searchRef) => {
-        const rows = Array.from(document.querySelectorAll('#searchresults li.searchresult'));
-        for (const row of rows) {
-          const meta = row.querySelector('p.metaInfo')?.textContent || '';
-          const m = meta.match(/Ref\. No:\s*(\S+)/);
-          const ref = m?.[1];
-          if (ref && ref.toUpperCase() === searchRef.toUpperCase()) {
-            return (row.querySelector('a.summaryLink') as HTMLAnchorElement | null)?.href || null;
-          }
-        }
-        return null;
-      }, reference);
-      if (matchedHref) {
-        await Promise.all([
-          page.waitForNavigation(),
-          page.goto(matchedHref)
-        ]);
-      } else {
-        console.error(`Reference "${reference}" not found in the search results list.`);
-        return;
-      }
+      console.error(`Multiple results found for reference "${reference}". Cannot determine the exact match.`);
+      return;
     } else if (await page.locator('.messagebox:has-text("No results found")').count() > 0) {
       console.error(`Application reference "${reference}" not found.`);
       return;
