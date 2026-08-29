@@ -267,6 +267,17 @@ export function resolveAuthority(idOrName: string | undefined | null): Authority
   );
 }
 
+export function isKnownAuthority(idOrName: string | undefined | null): boolean {
+  if (!idOrName || idOrName.trim() === '') return false;
+  const key = idOrName.trim().toLowerCase();
+  return AUTHORITIES.some(
+    (a) =>
+      a.id === key ||
+      a.name.toLowerCase() === key ||
+      (a.aliases ?? []).some((alias) => alias.toLowerCase() === key)
+  );
+}
+
 export function getAuthority(id: string): AuthorityConfig {
   const found = AUTHORITIES.find((a) => a.id === id);
   if (!found) throw new Error(`Unknown authority id "${id}"`);

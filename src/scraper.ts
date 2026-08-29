@@ -367,22 +367,18 @@ export async function downloadApplication(reference: string, authorityId: string
     ]);
 
     if (await page.locator('#searchResultsContainer').count() > 0) {
-      console.error(`Multiple results found for reference "${reference}". Cannot determine the exact match.`);
-      return;
+      throw new Error(`Multiple results found for reference "${reference}" on ${authority.name}. Cannot determine the exact match.`);
     } else if (await page.locator('.messagebox:has-text("No results found")').count() > 0) {
-      console.error(`Application reference "${reference}" not found.`);
-      return;
+      throw new Error(`Application reference "${reference}" not found on ${authority.name} (${authority.baseUrl}).`);
     } else if (!await page.locator('#applicationDetails').count() && !await page.locator('#simpleDetailsTable').count()) {
-      console.log('Did not land on application details page. Unexpected page structure.');
-      return;
+      throw new Error(`Did not land on the application details page for "${reference}" on ${authority.name}. Unexpected page structure (is this portal actually Idox?).`);
     }
     
     const title = await page.title();
     console.log(`Page title: ${title}`);
     
     if (!await page.locator('#applicationDetails').count() && !await page.locator('#simpleDetailsTable').count()) {
-       console.log('Did not land on application details page. HTML:', await page.content());
-       return;
+       throw new Error(`Did not land on the application details page for "${reference}" on ${authority.name}. HTML: ${(await page.content()).slice(0, 500)}`);
     }
 
     const meta: ApplicationMeta = {
@@ -411,8 +407,7 @@ export async function downloadApplication(reference: string, authorityId: string
         if (key === 'Reference') {
           meta.reference = value || meta.reference;
           if (meta.reference.toUpperCase() !== reference.toUpperCase()) {
-            console.error(`Landing page reference "${meta.reference}" does not match requested reference "${reference}". Aborting.`);
-            return;
+            throw new Error(`Landing page reference "${meta.reference}" does not match requested reference "${reference}" on ${authority.name}. Aborting to avoid downloading the wrong application.`);
           }
         } else if (key === 'Address') {
           meta.address = value;
