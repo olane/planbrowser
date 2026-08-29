@@ -119,7 +119,7 @@
                   </div>
                 </div>
                 <div class="flex items-center">
-                  <a :href="`/api/documents/${encodeURIComponent(app.reference.replace(/\//g, '-'))}/${encodeURIComponent(doc.localFilename)}`" target="_blank" class="text-sm text-blue-600 hover:underline shrink-0">Open ({{ doc.localFilename.split('.').pop()?.toUpperCase() }})</a>
+                  <a :href="`/api/documents/${docPrefix}${encodeURIComponent(app.reference.replace(/\//g, '-'))}/${encodeURIComponent(doc.localFilename)}`" target="_blank" class="text-sm text-blue-600 hover:underline shrink-0">Open ({{ doc.localFilename.split('.').pop()?.toUpperCase() }})</a>
                 </div>
               </li>
             </ul>
@@ -154,7 +154,7 @@
                 </div>
               </div>
               <div class="flex items-center">
-                <a :href="`/api/documents/${encodeURIComponent(app.reference.replace(/\//g, '-'))}/${encodeURIComponent(doc.localFilename)}`" target="_blank" class="text-sm text-blue-600 hover:underline shrink-0">Open ({{ doc.localFilename.split('.').pop()?.toUpperCase() }})</a>
+                <a :href="`/api/documents/${docPrefix}${encodeURIComponent(app.reference.replace(/\//g, '-'))}/${encodeURIComponent(doc.localFilename)}`" target="_blank" class="text-sm text-blue-600 hover:underline shrink-0">Open ({{ doc.localFilename.split('.').pop()?.toUpperCase() }})</a>
               </div>
             </li>
           </ul>
@@ -228,6 +228,8 @@ const error = ref('')
 const syncing = ref(false)
 const selectedStance = ref('All')
 
+const docPrefix = computed(() => api.docUrlPrefix(app.value?.authorityId))
+
 const commentsList = ref<Comment[]>([])
 const activeTab = ref('documents')
 const commentsError = ref('')
@@ -271,7 +273,7 @@ const syncApp = async () => {
   syncError.value = ''
   syncMessage.value = ''
   try {
-    await api.downloadApplication(app.value.reference)
+    await api.downloadApplication(app.value.reference, app.value.authorityId)
     syncMessage.value = 'Sync queued. Check the Queue page for progress.'
   } catch (err: any) {
     syncError.value = err.message || 'Failed to sync'
@@ -284,7 +286,7 @@ const enhancedAppDocuments = computed<EnhancedDocument[]>(() => {
   if (!app.value?.documents) return []
   const docs: EnhancedDocument[] = app.value.documents.map((d) => ({
     ...d,
-    url: `/api/documents/${encodeURIComponent(app.value!.reference.replace(/\//g, '-'))}/${encodeURIComponent(d.localFilename)}`,
+    url: `/api/documents/${docPrefix.value}${encodeURIComponent(app.value!.reference.replace(/\//g, '-'))}/${encodeURIComponent(d.localFilename)}`,
     isSuperseded: d.documentType.toLowerCase().includes('superseded'),
     supersededBy: null,
     replaces: []
@@ -372,7 +374,7 @@ onMounted(async () => {
     
     if (app.value.hasComments) {
       try {
-        const data = await api.fetchComments(app.value.reference)
+        const data = await api.fetchComments(app.value.reference, app.value.authorityId)
         commentsList.value = data.map((c: Comment) => ({ ...c, expanded: false }))
       } catch (err) {
         commentsError.value = 'Failed to load comments.'

@@ -4,6 +4,7 @@ import path from 'path';
 import { downloadApplication, searchPlanIt } from './scraper.js';
 import { getApplications, getApplication } from './storage.js';
 import { downloadQueue } from './queue.js';
+import { resolveAuthority } from './authorities.js';
 import type { SearchFilters } from './types.js';
 
 const app = express();
@@ -55,14 +56,15 @@ app.get('/api/search', async (req, res) => {
 
 app.post('/api/download', (req, res) => {
   try {
-    const { reference } = req.body;
+    const { reference, authority } = req.body;
     if (!reference) {
       return res.status(400).json({ error: 'Reference is required' });
     }
-    const item = downloadQueue.enqueue(reference);
-    res.json({ success: true, item });
+    const resolved = resolveAuthority(authority);
+    const item = downloadQueue.enqueue(reference, resolved.id);
+    res.json({ success: true, item, authority: resolved });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -87,7 +89,16 @@ app.get('/api/applications', (req, res) => {
 app.get('/api/applications/:ref', (req, res) => {
   try {
     const ref = req.params.ref;
-    const app = getApplication(ref);
+    const rawAuthority = typeof req.query.authority === 'string' ? req.query.authority : undefined;
+    let authorityId: string | undefined;
+    if (rawAuthority) {
+      try {
+        authorityId = resolveAuthority(rawAuthority).id;
+      } catch (e) {
+        // Unknown authority filter: fall back to searching all authorities
+      }
+    }
+    const app = getApplication(ref, authorityId);
     if (app) {
       res.json(app);
     } else {

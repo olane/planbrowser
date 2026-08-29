@@ -1,4 +1,5 @@
 import { downloadApplication } from './scraper.js';
+import { DEFAULT_AUTHORITY_ID } from './authorities.js';
 
 import type { QueueItem } from './types.js';
 
@@ -7,8 +8,8 @@ class DownloadQueue {
   private queue: QueueItem[] = [];
   private isProcessing = false;
 
-  enqueue(reference: string) {
-    const existing = this.queue.find(item => item.reference === reference && (item.status === 'pending' || item.status === 'in_progress'));
+  enqueue(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID) {
+    const existing = this.queue.find(item => item.reference === reference && item.authorityId === authorityId && (item.status === 'pending' || item.status === 'in_progress'));
     if (existing) {
       return existing; // Already in queue
     }
@@ -16,6 +17,7 @@ class DownloadQueue {
     const item: QueueItem = {
       id: Math.random().toString(36).substring(2, 9),
       reference,
+      authorityId,
       status: 'pending',
       enqueuedAt: new Date().toISOString()
     };
@@ -47,7 +49,7 @@ class DownloadQueue {
       item.startedAt = new Date().toISOString();
 
       try {
-        await downloadApplication(item.reference);
+        await downloadApplication(item.reference, item.authorityId);
         item.status = 'completed';
       } catch (err: any) {
         item.status = 'failed';

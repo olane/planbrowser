@@ -10,7 +10,10 @@
         <div v-for="app in downloadedApps" :key="app.reference" class="bg-white p-4 rounded shadow border border-gray-200">
           <div class="flex justify-between items-start mb-1">
             <h3 class="font-bold text-lg">{{ app.reference }}</h3>
-            <span v-if="app.furtherInformation?.['Application Type']" class="text-xs text-gray-500 whitespace-nowrap">{{ app.furtherInformation['Application Type'] }}</span>
+            <div class="flex items-center gap-2">
+              <span v-if="app.authorityId && app.authorityId !== DEFAULT_AUTHORITY_ID" class="text-xs text-gray-400 whitespace-nowrap">{{ authorityName(app.authorityId) }}</span>
+              <span v-if="app.furtherInformation?.['Application Type']" class="text-xs text-gray-500 whitespace-nowrap">{{ app.furtherInformation['Application Type'] }}</span>
+            </div>
           </div>
           <p class="text-sm text-gray-600 mb-2 truncate">{{ app.address }}</p>
           <p class="text-xs text-gray-500 mb-2">Synced: {{ timeAgo(app.scrapedAt) }}</p>
@@ -141,9 +144,12 @@
               <router-link v-if="isDownloaded(res.uid)" :to="`/app/${encodeURIComponent(res.uid)}`" class="whitespace-nowrap bg-blue-100 text-blue-700 px-3 py-1 rounded-md text-sm hover:bg-blue-200">
                 View
               </router-link>
-              <button v-else @click="downloadApp(res.uid)" :disabled="getQueueStatus(res.uid) !== 'none'" class="whitespace-nowrap bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 disabled:opacity-50">
+              <button v-else-if="canDownload(res)" @click="downloadApp(res.uid, res.area_name)" :disabled="['pending', 'in_progress'].includes(getQueueStatus(res.uid))" class="whitespace-nowrap bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 disabled:opacity-50">
                 {{ getQueueStatusText(res.uid) }}
               </button>
+              <span v-else class="whitespace-nowrap text-xs text-gray-400" title="This planning authority does not run an Idox Public Access portal, so planbrowser cannot download its documents.">Not on Idox portal</span>
+              <div v-if="getQueueError(res.uid)" class="text-xs text-red-600 max-w-[240px] text-right">{{ getQueueError(res.uid) }}</div>
+              <div v-else-if="downloadErrors[res.uid]" class="text-xs text-red-600 max-w-[240px] text-right">{{ downloadErrors[res.uid] }}</div>
               <button v-if="hasLocation(res)" @click="showOnMap(res.uid)" class="text-xs text-blue-600 hover:underline">Show on map</button>
             </div>
           </div>
@@ -165,6 +171,13 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Application Reference</label>
           <input v-model="directReference" required type="text" placeholder="e.g. 24/02737/FUL" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
         </div>
+        <div class="flex-1 max-w-sm">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Authority (default: cambridge)</label>
+          <input v-model="directAuthority" list="authority-list" type="text" placeholder="cambridge" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+          <datalist id="authority-list">
+            <option v-for="a in AUTHORITIES" :key="a.id" :value="a.id">{{ a.name }}</option>
+          </datalist>
+        </div>
         <button type="submit" :disabled="isLookingUp" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
           {{ isLookingUp ? 'Fetching...' : 'Fetch' }}
         </button>
@@ -180,6 +193,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { timeAgo, statusLabel, statusBadgeClass } from '../utils'
 import type { ApplicationMeta, PlanItRecord, QueueItem, SearchFilters } from '../../../src/types.js'
+import { AUTHORITIES, DEFAULT_AUTHORITY_ID, authorityName, isKnownAuthority } from '../../../src/authorities.js'
 import * as api from '../api'
 import { useRouter } from 'vue-router'
 import MultiSelect from '../components/MultiSelect.vue'
@@ -224,6 +238,10 @@ let pollInterval: any = null
 
 const resultsWithLocations = computed(() => searchResults.value.filter(hasLocation))
 
+const canDownload = (res: PlanItRecord) => isKnownAuthority(res.area_name)
+
+const downloadErrors = ref<Record<string, string>>({})
+
 const hasLocation = (r: PlanItRecord) => {
   const lat = typeof r.location_y === 'number' ? r.location_y : r.location?.coordinates?.[1]
   const lon = typeof r.location_x === 'number' ? r.location_x : r.location?.coordinates?.[0]
@@ -251,6 +269,7 @@ const scrollToResult = (uid: string) => {
 }
 
 const directReference = ref('')
+const directAuthority = ref('')
 const isLookingUp = ref(false)
 const lookupError = ref('')
 
@@ -275,7 +294,7 @@ const fetchQueue = async () => {
 
 
 const getQueueStatus = (reference: string) => {
-  const item = queueItems.value.find(q => q.reference === reference && (q.status === 'pending' || q.status === 'in_progress'))
+  const item = queueItems.value.find(q => q.reference === reference && (q.status === 'pending' || q.status === 'in_progress' || q.status === 'failed'))
   if (item) return item.status
   return 'none'
 }
@@ -284,7 +303,13 @@ const getQueueStatusText = (reference: string) => {
   const status = getQueueStatus(reference)
   if (status === 'pending') return 'Queued'
   if (status === 'in_progress') return 'Downloading...'
+  if (status === 'failed') return 'Failed — retry'
   return 'Download'
+}
+
+const getQueueError = (reference: string) => {
+  const item = queueItems.value.find(q => q.reference === reference && q.status === 'failed')
+  return item?.error
 }
 
 const fetchApps = async () => {
@@ -314,7 +339,7 @@ const lookupReference = async () => {
   lookupError.value = ''
   
   try {
-    await api.downloadApplication(refValue)
+    await api.downloadApplication(refValue, directAuthority.value || DEFAULT_AUTHORITY_ID)
     await fetchQueue()
     // It will be added to the queue, don't redirect yet
     directReference.value = ''
@@ -362,12 +387,14 @@ const searchPlanIt = async () => {
   }
 }
 
-const downloadApp = async (reference: string) => {
+const downloadApp = async (reference: string, authorityId?: string) => {
   try {
-    await api.downloadApplication(reference)
+    await api.downloadApplication(reference, authorityId)
+    delete downloadErrors.value[reference]
     await fetchQueue()
   } catch (e: any) {
     console.error(e)
+    downloadErrors.value[reference] = e.message || 'Failed to queue download'
   }
 }
 
