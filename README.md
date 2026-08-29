@@ -5,7 +5,7 @@ A tool to search for and download documents for Cambridgeshire planning applicat
 ## Features
 
 - **Search** the [PlanIt API](https://www.planit.org.uk/) by postcode and radius, with optional filters (application type, state, date ranges, etc.)
-- **Download** applications from the [Greater Cambridge planning portal](https://applications.greatercambridgeplanning.org/online-applications) using headless browser automation (Playwright)
+- **Download** applications from any [Idox Public Access](https://www.idoxgroup.com/) planning portal using headless browser automation (Playwright). 230+ UK authorities are configured in `src/authorities.ts` (generated from the PlanIt API); Cambridge (Greater Cambridge) is the default and the only one with map geometry configured.
 - **Extract documents** from applications, batching bulk downloads where possible, with incremental re-scraping (already-downloaded files are skipped)
 - **Scrape comments** submitted by neighbours for each application
 - **View** application metadata, key dates, documents, comments, and location on a map in the browser
@@ -38,19 +38,20 @@ npm run ui       # Vite dev server
 | Method | Endpoint               | Description                                    |
 | ------ | ---------------------- | ---------------------------------------------- |
 | GET    | `/api/search`          | Search PlanIt by `postcode` and `radius` (km), plus optional filters |
-| POST   | `/api/download`        | Enqueue an application for download by `reference` |
+| POST   | `/api/download`        | Enqueue an application for download by `reference` and optional `authority` (id or PlanIt area name; defaults to `cambridge`) |
 | GET    | `/api/queue`           | List the download queue                        |
 | POST   | `/api/queue/clear`     | Remove completed/failed items from the queue   |
 | GET    | `/api/applications`    | List all downloaded applications               |
-| GET    | `/api/applications/:ref` | Get metadata for a single application        |
+| GET    | `/api/applications/:ref` | Get metadata for a single application (optional `?authority=` to disambiguate) |
 | GET    | `/api/documents/*`     | Serve downloaded files and metadata statically |
 
-Downloaded files are stored under `downloads/<reference>/`, with `metadata.json` and (when present) `comments.json` alongside the document files.
+Downloaded files are stored under `downloads/<authorityId>/<reference>/`, with `metadata.json` and (when present) `comments.json` alongside the document files.
 
 ## Project structure
 
 ```
 src/         TypeScript backend (Express API, Playwright scraper, storage, queue)
+  authorities.ts  Idox portal registry + authority resolution
 ui/          Vue 3 + TypeScript + Vite frontend (Tailwind CSS, Leaflet)
 downloads/   Downloaded application documents and metadata (gitignored)
 ```
@@ -66,4 +67,4 @@ downloads/   Downloaded application documents and metadata (gitignored)
 
 ## Acknowledgements
 
-This tool uses the [PlanIt API](https://www.planit.org.uk/) to search for planning applications, and scrapes document/comment data from the [Greater Cambridge planning portal](https://applications.greatercambridgeplanning.org/online-applications).
+This tool uses the [PlanIt API](https://www.planit.org.uk/) to search for planning applications, and scrapes document/comment data from Idox Public Access planning portals (by default the [Greater Cambridge planning portal](https://applications.greatercambridgeplanning.org/online-applications)).

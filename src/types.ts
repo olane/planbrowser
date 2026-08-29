@@ -5,6 +5,20 @@ export interface DocumentMeta {
   description: string;
 }
 
+export interface AuthorityMapConfig {
+  wfsUrl: string;
+  layers: string[];
+  refField: string;
+}
+
+export interface AuthorityConfig {
+  id: string;
+  name: string;
+  aliases?: string[];
+  baseUrl: string;
+  map?: AuthorityMapConfig;
+}
+
 export interface ApplicationLocation {
   center: { lat: number; lon: number };
   bbox: { minLon: number; minLat: number; maxLon: number; maxLat: number };
@@ -12,6 +26,7 @@ export interface ApplicationLocation {
 
 export interface ApplicationMeta {
   reference: string;
+  authorityId?: string;
   address: string;
   description: string;
   status: string;
@@ -80,6 +95,7 @@ export interface EnhancedDocument extends DocumentMeta {
 export interface QueueItem {
   id: string;
   reference: string;
+  authorityId: string;
   status: 'pending' | 'in_progress' | 'completed' | 'failed';
   error?: string;
   enqueuedAt: string;

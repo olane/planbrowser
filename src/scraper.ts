@@ -1,14 +1,13 @@
-import type { DocumentMeta, ApplicationMeta, Comment, SearchFilters, ApplicationLocation } from './types.js';
+import type { DocumentMeta, ApplicationMeta, Comment, SearchFilters, ApplicationLocation, AuthorityConfig } from './types.js';
 import AdmZip from 'adm-zip';
 import fs from 'fs';
 import * as cheerio from 'cheerio';
 import proj4 from 'proj4';
-import { saveApplicationMeta, saveComments } from './storage.js';
+import { saveApplicationMeta, saveComments, getApplicationDir } from './storage.js';
 import { chromium } from 'playwright';
 import type { Page } from 'playwright';
 import path from 'path';
-
-const BASE_URL = 'https://applications.greatercambridgeplanning.org/online-applications';
+import { getAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
 
 proj4.defs('EPSG:27700', '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.1502,0.247,0.8421,-20.4894 +units=m +no_defs');
 
@@ -26,6 +25,32 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
   }
   const docs: DocumentMeta[] = [];
 
+  // Idox installs differ in document table layout (Cambridge has a leading checkbox
+  // column plus Measure/Drawing Number; Wigan has a compact 4-column table). Detect the
+  // column positions from the header row where possible, falling back to the
+  // Greater Cambridge layout.
+  const headerNames = await page.evaluate(() => {
+    const table = document.querySelector('#Documents');
+    const headerRow = table?.querySelector('tr');
+    if (!headerRow) return [] as string[];
+    return Array.from(headerRow.querySelectorAll('th, td')).map((c) => c.textContent?.trim() ?? '');
+  });
+  const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, ' ');
+  const findIdx = (match: RegExp) => headerNames.findIndex((h) => match.test(normalize(h)));
+  const dateIdx = findIdx(/date/);
+  const typeIdx = findIdx(/type/);
+  const descIdx = findIdx(/description/);
+  const viewIdx = findIdx(/^(view|download)$/);
+  const hasUsableHeaders = headerNames.length > 0 && dateIdx >= 0 && typeIdx >= 0 && descIdx >= 0 && viewIdx >= 0;
+  const col = (fallback: number, detected: number) => (hasUsableHeaders ? detected : fallback);
+  const DATE = col(1, dateIdx);
+  const TYPE = col(2, typeIdx);
+  const DESCRIPTION = col(5, descIdx);
+  const VIEW = col(6, viewIdx);
+  if (hasUsableHeaders) {
+    console.log(`Document table columns detected: date=${dateIdx}, type=${typeIdx}, description=${descIdx}, view=${viewIdx}`);
+  }
+
   const rows = page.locator('#Documents tbody tr:not(:first-child)');
   const count = await rows.count();
   console.log(`Found ${count} documents.`);
@@ -34,11 +59,11 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
 
   for (let i = 0; i < count; i++) {
     const row = rows.nth(i);
-    const date = await row.locator('td').nth(1).innerText();
-    const type = await row.locator('td').nth(2).innerText();
-    const description = await row.locator('td').nth(5).innerText();
+    const date = await row.locator('td').nth(DATE).innerText();
+    const type = await row.locator('td').nth(TYPE).innerText();
+    const description = await row.locator('td').nth(DESCRIPTION).innerText();
     
-    const linkLocator = row.locator('td').nth(6).locator('a');
+    const linkLocator = row.locator('td').nth(VIEW).locator('a');
     if (await linkLocator.count() > 0) {
       const baseName = `${date.replace(/\//g, '-')} - ${type.replace(/\//g, '-').trim()} - ${description.replace(/[^a-zA-Z0-9 -]/g, '').trim()}`;
       
@@ -239,9 +264,6 @@ export async function scrapeComments(page: Page, outDir: string): Promise<boolea
   return false;
 }
 
-const MAP_WFS_URL = 'https://applications.greatercambridgeplanning.org/PAM/LIVE/MapServer';
-const MAP_LAYERS = ['Planning_Application_Points', 'Planning_Application_Polygons'];
-
 function parseWfsCoords(xml: string): Array<[number, number]> {
   if (!xml || xml.includes('numberReturned="0"') || xml.includes('numberMatched="0"')) {
     return [];
@@ -289,13 +311,18 @@ function coordsToLocation(coords: Array<[number, number]>): ApplicationLocation 
 
 const escapeXml = (s: string) => s.replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c] as string));
 
-export async function scrapeLocation(page: Page, reference: string): Promise<ApplicationLocation | null> {
-  const filterXml = `<Filter xmlns="http://www.opengis.net/ogc"><PropertyIsEqualTo><PropertyName>REFVAL</PropertyName><Literal>${escapeXml(reference)}</Literal></PropertyIsEqualTo></Filter>`;
+export async function scrapeLocation(page: Page, reference: string, authority: AuthorityConfig): Promise<ApplicationLocation | null> {
+  if (!authority.map) {
+    console.log(`No map configuration for ${authority.id}; skipping location lookup.`);
+    return null;
+  }
+
+  const filterXml = `<Filter xmlns="http://www.opengis.net/ogc"><PropertyIsEqualTo><PropertyName>${authority.map.refField}</PropertyName><Literal>${escapeXml(reference)}</Literal></PropertyIsEqualTo></Filter>`;
   const filterEnc = encodeURIComponent(filterXml);
 
-  for (const layer of MAP_LAYERS) {
+  for (const layer of authority.map.layers) {
     try {
-      const url = `${MAP_WFS_URL}?map=pa&service=WFS&version=2.0.0&accessType=PA&request=GetFeature&typename=${layer}&filter=${filterEnc}`;
+      const url = `${authority.map.wfsUrl}?map=pa&service=WFS&version=2.0.0&accessType=PA&request=GetFeature&typename=${layer}&filter=${filterEnc}`;
       const xml = await page.evaluate(async (u) => {
         const res = await fetch(u, { credentials: 'include' });
         return await res.text();
@@ -313,10 +340,11 @@ export async function scrapeLocation(page: Page, reference: string): Promise<App
   return null;
 }
 
-export async function downloadApplication(reference: string) {
-  console.log(`Starting search for reference: ${reference}`);
+export async function downloadApplication(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID) {
+  const authority = getAuthority(authorityId);
+  console.log(`Starting search for reference: ${reference} (authority: ${authority.id})`);
   
-  const outDir = path.join(process.cwd(), 'downloads', reference.replace(/\//g, '-'));
+  const outDir = getApplicationDir(reference, authority.id);
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });
   }
@@ -330,7 +358,7 @@ export async function downloadApplication(reference: string) {
   const page = await context.newPage();
   
   try {
-    await page.goto(`${BASE_URL}/search.do?action=advanced&searchType=Application`);
+    await page.goto(`${authority.baseUrl}/search.do?action=advanced&searchType=Application`);
     
     await page.fill('#reference', reference);
     await Promise.all([
@@ -359,6 +387,7 @@ export async function downloadApplication(reference: string) {
 
     const meta: ApplicationMeta = {
       reference: reference,
+      authorityId: authority.id,
       address: '',
       description: '',
       status: '',
@@ -438,14 +467,14 @@ export async function downloadApplication(reference: string) {
       meta.importantDates = dates;
     }
 
-    const location = await scrapeLocation(page, meta.reference);
+    const location = await scrapeLocation(page, meta.reference, authority);
     if (location) {
       meta.location = location;
     }
 
     meta.documents = await downloadDocuments(page, outDir);
     meta.hasComments = await scrapeComments(page, outDir);
-    saveApplicationMeta(reference, meta);
+    saveApplicationMeta(reference, meta, authority.id);
     console.log('Saved metadata.json');
 
     console.log(`Done! Files saved in ${outDir}`);
