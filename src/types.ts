@@ -55,6 +55,7 @@ export interface SearchFilters {
 export interface PlanItRecord {
   uid: string;
   name: string;
+  address?: string;
   app_state: string;
   description: string;
   url: string;
