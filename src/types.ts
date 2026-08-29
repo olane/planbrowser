@@ -5,6 +5,11 @@ export interface DocumentMeta {
   description: string;
 }
 
+export interface ApplicationLocation {
+  center: { lat: number; lon: number };
+  bbox: { minLon: number; minLat: number; maxLon: number; maxLat: number };
+}
+
 export interface ApplicationMeta {
   reference: string;
   address: string;
@@ -16,6 +21,7 @@ export interface ApplicationMeta {
   scrapedAt: string;
   furtherInformation?: Record<string, string>;
   importantDates?: Record<string, string>;
+  location?: ApplicationLocation;
 
 }
 export interface Comment {

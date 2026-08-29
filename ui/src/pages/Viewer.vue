@@ -89,6 +89,9 @@
             <button v-if="app.hasComments" @click="activeTab = 'comments'" :class="[activeTab === 'comments' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
               Comments ({{ commentsList.length > 0 ? commentsList.length : (commentsError ? '!' : '...') }})
             </button>
+            <button v-if="app.location" @click="activeTab = 'location'" :class="[activeTab === 'location' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
+              Location
+            </button>
           </nav>
         </div>
 
@@ -157,6 +160,23 @@
           </ul>
           </div>
 
+          <div v-show="activeTab === 'location'" v-if="app.location">
+            <div class="rounded-md overflow-hidden border border-gray-200">
+              <iframe
+                :src="osmEmbedUrl"
+                class="w-full"
+                style="height: 480px"
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                title="Application location map"
+              ></iframe>
+            </div>
+            <p class="mt-3 text-xs text-gray-500">
+              Approximate site location. Coordinates: {{ app.location.center.lat.toFixed(6) }}, {{ app.location.center.lon.toFixed(6) }}
+              &middot; <a :href="osmLinkUrl" target="_blank" rel="noopener" class="text-blue-600 hover:underline">Open in OpenStreetMap</a>
+            </p>
+          </div>
+
           <div v-show="activeTab === 'comments'" v-if="app.hasComments">
             <div v-if="commentsList.length > 0">
               <div class="flex items-center justify-end mb-3 border-b pb-2" v-if="commentStancesWithCounts.length > 1">
@@ -220,6 +240,31 @@ const getStanceClass = (stance?: string) => {
   return 'bg-gray-100 text-gray-600 ring-gray-500/10'
 }
 const selectedDocType = ref('All')
+
+const osmEmbedUrl = computed(() => {
+  const loc = app.value?.location
+  if (!loc) return ''
+  const { center, bbox } = loc
+  let minLon = bbox.minLon
+  let minLat = bbox.minLat
+  let maxLon = bbox.maxLon
+  let maxLat = bbox.maxLat
+  const padLon = (maxLon - minLon) * 0.5 || 0.002
+  const padLat = (maxLat - minLat) * 0.5 || 0.001
+  minLon -= padLon
+  maxLon += padLon
+  minLat -= padLat
+  maxLat += padLat
+  const bboxStr = `${minLon},${minLat},${maxLon},${maxLat}`
+  const marker = `${center.lat},${center.lon}`
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bboxStr)}&layer=mapnik&marker=${encodeURIComponent(marker)}`
+})
+
+const osmLinkUrl = computed(() => {
+  const loc = app.value?.location
+  if (!loc) return ''
+  return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(loc.center.lat)}&mlon=${encodeURIComponent(loc.center.lon)}#map=17/${encodeURIComponent(loc.center.lat)}/${encodeURIComponent(loc.center.lon)}`
+})
 const syncApp = async () => {
   if (!app.value) return
   syncing.value = true

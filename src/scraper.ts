@@ -1,11 +1,15 @@
-import type { DocumentMeta, ApplicationMeta, Comment, SearchFilters } from './types.js';
+import type { DocumentMeta, ApplicationMeta, Comment, SearchFilters, ApplicationLocation } from './types.js';
 import AdmZip from 'adm-zip';
 import fs from 'fs';
+import * as cheerio from 'cheerio';
+import proj4 from 'proj4';
 import { saveApplicationMeta, saveComments } from './storage.js';
 import { chromium, Page } from 'playwright';
 import path from 'path';
 
 const BASE_URL = 'https://applications.greatercambridgeplanning.org/online-applications';
+
+proj4.defs('EPSG:27700', '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.1502,0.247,0.8421,-20.4894 +units=m +no_defs');
 
 export async function downloadDocuments(page: Page, outDir: string): Promise<DocumentMeta[]> {
   console.log('Navigating to Documents tab...');
@@ -234,6 +238,80 @@ export async function scrapeComments(page: Page, outDir: string): Promise<boolea
   return false;
 }
 
+const MAP_WFS_URL = 'https://applications.greatercambridgeplanning.org/PAM/LIVE/MapServer';
+const MAP_LAYERS = ['Planning_Application_Points', 'Planning_Application_Polygons'];
+
+function parseWfsCoords(xml: string): Array<[number, number]> {
+  if (!xml || xml.includes('numberReturned="0"') || xml.includes('numberMatched="0"')) {
+    return [];
+  }
+  const $ = cheerio.load(xml, { xmlMode: true });
+  const coords: Array<[number, number]> = [];
+  $('gml\\:pos, gml\\:posList').each((_, el) => {
+    const parts = $(el).text().trim().split(/\s+/).map(Number);
+    for (let i = 0; i + 1 < parts.length; i += 2) {
+      const x = parts[i];
+      const y = parts[i + 1];
+      if (typeof x === 'number' && typeof y === 'number') {
+        coords.push([x, y]);
+      }
+    }
+  });
+  return coords;
+}
+
+function coordsToLocation(coords: Array<[number, number]>): ApplicationLocation {
+  let sumX = 0;
+  let sumY = 0;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const [x, y] of coords) {
+    sumX += x;
+    sumY += y;
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+  }
+  const centerX = sumX / coords.length;
+  const centerY = sumY / coords.length;
+  const [centerLon, centerLat] = proj4('EPSG:27700', 'EPSG:4326', [centerX, centerY]);
+  const [minLon, minLat] = proj4('EPSG:27700', 'EPSG:4326', [minX, minY]);
+  const [maxLon, maxLat] = proj4('EPSG:27700', 'EPSG:4326', [maxX, maxY]);
+  return {
+    center: { lat: centerLat, lon: centerLon },
+    bbox: { minLon, minLat, maxLon, maxLat }
+  };
+}
+
+const escapeXml = (s: string) => s.replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c] as string));
+
+export async function scrapeLocation(page: Page, reference: string): Promise<ApplicationLocation | null> {
+  const filterXml = `<Filter xmlns="http://www.opengis.net/ogc"><PropertyIsEqualTo><PropertyName>REFVAL</PropertyName><Literal>${escapeXml(reference)}</Literal></PropertyIsEqualTo></Filter>`;
+  const filterEnc = encodeURIComponent(filterXml);
+
+  for (const layer of MAP_LAYERS) {
+    try {
+      const url = `${MAP_WFS_URL}?map=pa&service=WFS&version=2.0.0&accessType=PA&request=GetFeature&typename=${layer}&filter=${filterEnc}`;
+      const xml = await page.evaluate(async (u) => {
+        const res = await fetch(u, { credentials: 'include' });
+        return await res.text();
+      }, url);
+      const coords = parseWfsCoords(xml);
+      if (coords.length > 0) {
+        console.log(`Found location geometry (${coords.length} points) for ${reference}`);
+        return coordsToLocation(coords);
+      }
+    } catch (err) {
+      console.error(`Failed to scrape ${layer} geometry for ${reference}:`, err);
+    }
+  }
+  console.log(`No location geometry found for ${reference}`);
+  return null;
+}
+
 export async function downloadApplication(reference: string) {
   console.log(`Starting search for reference: ${reference}`);
   
@@ -357,6 +435,11 @@ export async function downloadApplication(reference: string) {
 
     meta.furtherInformation = await scrapeTabTable('Further Information') || await scrapeTabTable('Details');
     meta.importantDates = await scrapeTabTable('Important Dates');
+
+    const location = await scrapeLocation(page, meta.reference);
+    if (location) {
+      meta.location = location;
+    }
 
     meta.documents = await downloadDocuments(page, outDir);
     meta.hasComments = await scrapeComments(page, outDir);
