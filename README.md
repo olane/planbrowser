@@ -1,32 +1,8 @@
 # planbrowser
 
-A CLI tool to search for and download documents for Cambridgeshire planning applications.
+A tool to search for and download documents for Cambridgeshire planning applications, with a web UI (Vue) and an API backend to search, download, and view applications in your browser.
 
 ## Usage
-
-You can run the CLI using `npm start` (which builds then runs it), or directly with `node dist/index.js`.
-
-### Search
-
-Search for large planning applications near a UK postcode using the PlanIt API:
-
-```bash
-npm start search "CB1 2JW"
-```
-Options:
-* `-r, --radius <km>`: Search radius in km (default: 2)
-
-### Download
-
-Download documents and comments for a specific planning application reference:
-
-```bash
-npm start download 24/02737/FUL
-```
-
-
-## Web Viewer
-The project includes a web UI (Vue) and an API backend to search, download, and view applications in your browser.
 
 1. Start the API server:
    ```bash
@@ -38,6 +14,7 @@ The project includes a web UI (Vue) and an API backend to search, download, and 
    npm run dev
    ```
 3. Open the displayed local URL (e.g. `http://localhost:5173`) in your browser.
+
 ## Dependencies
 - [Playwright](https://playwright.dev/) for headless browser automation
 - [Commander](https://github.com/tj/commander.js/) for the CLI interface
