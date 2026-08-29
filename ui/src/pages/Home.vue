@@ -131,7 +131,7 @@
             <div>
               <div class="font-bold">{{ res.uid }}<span v-if="res.app_type" class="ml-2 text-xs font-normal text-gray-500">({{ res.app_type }})</span></div>
               <div class="text-sm text-gray-600">{{ res.description }}</div>
-              <div v-if="res.address" class="text-xs text-gray-500 mt-1">{{ firstLine(res.address) }}</div>
+              <div v-if="res.address" class="text-xs text-gray-500 mt-1">{{ res.address }}</div>
               <div class="text-xs text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
                 <span>{{ res.app_state }}</span>
                 <span v-if="res.start_date">· {{ timeAgo(res.start_date) }}</span>
@@ -236,8 +236,6 @@ const showOnMap = (uid: string) => {
   mapWrapRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   mapRef.value?.focus(uid)
 }
-
-const firstLine = (s: string) => s.split('\n').map(l => l.trim()).find(Boolean) || ''
 
 const resultRefs = new Map<string, HTMLElement>()
 const setResultRef = (uid: string, el: unknown) => {
