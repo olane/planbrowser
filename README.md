@@ -10,6 +10,9 @@ A tool to search for and download documents for Cambridgeshire planning applicat
 - **Scrape comments** submitted by neighbours for each application
 - **View** application metadata, key dates, documents, comments, and location on a map in the browser
 - **Background queue** for processing download requests sequentially, with a 5-second delay between applications to avoid rate limiting
+- **Favourite/star** applications so they float to the top of the list, and **archive** applications so they move to a separate Archived page
+- **Sync all starred** applications in one click
+- **Activity feed** showing what changed each time a synced application was re-scraped (new documents, status changes, new comments, etc.)
 
 ## Requirements
 
@@ -42,7 +45,10 @@ npm run ui       # Vite dev server
 | GET    | `/api/queue`           | List the download queue                        |
 | POST   | `/api/queue/clear`     | Remove completed/failed items from the queue   |
 | GET    | `/api/applications`    | List all downloaded applications               |
+| PATCH  | `/api/applications/:ref` | Set `starred`/`archived` flags on an application (optional `authority` in body) |
 | GET    | `/api/applications/:ref` | Get metadata for a single application (optional `?authority=` to disambiguate) |
+| GET    | `/api/feed`            | List the activity feed (changes detected on re-sync) |
+| POST   | `/api/sync-starred`    | Enqueue all starred applications for re-download |
 | GET    | `/api/documents/*`     | Serve downloaded files and metadata statically |
 
 Downloaded files are stored under `downloads/<authorityId>/<reference>/`, with `metadata.json` and (when present) `comments.json` alongside the document files.
