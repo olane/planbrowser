@@ -13,8 +13,10 @@
       <div v-else class="space-y-3">
         <div v-for="item in queueItems" :key="item.id" class="bg-white p-3 rounded shadow-sm border border-gray-200 flex justify-between items-center">
           <div>
-            <div class="font-medium">{{ item.reference }}</div>
+            <router-link v-if="item.status === 'completed'" :to="`/app/${encodeURIComponent(item.reference)}`" class="font-medium text-blue-600 hover:underline">{{ item.reference }}</router-link>
+            <div v-else class="font-medium">{{ item.reference }}</div>
             <div class="text-xs text-gray-500">
+              <span v-if="authorityName(item.authorityId)">{{ authorityName(item.authorityId) }} • </span>
               Enqueued: {{ timeAgo(item.enqueuedAt) }}
               <span v-if="item.completedAt"> • Finished: {{ timeAgo(item.completedAt) }}</span>
             </div>
@@ -34,6 +36,7 @@
 
 <script setup lang="ts">
 import type { QueueItem } from '../../../src/types.js'
+import { authorityName } from '../../../src/authorities.js'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { timeAgo } from '../utils'
 import * as api from '../api'
