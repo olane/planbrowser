@@ -59,53 +59,32 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Development size</label>
               <MultiSelect v-model="searchForm.app_size" :options="APP_SIZES" placeholder="Any size" />
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Recent (days)</label>
-              <input v-model="searchForm.recent" type="number" min="0" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Start date from</label>
-              <input v-model="searchForm.start_date" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Start date to</label>
-              <input v-model="searchForm.end_date" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Last changed (days)</label>
-              <input v-model="searchForm.changed" type="number" min="0" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Changed from</label>
-              <input v-model="searchForm.changed_start" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Changed to</label>
-              <input v-model="searchForm.changed_end" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Decided (days)</label>
-              <input v-model="searchForm.decided" type="number" min="0" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Decided from</label>
-              <input v-model="searchForm.decided_start" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Decided to</label>
-              <input v-model="searchForm.decided_end" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Data changed (days)</label>
-              <input v-model="searchForm.different" type="number" min="0" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Data changed from</label>
-              <input v-model="searchForm.different_start" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Data changed to</label>
-              <input v-model="searchForm.different_end" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+            <div class="sm:col-span-2 lg:col-span-4 mt-2">
+              <p class="text-sm font-medium text-gray-700 mb-2">Date filters</p>
+              <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div v-for="group in timeGroups" :key="group.key" class="p-3 bg-white rounded-md border border-gray-200">
+                  <div class="flex items-center justify-between gap-2 mb-2">
+                    <label class="text-sm font-medium text-gray-700">{{ group.label }}</label>
+                    <select v-model="timeModes[group.key]" class="rounded-md border-gray-300 bg-white text-xs px-1.5 py-1 border focus:border-blue-500 focus:ring-blue-500">
+                      <option value="range">Date range</option>
+                      <option value="recent">Last N days</option>
+                    </select>
+                  </div>
+                  <div v-if="timeModes[group.key] === 'recent'">
+                    <input v-model="searchForm[group.recentKey]" type="number" min="0" placeholder="Days (0 = today)" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+                  </div>
+                  <div v-else class="space-y-2">
+                    <div>
+                      <label class="block text-xs text-gray-500 mb-1">From</label>
+                      <input v-model="searchForm[group.fromKey]" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+                    </div>
+                    <div>
+                      <label class="block text-xs text-gray-500 mb-1">To</label>
+                      <input v-model="searchForm[group.toKey]" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </details>
@@ -219,7 +198,7 @@ const searchForm = ref({
   app_type: '',
   app_state: '',
   app_size: '',
-  recent: '',
+  recent: '365',
   start_date: '',
   end_date: '',
   changed: '',
@@ -232,6 +211,31 @@ const searchForm = ref({
   different_start: '',
   different_end: ''
 })
+
+type TimeFieldKey = 'recent' | 'start_date' | 'end_date' | 'changed' | 'changed_start' | 'changed_end' | 'decided' | 'decided_start' | 'decided_end' | 'different' | 'different_start' | 'different_end'
+
+interface TimeGroup {
+  key: string
+  label: string
+  recentKey: TimeFieldKey
+  fromKey: TimeFieldKey
+  toKey: TimeFieldKey
+}
+
+const timeGroups: TimeGroup[] = [
+  { key: 'start', label: 'Start date', recentKey: 'recent', fromKey: 'start_date', toKey: 'end_date' },
+  { key: 'changed', label: 'Last changed', recentKey: 'changed', fromKey: 'changed_start', toKey: 'changed_end' },
+  { key: 'decided', label: 'Decided date', recentKey: 'decided', fromKey: 'decided_start', toKey: 'decided_end' },
+  { key: 'different', label: 'Data changed', recentKey: 'different', fromKey: 'different_start', toKey: 'different_end' }
+]
+
+const timeModes = ref<Record<string, 'recent' | 'range'>>({
+  start: 'recent',
+  changed: 'recent',
+  decided: 'recent',
+  different: 'recent'
+})
+
 const isSearching = ref(false)
 const hasSearched = ref(false)
 const searchResults = ref<PlanItRecord[]>([])
@@ -379,17 +383,24 @@ const searchPlanIt = async () => {
   
   try {
     const filterKeys: (keyof SearchFilters)[] = [
-      'search', 'developer', 'app_type', 'app_state', 'app_size',
-      'recent', 'start_date', 'end_date',
-      'changed', 'changed_start', 'changed_end',
-      'decided', 'decided_start', 'decided_end',
-      'different', 'different_start', 'different_end'
+      'search', 'developer', 'app_type', 'app_state', 'app_size'
     ]
     const filters: SearchFilters = {}
     for (const key of filterKeys) {
       const value = searchForm.value[key]
       if (value) {
         filters[key] = value
+      }
+    }
+    for (const group of timeGroups) {
+      if (timeModes.value[group.key] === 'recent') {
+        const value = searchForm.value[group.recentKey]
+        if (value) filters[group.recentKey] = value
+      } else {
+        const from = searchForm.value[group.fromKey]
+        const to = searchForm.value[group.toKey]
+        if (from) filters[group.fromKey] = from
+        if (to) filters[group.toKey] = to
       }
     }
     const data = await api.searchPlanIt(searchForm.value.postcode, searchForm.value.radius, filters)
