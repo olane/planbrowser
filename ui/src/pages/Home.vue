@@ -3,25 +3,16 @@
 
     <!-- Downloaded Applications -->
     <section>
-      <h2 class="text-xl font-semibold mb-4">Downloaded Applications</h2>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold">Downloaded Applications</h2>
+        <button v-if="starredApps.length > 0" @click="syncStarredApps" :disabled="syncingStarred" class="text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm disabled:opacity-50">
+          {{ syncingStarred ? 'Queuing...' : (starredSyncMessage || `Sync ${starredApps.length} starred`) }}
+        </button>
+      </div>
       <div v-if="loadingApps" class="text-gray-500">Loading...</div>
-      <div v-else-if="downloadedApps.length === 0" class="text-gray-500">No applications downloaded yet.</div>
+      <div v-else-if="activeApps.length === 0" class="text-gray-500">No active applications. Archived applications are on the Archived page.</div>
       <div v-else class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div v-for="app in downloadedApps" :key="app.reference" class="bg-white p-4 rounded shadow border border-gray-200">
-          <div class="flex justify-between items-start mb-1">
-            <h3 class="font-bold text-lg">{{ app.reference }}</h3>
-            <div class="flex items-center gap-2">
-              <span v-if="app.authorityId && app.authorityId !== DEFAULT_AUTHORITY_ID" class="text-xs text-gray-400 whitespace-nowrap">{{ authorityName(app.authorityId) }}</span>
-              <span v-if="app.furtherInformation?.['Application Type']" class="text-xs text-gray-500 whitespace-nowrap">{{ app.furtherInformation['Application Type'] }}</span>
-            </div>
-          </div>
-          <p class="text-sm text-gray-600 mb-2 truncate">{{ app.address }}</p>
-          <p class="text-xs text-gray-500 mb-2">Synced: {{ timeAgo(app.scrapedAt) }}</p>
-          <div class="flex justify-between items-center mt-2">
-            <span :class="['inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset', statusBadgeClass(app)]">{{ statusLabel(app) }}</span>
-            <router-link :to="`/app/${encodeURIComponent(app.reference)}`" class="text-sm text-blue-600 hover:underline">View details</router-link>
-          </div>
-        </div>
+        <ApplicationCard v-for="app in activeApps" :key="app.reference" :app="app" :queue-status="getQueueStatus(app.reference)" @changed="fetchApps" />
       </div>
     </section>
 
@@ -191,13 +182,14 @@
 </template>
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { timeAgo, statusLabel, statusBadgeClass } from '../utils'
+import { timeAgo } from '../utils'
 import type { ApplicationMeta, PlanItRecord, QueueItem, SearchFilters } from '../../../src/types.js'
-import { AUTHORITIES, DEFAULT_AUTHORITY_ID, authorityName, isKnownAuthority } from '../../../src/authorities.js'
+import { AUTHORITIES, DEFAULT_AUTHORITY_ID, isKnownAuthority } from '../../../src/authorities.js'
 import * as api from '../api'
 import { useRouter } from 'vue-router'
 import MultiSelect from '../components/MultiSelect.vue'
 import SearchResultsMap from '../components/SearchResultsMap.vue'
+import ApplicationCard from '../components/ApplicationCard.vue'
 
 const router = useRouter()
 
@@ -208,6 +200,16 @@ const APP_SIZES = ['Large', 'Medium', 'Small']
 const searchError = ref('')
 const downloadedApps = ref<ApplicationMeta[]>([])
 const loadingApps = ref(true)
+
+const activeApps = computed(() =>
+  downloadedApps.value
+    .filter((a) => !a.archived)
+    .sort((a, b) => Number(!!b.starred) - Number(!!a.starred))
+)
+const starredApps = computed(() => downloadedApps.value.filter((a) => a.starred))
+const syncingStarred = ref(false)
+const starredSyncMessage = ref('')
+let syncMessageTimer: any = null
 
 const searchForm = ref({
   postcode: '',
@@ -319,6 +321,21 @@ const fetchApps = async () => {
     console.error(e)
   } finally {
     loadingApps.value = false
+  }
+}
+
+const syncStarredApps = async () => {
+  syncingStarred.value = true
+  try {
+    const result = await api.syncStarred()
+    starredSyncMessage.value = `Queued ${result.queued} application${result.queued === 1 ? '' : 's'}`
+    if (syncMessageTimer) clearTimeout(syncMessageTimer)
+    syncMessageTimer = setTimeout(() => { starredSyncMessage.value = '' }, 4000)
+    await fetchQueue()
+  } catch (e) {
+    console.error(e)
+  } finally {
+    syncingStarred.value = false
   }
 }
 

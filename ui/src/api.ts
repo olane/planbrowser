@@ -1,4 +1,4 @@
-import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters } from '../../src/types.js';
+import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent } from '../../src/types.js';
 import { DEFAULT_AUTHORITY_ID } from '../../src/authorities.js';
 
 // Downloads are namespaced under downloads/<authorityId>/. Older metadata without an
@@ -65,4 +65,33 @@ export async function fetchQueue(): Promise<QueueItem[]> {
 export async function clearQueue(): Promise<void> {
   const res = await fetch('/api/queue/clear', { method: 'POST' });
   if (!res.ok) throw new Error('Failed to clear queue');
+}
+
+export async function setApplicationFlags(reference: string, flags: Partial<ApplicationFlags>, authority?: string): Promise<ApplicationFlags> {
+  const res = await fetch(`/api/applications/${encodeURIComponent(reference)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ authority, ...flags })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update application');
+  }
+  const data = await res.json();
+  return data.flags;
+}
+
+export async function fetchFeed(): Promise<ActivityEvent[]> {
+  const res = await fetch('/api/feed');
+  if (!res.ok) throw new Error('Failed to fetch activity feed');
+  return res.json();
+}
+
+export async function syncStarred(): Promise<{ queued: number }> {
+  const res = await fetch('/api/sync-starred', { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to sync starred applications');
+  }
+  return res.json();
 }

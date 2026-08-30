@@ -5,7 +5,10 @@
         <h1 class="text-2xl font-bold text-gray-900">
           <router-link to="/">PlanBrowser</router-link>
         </h1>
-        <nav>
+        <nav class="flex items-center gap-4">
+          <router-link to="/" class="text-sm font-medium text-blue-600 hover:text-blue-800">Applications</router-link>
+          <router-link to="/archive" class="text-sm font-medium text-blue-600 hover:text-blue-800">Archived</router-link>
+          <router-link to="/feed" class="text-sm font-medium text-blue-600 hover:text-blue-800">Feed</router-link>
           <router-link to="/queue" class="text-sm font-medium text-blue-600 hover:text-blue-800">Queue</router-link>
         </nav>
       </div>
