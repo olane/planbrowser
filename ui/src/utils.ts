@@ -36,6 +36,11 @@ export function statusLabel(app: { status?: string; furtherInformation?: Record<
   return status;
 }
 
+export function progressText(progress: { message: string; current?: number; total?: number }): string {
+  if (progress.total === undefined) return progress.message;
+  return `${progress.message} (${progress.current ?? 0}/${progress.total})`;
+}
+
 export function statusBadgeClass(app: { status?: string; furtherInformation?: Record<string, string> }): string {
   const label = statusLabel(app).toLowerCase();
   if (label.includes('refus')) return 'bg-red-50 text-red-700 ring-red-600/10';

@@ -164,7 +164,7 @@
 </template>
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { timeAgo } from '../utils'
+import { timeAgo, progressText } from '../utils'
 import type { ApplicationMeta, PlanItRecord, SearchFilters } from '../../../src/types.js'
 import { queueItems, refreshQueue } from '../queueStore'
 import { AUTHORITIES, DEFAULT_AUTHORITY_ID, isKnownAuthority } from '../../../src/authorities.js'
@@ -305,7 +305,10 @@ const getQueueStatus = (reference: string) => {
 const getQueueStatusText = (reference: string) => {
   const status = getQueueStatus(reference)
   if (status === 'pending') return 'Queued'
-  if (status === 'in_progress') return 'Downloading...'
+  if (status === 'in_progress') {
+    const item = queueItems.value.find(q => q.reference === reference && q.status === 'in_progress')
+    return item?.progress ? progressText(item.progress) : 'Downloading...'
+  }
   if (status === 'failed') return 'Failed — retry'
   return 'Download'
 }

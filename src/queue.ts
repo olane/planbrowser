@@ -49,11 +49,19 @@ class DownloadQueue {
       item.startedAt = new Date().toISOString();
 
       try {
-        await downloadApplication(item.reference, item.authorityId);
+        await downloadApplication(item.reference, item.authorityId, (message, current, total) => {
+          item.progress = {
+            message,
+            ...(current !== undefined ? { current } : {}),
+            ...(total !== undefined ? { total } : {})
+          };
+        });
         item.status = 'completed';
+        delete item.progress;
       } catch (err: any) {
         item.status = 'failed';
         item.error = err.message;
+        delete item.progress;
       } finally {
         item.completedAt = new Date().toISOString();
       }

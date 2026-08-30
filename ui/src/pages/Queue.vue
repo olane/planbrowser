@@ -26,6 +26,7 @@
             <span v-else-if="item.status === 'in_progress'" class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Downloading...</span>
             <span v-else-if="item.status === 'completed'" class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Completed</span>
             <span v-else-if="item.status === 'failed'" class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Failed</span>
+            <div v-if="item.status === 'in_progress' && item.progress" class="text-xs text-gray-500 mt-1">{{ progressText(item.progress) }}</div>
             <div v-if="item.error" class="text-xs text-red-600 mt-1 max-w-xs truncate" :title="item.error">{{ item.error }}</div>
           </div>
         </div>
@@ -37,7 +38,7 @@
 <script setup lang="ts">
 import { authorityName } from '../../../src/authorities.js'
 import { onMounted } from 'vue'
-import { timeAgo } from '../utils'
+import { timeAgo, progressText } from '../utils'
 import * as api from '../api'
 import { queueItems, refreshQueue } from '../queueStore'
 

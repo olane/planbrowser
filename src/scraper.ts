@@ -12,7 +12,7 @@ import { getAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
 
 proj4.defs('EPSG:27700', '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.1502,0.247,0.8421,-20.4894 +units=m +no_defs');
 
-export async function downloadDocuments(page: Page, outDir: string): Promise<DocumentMeta[]> {
+export async function downloadDocuments(page: Page, outDir: string, onProgress?: (message: string, current?: number, total?: number) => void): Promise<DocumentMeta[]> {
   console.log('Navigating to Documents tab...');
   const docsTab = page.locator('#tab_documents');
   if (await docsTab.count() > 0) {
@@ -95,6 +95,11 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
 
   const missingDocs = [];
   
+  const total = allDocs.length;
+  let done = 0;
+  const report = () => onProgress?.('Downloading documents', done, total);
+  report();
+
   const existingFiles = fs.existsSync(outDir) ? fs.readdirSync(outDir) : [];
   for (const doc of allDocs) {
       const existing = existingFiles.find(f => f.startsWith(doc.baseName + '.'));
@@ -106,6 +111,8 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
               documentType: doc.documentType,
               description: doc.description
           });
+          done++;
+          report();
       } else {
           missingDocs.push(doc);
       }
@@ -163,6 +170,8 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
                     description: doc.description
                 });
                 console.log(`Extracted: ${finalName}`);
+                done++;
+                report();
             } else {
                 console.warn(`Could not find ${doc.zipFilename} in the downloaded zip! Falling back to individual for this item.`);
                 individualDownloadable.push(doc);
@@ -203,6 +212,8 @@ export async function downloadDocuments(page: Page, outDir: string): Promise<Doc
       } catch (e) {
         console.error(`Failed to download ${doc.baseName}:`, e);
       }
+      done++;
+      report();
   }
 
   return docs;
@@ -377,7 +388,7 @@ function diffMeta(previous: ApplicationMeta | null, meta: ApplicationMeta): { ch
   };
 }
 
-export async function downloadApplication(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID) {
+export async function downloadApplication(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID, onProgress?: (message: string, current?: number, total?: number) => void) {
   const authority = getAuthority(authorityId);
   console.log(`Starting search for reference: ${reference} (authority: ${authority.id})`);
 
@@ -506,7 +517,7 @@ export async function downloadApplication(reference: string, authorityId: string
       meta.location = location;
     }
 
-    meta.documents = await downloadDocuments(page, outDir);
+    meta.documents = await downloadDocuments(page, outDir, onProgress);
     meta.hasComments = await scrapeComments(page, outDir);
     saveApplicationMeta(reference, meta, authority.id);
     console.log('Saved metadata.json');

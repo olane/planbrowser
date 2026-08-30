@@ -125,4 +125,9 @@ export interface QueueItem {
   enqueuedAt: string;
   startedAt?: string;
   completedAt?: string;
+  progress?: {
+    message: string;
+    current?: number;
+    total?: number;
+  };
 }
