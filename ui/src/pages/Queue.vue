@@ -35,28 +35,16 @@
 </template>
 
 <script setup lang="ts">
-import type { QueueItem } from '../../../src/types.js'
 import { authorityName } from '../../../src/authorities.js'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { onMounted } from 'vue'
 import { timeAgo } from '../utils'
 import * as api from '../api'
-
-const queueItems = ref<QueueItem[]>([])
-let pollInterval: any = null
-
-
-const fetchQueue = async () => {
-  try {
-    queueItems.value = await api.fetchQueue()
-  } catch (e) {
-    console.error('Failed to fetch queue', e)
-  }
-}
+import { queueItems, refreshQueue } from '../queueStore'
 
 const clearCompletedQueue = async () => {
   try {
     await api.clearQueue()
-    await fetchQueue()
+    await refreshQueue()
   } catch (e) {
     console.error(e)
   }
@@ -64,11 +52,6 @@ const clearCompletedQueue = async () => {
 
 onMounted(() => {
   document.title = 'PlanBrowser | Queue'
-  fetchQueue()
-  pollInterval = setInterval(fetchQueue, 2000)
-})
-
-onUnmounted(() => {
-  if (pollInterval) clearInterval(pollInterval)
+  refreshQueue()
 })
 </script>

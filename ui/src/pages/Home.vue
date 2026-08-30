@@ -152,6 +152,9 @@
           {{ isLookingUp ? 'Fetching...' : 'Fetch' }}
         </button>
         </div>
+        <div v-if="lookupMessage" class="p-4 text-sm text-green-700 bg-green-50 rounded-md border border-green-200">
+          {{ lookupMessage }}
+        </div>
         <div v-if="lookupError" class="p-4 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
           {{ lookupError }}
         </div>
@@ -160,9 +163,10 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { timeAgo } from '../utils'
-import type { ApplicationMeta, PlanItRecord, QueueItem, SearchFilters } from '../../../src/types.js'
+import type { ApplicationMeta, PlanItRecord, SearchFilters } from '../../../src/types.js'
+import { queueItems, refreshQueue } from '../queueStore'
 import { AUTHORITIES, DEFAULT_AUTHORITY_ID, isKnownAuthority } from '../../../src/authorities.js'
 import * as api from '../api'
 import { useRouter } from 'vue-router'
@@ -239,8 +243,6 @@ const timeModes = ref<Record<string, 'recent' | 'range'>>({
 const isSearching = ref(false)
 const hasSearched = ref(false)
 const searchResults = ref<PlanItRecord[]>([])
-const queueItems = ref<QueueItem[]>([])
-let pollInterval: any = null
 
 const resultsWithLocations = computed(() => searchResults.value.filter(hasLocation))
 
@@ -278,25 +280,20 @@ const directReference = ref('')
 const directAuthority = ref('')
 const isLookingUp = ref(false)
 const lookupError = ref('')
+const lookupMessage = ref('')
 
 
 const fetchQueue = async () => {
-  try {
-    const queue = await api.fetchQueue()
-    
-    // If we have items that just completed, we might need to refresh apps
-    const previousCompleted = queueItems.value.filter(q => q.status === 'completed').map(q => q.id)
-    const currentCompleted = queue.filter(q => q.status === 'completed').map(q => q.id)
-    
-    queueItems.value = queue
-    
-    if (currentCompleted.some(id => !previousCompleted.includes(id))) {
-      fetchApps()
-    }
-  } catch (e) {
-    console.error('Failed to fetch queue', e)
-  }
+  await refreshQueue()
 }
+
+watch(queueItems, (items, oldItems) => {
+  const previousCompleted = new Set((oldItems ?? []).filter(q => q.status === 'completed').map(q => q.id))
+  const currentCompleted = items.filter(q => q.status === 'completed').map(q => q.id)
+  if (currentCompleted.some(id => !previousCompleted.has(id))) {
+    fetchApps()
+  }
+})
 
 
 const getQueueStatus = (reference: string) => {
@@ -358,11 +355,12 @@ const lookupReference = async () => {
   
   isLookingUp.value = true
   lookupError.value = ''
+  lookupMessage.value = ''
   
   try {
     await api.downloadApplication(refValue, directAuthority.value || DEFAULT_AUTHORITY_ID)
     await fetchQueue()
-    // It will be added to the queue, don't redirect yet
+    lookupMessage.value = `${refValue} queued for download`
     directReference.value = ''
   } catch (e: any) {
     console.error(e)
@@ -430,11 +428,5 @@ onMounted(() => {
   document.title = 'PlanBrowser | Home'
   fetchApps()
   fetchQueue()
-  pollInterval = setInterval(fetchQueue, 2000)
-})
-
-import { onUnmounted } from 'vue'
-onUnmounted(() => {
-  if (pollInterval) clearInterval(pollInterval)
 })
 </script>

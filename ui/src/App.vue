@@ -9,7 +9,7 @@
           <router-link to="/" class="text-sm font-medium text-blue-600 hover:text-blue-800">Applications</router-link>
           <router-link to="/archive" class="text-sm font-medium text-blue-600 hover:text-blue-800">Archived</router-link>
           <router-link to="/feed" class="text-sm font-medium text-blue-600 hover:text-blue-800">Feed</router-link>
-          <router-link to="/queue" class="text-sm font-medium text-blue-600 hover:text-blue-800">Queue</router-link>
+          <router-link to="/queue" class="text-sm font-medium text-blue-600 hover:text-blue-800">Queue<span v-if="activeQueueCount > 0"> ({{ activeQueueCount }})</span></router-link>
         </nav>
       </div>
     </header>
@@ -20,4 +20,17 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
+import { activeQueueCount, refreshQueue } from './queueStore'
+
+let pollInterval: any = null
+
+onMounted(() => {
+  refreshQueue()
+  pollInterval = setInterval(refreshQueue, 2000)
+})
+
+onUnmounted(() => {
+  if (pollInterval) clearInterval(pollInterval)
+})
 </script>
