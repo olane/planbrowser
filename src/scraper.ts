@@ -388,7 +388,7 @@ export async function downloadApplication(reference: string, authorityId: string
     fs.mkdirSync(outDir, { recursive: true });
   }
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, chromiumSandbox: false });
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
     userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'

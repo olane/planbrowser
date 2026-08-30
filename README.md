@@ -36,6 +36,50 @@ npm run server   # build + run the API server on port 3000
 npm run ui       # Vite dev server
 ```
 
+## Docker
+
+A container image is built automatically by GitHub Actions on every push to `main` and published to `ghcr.io/olane/planbrowser:latest`. It bundles the API server, the built web UI, and Chromium for Playwright, and serves everything on port 3000 (the server serves the UI directly when `NODE_ENV=production`).
+
+### Pull and run
+
+```bash
+mkdir -p downloads && chown -R 1000:1000 downloads
+docker run -d --name planbrowser \
+  -p 3000:3000 \
+  --user 1000:1000 \
+  -v "$PWD/downloads:/app/downloads" \
+  ghcr.io/olane/planbrowser:latest
+```
+
+Then open `http://localhost:3000`.
+
+### Docker Compose
+
+```yaml
+services:
+  planbrowser:
+    image: ghcr.io/olane/planbrowser:latest
+    user: "1000:1000"
+    volumes:
+      - ./downloads:/app/downloads
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+```
+
+### Build locally
+
+```bash
+docker build -t planbrowser .
+docker run -d --name planbrowser -p 3000:3000 -v "$PWD/downloads:/app/downloads" planbrowser
+```
+
+### Notes
+
+- All state (downloaded documents, metadata, flags, activity feed) lives in the `downloads/` directory, which must be mounted as a persistent volume.
+- The image runs as a non-root user (`1000:1000`), so the mounted `downloads/` directory must be writable by that uid/gid.
+- Chromium is bundled via `npx playwright install --with-deps chromium`, so no separate browser install is needed on the host.
+
 ## API
 
 | Method | Endpoint               | Description                                    |

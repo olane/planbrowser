@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { downloadApplication, searchPlanIt } from './scraper.js';
 import { getApplications, getApplication } from './storage.js';
 import { downloadQueue } from './queue.js';
@@ -152,6 +153,18 @@ app.get('/api/applications/:ref', (req, res) => {
 
 // Serve static documents
 app.use('/api/documents', express.static(DOWNLOADS_DIR));
+
+// Serve the built web UI in production (i.e. the Docker container). In local
+// dev the Vite dev server serves the UI and proxies /api here, so this is
+// skipped when NODE_ENV is not "production".
+if (process.env.NODE_ENV === 'production') {
+  const UI_DIST = path.join(process.cwd(), 'ui', 'dist');
+  app.use(express.static(UI_DIST));
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(UI_DIST, 'index.html'));
+  });
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
