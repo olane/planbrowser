@@ -4,8 +4,9 @@ import path from 'path';
 import { downloadApplication, searchPlanIt } from './scraper.js';
 import { getApplications, getApplication } from './storage.js';
 import { downloadQueue } from './queue.js';
-import { resolveAuthority } from './authorities.js';
-import type { SearchFilters } from './types.js';
+import { resolveAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
+import { setFlags, readActivity } from './userData.js';
+import type { SearchFilters, ApplicationFlags } from './types.js';
 
 const app = express();
 app.use(cors());
@@ -81,6 +82,46 @@ app.get('/api/applications', (req, res) => {
   try {
     const apps = getApplications();
     res.json(apps);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/applications/:ref', (req, res) => {
+  try {
+    const ref = req.params.ref;
+    const body = req.body ?? {};
+    let authorityId: string | undefined;
+    if (typeof body.authority === 'string' && body.authority) {
+      try {
+        authorityId = resolveAuthority(body.authority).id;
+      } catch (e) {
+        return res.status(400).json({ error: (e as Error).message });
+      }
+    }
+    const flags: Partial<ApplicationFlags> = {};
+    if (typeof body.starred === 'boolean') flags.starred = body.starred;
+    if (typeof body.archived === 'boolean') flags.archived = body.archived;
+    const updated = setFlags(ref, authorityId, flags);
+    res.json({ success: true, flags: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/feed', (req, res) => {
+  try {
+    res.json(readActivity());
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/sync-starred', (req, res) => {
+  try {
+    const starred = getApplications().filter((a) => a.starred);
+    const items = starred.map((a) => downloadQueue.enqueue(a.reference, a.authorityId || DEFAULT_AUTHORITY_ID));
+    res.json({ success: true, queued: items.length, items });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

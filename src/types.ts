@@ -37,7 +37,31 @@ export interface ApplicationMeta {
   furtherInformation?: Record<string, string>;
   importantDates?: Record<string, string>;
   location?: ApplicationLocation;
+  starred?: boolean;
+  archived?: boolean;
 
+}
+
+export interface ApplicationFlags {
+  starred: boolean;
+  archived: boolean;
+  starredAt?: string;
+  archivedAt?: string;
+}
+
+export interface ChangeEntry {
+  field: string;
+  before?: string;
+  after?: string;
+}
+
+export interface ActivityEvent {
+  id: string;
+  reference: string;
+  authorityId: string;
+  message: string;
+  changes: ChangeEntry[];
+  happenedAt: string;
 }
 export interface Comment {
   address: string;
