@@ -1,15 +1,21 @@
 import fs from 'fs';
 import path from 'path';
-import type { ActivityEvent, ApplicationFlags } from './types.js';
+import type { ActivityEvent, ApplicationFlags, DocumentFlags } from './types.js';
 import { DEFAULT_AUTHORITY_ID } from './authorities.js';
 
 const DOWNLOADS_DIR = path.join(process.cwd(), 'downloads');
 const STATE_FILE = path.join(DOWNLOADS_DIR, '_state.json');
 const ACTIVITY_FILE = path.join(DOWNLOADS_DIR, '_activity.json');
+const DOC_STATE_FILE = path.join(DOWNLOADS_DIR, '_documents.json');
 
 interface StateFile {
   version: number;
   apps: Record<string, ApplicationFlags>;
+}
+
+interface DocStateFile {
+  version: number;
+  docs: Record<string, DocumentFlags>;
 }
 
 function appKey(reference: string, authorityId?: string): string {
@@ -65,6 +71,55 @@ export function setFlags(reference: string, authorityId: string | undefined, fla
 
   state.apps[key] = updated;
   writeState(state);
+  return updated;
+}
+
+function docKey(reference: string, authorityId: string | undefined, filename: string): string {
+  const safeRef = reference.replace(/\//g, '-');
+  return `${authorityId || DEFAULT_AUTHORITY_ID}/${safeRef}/${filename}`;
+}
+
+function readDocState(): DocStateFile {
+  try {
+    if (fs.existsSync(DOC_STATE_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(DOC_STATE_FILE, 'utf-8'));
+      if (parsed && typeof parsed === 'object' && parsed.docs) {
+        return parsed as DocStateFile;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to read document state file, starting fresh:', e);
+  }
+  return { version: 1, docs: {} };
+}
+
+function writeDocState(state: DocStateFile): void {
+  ensureDir();
+  fs.writeFileSync(DOC_STATE_FILE, JSON.stringify(state, null, 2));
+}
+
+export function getDocFlags(reference: string, authorityId: string | undefined, filename: string): DocumentFlags {
+  const state = readDocState();
+  return state.docs[docKey(reference, authorityId, filename)] ?? { starred: false, note: '' };
+}
+
+export function setDocFlags(reference: string, authorityId: string | undefined, filename: string, flags: Partial<DocumentFlags>): DocumentFlags {
+  const state = readDocState();
+  const key = docKey(reference, authorityId, filename);
+  const existing = state.docs[key] ?? { starred: false, note: '' };
+  const updated: DocumentFlags = { ...existing, ...flags };
+
+  if (flags.starred === true && !existing.starred) {
+    updated.starredAt = new Date().toISOString();
+  } else if (flags.starred === false) {
+    delete updated.starredAt;
+  }
+  if (flags.note !== undefined && flags.note !== existing.note) {
+    updated.noteUpdatedAt = new Date().toISOString();
+  }
+
+  state.docs[key] = updated;
+  writeDocState(state);
   return updated;
 }
 

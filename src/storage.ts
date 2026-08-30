@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import type { ApplicationMeta, Comment } from './types.js';
+import type { ApplicationMeta, Comment, DocumentMeta } from './types.js';
 import { DEFAULT_AUTHORITY_ID } from './authorities.js';
-import { getFlags } from './userData.js';
+import { getFlags, getDocFlags } from './userData.js';
 
 const DOWNLOADS_DIR = path.join(process.cwd(), 'downloads');
 
@@ -49,7 +49,17 @@ function readMeta(metaPath: string): ApplicationMeta | null {
 
 function withFlags(meta: ApplicationMeta): ApplicationMeta {
   const flags = getFlags(meta.reference, meta.authorityId);
-  return { ...meta, starred: flags.starred, archived: flags.archived };
+  return {
+    ...meta,
+    starred: flags.starred,
+    archived: flags.archived,
+    documents: (meta.documents || []).map((d) => withDocFlags(d, meta.reference, meta.authorityId))
+  };
+}
+
+function withDocFlags(doc: DocumentMeta, reference: string, authorityId?: string): DocumentMeta {
+  const flags = getDocFlags(reference, authorityId, doc.localFilename);
+  return { ...doc, starred: flags.starred, note: flags.note };
 }
 
 export function getApplication(reference: string, authorityId?: string): ApplicationMeta | null {

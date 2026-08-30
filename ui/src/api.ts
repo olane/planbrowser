@@ -1,4 +1,4 @@
-import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent } from '../../src/types.js';
+import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags } from '../../src/types.js';
 import { DEFAULT_AUTHORITY_ID } from '../../src/authorities.js';
 
 // Downloads are namespaced under downloads/<authorityId>/. Older metadata without an
@@ -94,4 +94,18 @@ export async function syncStarred(): Promise<{ queued: number }> {
     throw new Error(err.error || 'Failed to sync starred applications');
   }
   return res.json();
+}
+
+export async function setDocumentFlags(reference: string, filename: string, flags: Partial<DocumentFlags>, authority?: string): Promise<DocumentFlags> {
+  const res = await fetch('/api/documents', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reference, filename, authority, ...flags })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update document');
+  }
+  const data = await res.json();
+  return data.flags;
 }

@@ -6,8 +6,8 @@ import { downloadApplication, searchPlanIt } from './scraper.js';
 import { getApplications, getApplication } from './storage.js';
 import { downloadQueue } from './queue.js';
 import { resolveAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
-import { setFlags, readActivity } from './userData.js';
-import type { SearchFilters, ApplicationFlags } from './types.js';
+import { setFlags, readActivity, setDocFlags } from './userData.js';
+import type { SearchFilters, ApplicationFlags, DocumentFlags } from './types.js';
 
 const app = express();
 app.use(cors());
@@ -104,6 +104,34 @@ app.patch('/api/applications/:ref', (req, res) => {
     if (typeof body.starred === 'boolean') flags.starred = body.starred;
     if (typeof body.archived === 'boolean') flags.archived = body.archived;
     const updated = setFlags(ref, authorityId, flags);
+    res.json({ success: true, flags: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/documents', (req, res) => {
+  try {
+    const body = req.body ?? {};
+    const { reference, filename } = body;
+    if (typeof reference !== 'string' || !reference) {
+      return res.status(400).json({ error: 'Reference is required' });
+    }
+    if (typeof filename !== 'string' || !filename) {
+      return res.status(400).json({ error: 'Filename is required' });
+    }
+    let authorityId: string | undefined;
+    if (typeof body.authority === 'string' && body.authority) {
+      try {
+        authorityId = resolveAuthority(body.authority).id;
+      } catch (e) {
+        return res.status(400).json({ error: (e as Error).message });
+      }
+    }
+    const flags: Partial<DocumentFlags> = {};
+    if (typeof body.starred === 'boolean') flags.starred = body.starred;
+    if (typeof body.note === 'string') flags.note = body.note;
+    const updated = setDocFlags(reference, authorityId, filename, flags);
     res.json({ success: true, flags: updated });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

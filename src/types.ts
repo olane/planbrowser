@@ -3,6 +3,15 @@ export interface DocumentMeta {
   datePublished: string;
   documentType: string;
   description: string;
+  starred?: boolean;
+  note?: string;
+}
+
+export interface DocumentFlags {
+  starred: boolean;
+  note: string;
+  starredAt?: string;
+  noteUpdatedAt?: string;
 }
 
 export interface AuthorityMapConfig {

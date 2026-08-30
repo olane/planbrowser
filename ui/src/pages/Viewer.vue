@@ -90,6 +90,9 @@
             <button v-if="keyDocs.length > 0" @click="activeTab = 'key-documents'" :class="[activeTab === 'key-documents' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
               Key Documents ({{ keyDocs.length }})
             </button>
+            <button @click="activeTab = 'favourites'" :class="[activeTab === 'favourites' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
+              Favourites ({{ favouriteDocs.length }})
+            </button>
             <button @click="activeTab = 'documents'" :class="[activeTab === 'documents' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
               Documents ({{ filteredDocs?.length || 0 }})
             </button>
@@ -105,31 +108,17 @@
         <div class="pt-6">
           <div v-show="activeTab === 'key-documents'" v-if="keyDocs.length > 0">
             <ul class="divide-y divide-gray-100">
-              <li v-for="doc in keyDocs" :key="doc.localFilename" class="py-3 flex justify-between gap-x-6">
-                <div class="min-w-0 flex-auto">
-                  <p class="text-sm font-medium text-gray-900 truncate flex items-center gap-2" :title="doc.description">
-                    <span :class="{'line-through text-gray-500': doc.isSuperseded}">{{ doc.description || doc.documentType }}</span>
-                    <span v-if="doc.replaces && doc.replaces.length > 0" class="inline-flex items-center rounded-md bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Updated</span>
-                  </p>
-                  <p class="mt-1 flex text-xs text-gray-500">
-                    <span class="mr-2">{{ doc.datePublished }}</span>
-                    <span class="mr-2 font-medium" :class="{'text-red-600': doc.isSuperseded}">{{ doc.documentType }}</span>
-                  </p>
-                  <p v-if="doc.supersededBy" class="mt-1 text-xs text-blue-600">
-                    Superseded by: <a :href="doc.supersededBy.url" target="_blank" class="hover:underline">{{ doc.supersededBy.datePublished }} version</a>
-                  </p>
-                  <div v-if="doc.replaces && doc.replaces.length > 0" class="mt-1 text-xs text-gray-500">
-                    Replaces: 
-                    <span v-for="(old, idx) in doc.replaces" :key="old.localFilename">
-                      <a :href="old.url" target="_blank" class="hover:underline text-gray-400">{{ old.datePublished }} version</a><span v-if="Number(idx) < doc.replaces.length - 1">, </span>
-                    </span>
-                  </div>
-                </div>
-                <div class="flex items-center">
-                  <a :href="`/api/documents/${docPrefix}${encodeURIComponent(app.reference.replace(/\//g, '-'))}/${encodeURIComponent(doc.localFilename)}`" target="_blank" class="text-sm text-blue-600 hover:underline shrink-0">Open ({{ doc.localFilename.split('.').pop()?.toUpperCase() }})</a>
-                </div>
-              </li>
+              <DocumentRow v-for="doc in keyDocs" :key="doc.localFilename" :doc="doc" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged(doc, $event)" />
             </ul>
+          </div>
+
+          <div v-show="activeTab === 'favourites'">
+            <div v-if="favouriteDocs.length > 0">
+              <ul class="divide-y divide-gray-100">
+                <DocumentRow v-for="doc in favouriteDocs" :key="doc.localFilename" :doc="doc" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged(doc, $event)" />
+              </ul>
+            </div>
+            <div v-else class="text-sm text-gray-500 py-4 text-center">No favourite documents. Star a document to collect it here.</div>
           </div>
 
           <div v-show="activeTab === 'documents'">
@@ -140,30 +129,7 @@
             </div>
           
           <ul class="divide-y divide-gray-100">
-            <li v-for="doc in filteredDocs" :key="doc.localFilename" class="py-3 flex justify-between gap-x-6">
-              <div class="min-w-0 flex-auto">
-                <p class="text-sm font-medium text-gray-900 truncate flex items-center gap-2" :title="doc.description">
-                  <span :class="{'line-through text-gray-500': doc.isSuperseded}">{{ doc.description || doc.documentType }}</span>
-                  <span v-if="doc.replaces && doc.replaces.length > 0" class="inline-flex items-center rounded-md bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Updated</span>
-                </p>
-                <p class="mt-1 flex text-xs text-gray-500">
-                  <span class="mr-2">{{ doc.datePublished }}</span>
-                  <span class="mr-2 font-medium" :class="{'text-red-600': doc.isSuperseded}">{{ doc.documentType }}</span>
-                </p>
-                <p v-if="doc.supersededBy" class="mt-1 text-xs text-blue-600">
-                  Superseded by: <a :href="doc.supersededBy.url" target="_blank" class="hover:underline">{{ doc.supersededBy.datePublished }} version</a>
-                </p>
-                <div v-if="doc.replaces && doc.replaces.length > 0" class="mt-1 text-xs text-gray-500">
-                  Replaces: 
-                  <span v-for="(old, idx) in doc.replaces" :key="old.localFilename">
-                    <a :href="old.url" target="_blank" class="hover:underline text-gray-400">{{ old.datePublished }} version</a><span v-if="Number(idx) < doc.replaces.length - 1">, </span>
-                  </span>
-                </div>
-              </div>
-              <div class="flex items-center">
-                <a :href="`/api/documents/${docPrefix}${encodeURIComponent(app.reference.replace(/\//g, '-'))}/${encodeURIComponent(doc.localFilename)}`" target="_blank" class="text-sm text-blue-600 hover:underline shrink-0">Open ({{ doc.localFilename.split('.').pop()?.toUpperCase() }})</a>
-              </div>
-            </li>
+            <DocumentRow v-for="doc in filteredDocs" :key="doc.localFilename" :doc="doc" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged(doc, $event)" />
           </ul>
           </div>
 
@@ -224,6 +190,7 @@ import { ref, onMounted, computed } from 'vue'
 import { timeAgo } from '../utils'
 import type { ApplicationMeta, Comment, EnhancedDocument } from '../../../src/types.js'
 import * as api from '../api'
+import DocumentRow from '../components/DocumentRow.vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -363,6 +330,20 @@ const keyDocs = computed(() => {
   if (!enhancedAppDocuments.value.length) return []
   return enhancedAppDocuments.value.filter(isKeyDoc)
 })
+
+const favouriteDocs = computed(() => {
+  if (!enhancedAppDocuments.value.length) return []
+  return enhancedAppDocuments.value.filter((d) => d.starred)
+})
+
+const onDocChanged = (doc: EnhancedDocument, payload: { starred: boolean; note: string }) => {
+  if (!app.value) return
+  const raw = app.value.documents.find((d) => d.localFilename === doc.localFilename)
+  if (raw) {
+    raw.starred = payload.starred
+    raw.note = payload.note
+  }
+}
 
 const docTypesWithCounts = computed(() => {
   if (!enhancedAppDocuments.value.length) return []
