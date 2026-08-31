@@ -81,6 +81,45 @@ docker run -d --name planbrowser -p 3000:3000 -v "$PWD/downloads:/app/downloads"
 - The image runs as a non-root user (`1000:1000`), so the mounted `downloads/` directory must be writable by that uid/gid.
 - Chromium is bundled via `npx playwright install --with-deps chromium`, so no separate browser install is needed on the host.
 
+## Electron (desktop app)
+
+Desktop installers are built by GitHub Actions on every version tag (`v*`) and attached to the corresponding [GitHub Release](https://github.com/olane/planbrowser/releases): a macOS `.dmg`, a Windows `.exe` installer, and a Linux `.AppImage`/`.deb`.
+
+### Install
+
+Download the installer for your platform from the latest release and install it as usual:
+
+- **macOS**: open the `.dmg`, drag `planbrowser` into Applications. The app is not signed with an Apple Developer ID, so the first launch is blocked by Gatekeeper — see below.
+- **Windows**: run the `.exe` installer (SmartScreen will warn because it's unsigned — choose *More info → Run anyway*).
+- **Linux**: make the `.AppImage` executable (`chmod +x planbrowser-*.AppImage`) and run it, or install the `.deb` with `sudo apt install ./planbrowser_*.deb`.
+
+Unlike Docker, the desktop app needs no Playwright browser installed — it reuses its own bundled Chromium for scraping.
+
+### macOS first launch (unsigned app)
+
+The macOS build is ad-hoc signed (not notarized), so on first launch macOS blocks it with *"Apple could not verify planbrowser is free of malware…"*. There is no "Open Anyway" button on the popup itself — bypass it once via either:
+
+1. **System Settings** → **Privacy & Security** → scroll to the Security section → **Open Anyway** (appears after a failed launch attempt), or
+2. Terminal:
+
+   ```bash
+   xattr -cr /Applications/planbrowser.app
+   ```
+
+The app opens normally after that. Each new download needs this step repeated. Eliminating the warning entirely requires a paid Apple Developer ID and notarization.
+
+### Desktop app data
+
+All state (downloaded documents, metadata, flags, activity feed) is stored per-user rather than in the repo, e.g. `~/Library/Application Support/planbrowser/downloads` on macOS.
+
+### Build from source
+
+```bash
+npm run electron        # build backend + UI, then launch the app
+npm run electron:pack   # build an unpacked .app in release/
+npm run electron:dist   # build installers (dmg/zip, exe, AppImage/deb)
+```
+
 ## API
 
 | Method | Endpoint               | Description                                    |
