@@ -403,6 +403,16 @@ async function createPage(): Promise<{ page: Page; close: () => Promise<void>; d
       env: { ...process.env, PLANBROWSER_SCRAPER_MODE: '1' }
     });
     const page = await electronApp.firstWindow();
+    // Electron surfaces page alert()/confirm()/prompt() as native dialogs
+    // (e.g. the Idox "maximum 25 documents" message), which would pop a
+    // visible dialog over everything and block the scrape. Neutralise them and
+    // auto-accept anything that still slips through.
+    await page.addInitScript(() => {
+      (window as any).alert = () => {};
+      (window as any).confirm = () => true;
+      (window as any).prompt = () => null;
+    });
+    page.on('dialog', (dialog) => { void dialog.accept(); });
     const session = await page.context().newCDPSession(page);
     await session.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir });
     return {
