@@ -5,11 +5,18 @@ const { app, BrowserWindow } = require('electron');
 // stays alive; Playwright drives the window's page over CDP.
 app.on('window-all-closed', () => {});
 
+// Run as a background agent so the scraping host doesn't surface in the Dock
+// (macOS), Cmd-Tab, or the taskbar — no second icon, no focus steal.
+if (process.platform === 'darwin' && app.dock) {
+  app.dock.hide();
+}
+
 app.whenReady().then(() => {
   const win = new BrowserWindow({
     show: false,
     width: 1280,
     height: 820,
+    skipTaskbar: true,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
