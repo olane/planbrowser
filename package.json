@@ -15,7 +15,10 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": {
+    "name": "olane",
+    "email": "olane@users.noreply.github.com"
+  },
   "license": "ISC",
   "devDependencies": {
     "@types/adm-zip": "^0.5.8",
