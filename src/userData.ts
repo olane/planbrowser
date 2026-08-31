@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import type { ActivityEvent, ApplicationFlags, DocumentFlags } from './types.js';
 import { DEFAULT_AUTHORITY_ID } from './authorities.js';
+import { DOWNLOADS_DIR } from './config.js';
 
-const DOWNLOADS_DIR = path.join(process.cwd(), 'downloads');
 const STATE_FILE = path.join(DOWNLOADS_DIR, '_state.json');
 const ACTIVITY_FILE = path.join(DOWNLOADS_DIR, '_activity.json');
 const DOC_STATE_FILE = path.join(DOWNLOADS_DIR, '_documents.json');

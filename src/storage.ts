@@ -3,8 +3,7 @@ import path from 'path';
 import type { ApplicationMeta, Comment, DocumentMeta } from './types.js';
 import { DEFAULT_AUTHORITY_ID } from './authorities.js';
 import { getFlags, getDocFlags } from './userData.js';
-
-const DOWNLOADS_DIR = path.join(process.cwd(), 'downloads');
+import { DOWNLOADS_DIR } from './config.js';
 
 export function getApplicationDir(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID): string {
   const safeRef = reference.replace(/\//g, '-');
