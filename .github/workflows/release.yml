@@ -58,7 +58,7 @@ jobs:
         run: npm run build && npm run build --prefix ui
 
       - name: Build installers
-        run: npx electron-builder
+        run: npx electron-builder --publish never
 
       - name: Upload installers
         uses: actions/upload-artifact@v7
