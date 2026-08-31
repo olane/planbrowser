@@ -1,18 +1,21 @@
 import type { DocumentMeta, ApplicationMeta, Comment, SearchFilters, ApplicationLocation, AuthorityConfig, ChangeEntry } from './types.js';
 import AdmZip from 'adm-zip';
 import fs from 'fs';
+import os from 'os';
 import * as cheerio from 'cheerio';
 import proj4 from 'proj4';
 import { saveApplicationMeta, saveComments, getApplicationDir, getApplication } from './storage.js';
 import { recordActivity } from './userData.js';
-import { chromium } from 'playwright';
+import { _electron as electron, chromium } from 'playwright';
 import type { Page } from 'playwright';
 import path from 'path';
 import { getAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
 
 proj4.defs('EPSG:27700', '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.1502,0.247,0.8421,-20.4894 +units=m +no_defs');
 
-export async function downloadDocuments(page: Page, outDir: string, onProgress?: (message: string, current?: number, total?: number) => void): Promise<DocumentMeta[]> {
+type DownloadFn = (trigger: () => Promise<unknown>, timeout: number) => Promise<{ filePath: string; filename: string }>;
+
+export async function downloadDocuments(page: Page, download: DownloadFn, outDir: string, onProgress?: (message: string, current?: number, total?: number) => void): Promise<DocumentMeta[]> {
   console.log('Navigating to Documents tab...');
   const docsTab = page.locator('#tab_documents');
   if (await docsTab.count() > 0) {
@@ -146,13 +149,10 @@ export async function downloadDocuments(page: Page, outDir: string, onProgress?:
       }
       
       try {
-            const [download] = await Promise.all([
-            page.waitForEvent('download', { timeout: 300000 }),
-            btn.click({ noWaitAfter: true, timeout: 300000 })
-        ]);
-        
-        const zipPath = path.join(outDir, `batch-${Date.now()}.zip`);
-        await download.saveAs(zipPath);
+        const { filePath: zipPath, filename: zipName } = await download(
+          () => btn.click({ noWaitAfter: true }),
+          300000
+        );
         
         const zip = new AdmZip(zipPath);
         
@@ -196,13 +196,13 @@ export async function downloadDocuments(page: Page, outDir: string, onProgress?:
   for (const doc of individualDownloadable) {
       console.log(`Downloading individually: ${doc.baseName}`);
       try {
-        const [download] = await Promise.all([
-          page.waitForEvent('download', { timeout: 30000 }),
-          doc.linkLocator.click()
-        ]);
-        const suggestedExt = path.extname(download.suggestedFilename()) || '.pdf';
+        const { filePath, filename } = await download(
+          () => doc.linkLocator.click(),
+          30000
+        );
+        const suggestedExt = path.extname(filename) || '.pdf';
         const finalName = `${doc.baseName}${suggestedExt}`;
-        await download.saveAs(path.join(outDir, finalName));
+        fs.copyFileSync(filePath, path.join(outDir, finalName));
         docs.push({
           localFilename: finalName,
           datePublished: doc.datePublished,
@@ -388,6 +388,73 @@ function diffMeta(previous: ApplicationMeta | null, meta: ApplicationMeta): { ch
   };
 }
 
+async function createPage(): Promise<{ page: Page; close: () => Promise<void>; download: DownloadFn }> {
+  const hostPath = process.env.PLANBROWSER_SCRAPER_HOST;
+  if (hostPath) {
+    // Running inside Electron: launch a lightweight scraper-host process that
+    // reuses this app's own Electron binary, so no separate Playwright browser
+    // is required. A temp user-data dir keeps it isolated from the app's own
+    // session. Downloads are captured via CDP into a temp dir (Electron pages
+    // don't emit Playwright's "download" event).
+    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'planbrowser-scrape-'));
+    const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'planbrowser-dl-'));
+    const electronApp = await electron.launch({
+      executablePath: process.execPath,
+      args: [hostPath, `--user-data-dir=${userDataDir}`]
+    });
+    const page = await electronApp.firstWindow();
+    const session = await page.context().newCDPSession(page);
+    await session.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir });
+    return {
+      page,
+      close: async () => {
+        await electronApp.close();
+        fs.rmSync(userDataDir, { recursive: true, force: true });
+        fs.rmSync(downloadDir, { recursive: true, force: true });
+      },
+      download: async (trigger, timeout) => {
+        const before = new Set(fs.readdirSync(downloadDir));
+        await trigger();
+        const deadline = Date.now() + timeout;
+        while (Date.now() < deadline) {
+          const file = fs.readdirSync(downloadDir).find((f) => !before.has(f) && !f.endsWith('.crdownload') && !f.endsWith('.download'));
+          if (file) {
+            return { filePath: path.join(downloadDir, file), filename: file };
+          }
+          await new Promise((r) => setTimeout(r, 200));
+        }
+        throw new Error('Download timed out');
+      }
+    };
+  }
+
+  const browser = await chromium.launch({ headless: true, chromiumSandbox: false });
+  const context = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  });
+  const page = await context.newPage();
+  const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'planbrowser-dl-'));
+  return {
+    page,
+    close: async () => {
+      await context.close();
+      await browser.close();
+      fs.rmSync(downloadDir, { recursive: true, force: true });
+    },
+    download: async (trigger, timeout) => {
+      const [dl] = await Promise.all([
+        page.waitForEvent('download', { timeout }),
+        trigger()
+      ]);
+      const filename = dl.suggestedFilename() || 'download';
+      const filePath = path.join(downloadDir, filename);
+      await dl.saveAs(filePath);
+      return { filePath, filename };
+    }
+  };
+}
+
 export async function downloadApplication(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID, onProgress?: (message: string, current?: number, total?: number) => void) {
   const authority = getAuthority(authorityId);
   console.log(`Starting search for reference: ${reference} (authority: ${authority.id})`);
@@ -399,13 +466,7 @@ export async function downloadApplication(reference: string, authorityId: string
     fs.mkdirSync(outDir, { recursive: true });
   }
 
-  const browser = await chromium.launch({ headless: true, chromiumSandbox: false });
-  const context = await browser.newContext({
-    ignoreHTTPSErrors: true,
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-  });
-  
-  const page = await context.newPage();
+  const { page, close, download } = await createPage();
   
   try {
     await page.goto(`${authority.baseUrl}/search.do?action=advanced&searchType=Application`);
@@ -517,7 +578,7 @@ export async function downloadApplication(reference: string, authorityId: string
       meta.location = location;
     }
 
-    meta.documents = await downloadDocuments(page, outDir, onProgress);
+    meta.documents = await downloadDocuments(page, download, outDir, onProgress);
     meta.hasComments = await scrapeComments(page, outDir);
     saveApplicationMeta(reference, meta, authority.id);
     console.log('Saved metadata.json');
@@ -539,7 +600,7 @@ export async function downloadApplication(reference: string, authorityId: string
     console.error('Error during execution:', err);
     throw err;
   } finally {
-    await browser.close();
+    await close().catch(() => {});
   }
 }
 
