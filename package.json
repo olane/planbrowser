@@ -42,6 +42,7 @@
   "build": {
     "appId": "dev.olane.planbrowser",
     "productName": "planbrowser",
+    "afterPack": "scripts/afterPack.cjs",
     "files": [
       "dist/**/*",
       "ui/dist/**/*",
