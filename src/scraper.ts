@@ -389,18 +389,18 @@ function diffMeta(previous: ApplicationMeta | null, meta: ApplicationMeta): { ch
 }
 
 async function createPage(): Promise<{ page: Page; close: () => Promise<void>; download: DownloadFn }> {
-  const hostPath = process.env.PLANBROWSER_SCRAPER_HOST;
-  if (hostPath) {
-    // Running inside Electron: launch a lightweight scraper-host process that
-    // reuses this app's own Electron binary, so no separate Playwright browser
-    // is required. A temp user-data dir keeps it isolated from the app's own
-    // session. Downloads are captured via CDP into a temp dir (Electron pages
-    // don't emit Playwright's "download" event).
+  if (process.env.PLANBROWSER_ELECTRON === '1') {
+    // Running inside Electron: launch this same binary in scraper-host mode to
+    // reuse its own Chromium, so no separate Playwright browser is required. A
+    // temp user-data dir keeps it isolated from the app's own session.
+    // Downloads are captured via CDP into a temp dir (Electron pages don't
+    // emit Playwright's "download" event).
     const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'planbrowser-scrape-'));
     const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'planbrowser-dl-'));
     const electronApp = await electron.launch({
       executablePath: process.execPath,
-      args: [hostPath, `--user-data-dir=${userDataDir}`]
+      args: [`--user-data-dir=${userDataDir}`],
+      env: { ...process.env, PLANBROWSER_SCRAPER_MODE: '1' }
     });
     const page = await electronApp.firstWindow();
     const session = await page.context().newCDPSession(page);
