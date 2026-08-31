@@ -2,13 +2,16 @@
   "name": "planbrowser",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "electron/main.mjs",
   "type": "module",
   "scripts": {
     "build": "tsc",
     "server": "npm run build && node dist/server.js",
     "ui": "npm run dev --prefix ui",
     "dev": "concurrently \"npm run server\" \"npm run ui\"",
+    "electron": "npm run build && npm run build --prefix ui && electron electron/main.mjs",
+    "electron:pack": "npm run build && npm run build --prefix ui && electron-builder --dir",
+    "electron:dist": "npm run build && npm run build --prefix ui && electron-builder",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -20,6 +23,8 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.4.0",
     "concurrently": "^10.0.5",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
     "typescript": "^7.0.2"
   },
   "dependencies": {
@@ -30,5 +35,43 @@
     "express": "^5.2.1",
     "playwright": "^1.62.1",
     "proj4": "^2.21.0"
+  },
+  "build": {
+    "appId": "dev.olane.planbrowser",
+    "productName": "planbrowser",
+    "files": [
+      "dist/**/*",
+      "ui/dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "asarUnpack": [
+      "**/node_modules/playwright/**",
+      "**/node_modules/playwright-core/**"
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "minimumSystemVersion": "15.0.0"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
+    }
   }
 }
