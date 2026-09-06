@@ -4,10 +4,10 @@ import type { ApplicationMeta, Comment, DocumentMeta } from './types.js';
 import { DEFAULT_AUTHORITY_ID } from './authorities.js';
 import { getFlags, getDocFlags } from './userData.js';
 import { getDownloadsDir } from './config.js';
+import { safeReference } from './refs.js';
 
 export function getApplicationDir(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID): string {
-  const safeRef = reference.replace(/\//g, '-');
-  return path.join(getDownloadsDir(), authorityId, safeRef);
+  return path.join(getDownloadsDir(), authorityId, safeReference(reference));
 }
 
 export function getApplications(): ApplicationMeta[] {
@@ -62,7 +62,7 @@ function withDocFlags(doc: DocumentMeta, reference: string, authorityId?: string
 }
 
 export function getApplication(reference: string, authorityId?: string): ApplicationMeta | null {
-  const safeRef = reference.replace(/\//g, '-');
+  const safeRef = safeReference(reference);
 
   if (authorityId) {
     const meta = readMeta(path.join(getApplicationDir(reference, authorityId), 'metadata.json'));

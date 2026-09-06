@@ -1,5 +1,6 @@
 import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags } from '../../src/types.js';
 import { DEFAULT_AUTHORITY_ID } from '../../src/authorities.js';
+import { safeReference } from '../../src/refs.js';
 
 // Downloads are namespaced under downloads/<authorityId>/. Older metadata without an
 // authorityId was migrated into the cambridge directory, hence the fallback.
@@ -8,8 +9,7 @@ export function docUrlPrefix(authorityId?: string): string {
 }
 
 export function documentUrl(reference: string, authorityId: string | undefined, filename: string): string {
-  const safeRef = encodeURIComponent(reference.replace(/\//g, '-'));
-  return `/api/documents/${docUrlPrefix(authorityId)}${safeRef}/${encodeURIComponent(filename)}`;
+  return `/api/documents/${docUrlPrefix(authorityId)}${encodeURIComponent(safeReference(reference))}/${encodeURIComponent(filename)}`;
 }
 
 export async function fetchApplications(): Promise<ApplicationMeta[]> {
@@ -55,8 +55,7 @@ export async function downloadApplication(reference: string, authority?: string)
 }
 
 export async function fetchComments(reference: string, authorityId?: string): Promise<Comment[]> {
-  const safeRef = encodeURIComponent(reference.replace(/\//g, '-'));
-  const res = await fetch(`/api/documents/${docUrlPrefix(authorityId)}${safeRef}/comments.json`);
+  const res = await fetch(`/api/documents/${docUrlPrefix(authorityId)}${encodeURIComponent(safeReference(reference))}/comments.json`);
   if (!res.ok) throw new Error('Failed to load comments');
   return res.json();
 }

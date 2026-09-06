@@ -3,6 +3,7 @@ import path from 'path';
 import type { ActivityEvent, ApplicationFlags, DocumentFlags } from './types.js';
 import { DEFAULT_AUTHORITY_ID } from './authorities.js';
 import { getDownloadsDir } from './config.js';
+import { safeReference } from './refs.js';
 
 function statePath(): string {
   return path.join(getDownloadsDir(), '_state.json');
@@ -83,8 +84,7 @@ export function setFlags(reference: string, authorityId: string | undefined, fla
 }
 
 function docKey(reference: string, authorityId: string | undefined, filename: string): string {
-  const safeRef = reference.replace(/\//g, '-');
-  return `${authorityId || DEFAULT_AUTHORITY_ID}/${safeRef}/${filename}`;
+  return `${authorityId || DEFAULT_AUTHORITY_ID}/${safeReference(reference)}/${filename}`;
 }
 
 function readDocState(): DocStateFile {
