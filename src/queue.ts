@@ -3,10 +3,25 @@ import { DEFAULT_AUTHORITY_ID } from './authorities.js';
 
 import type { QueueItem } from './types.js';
 
+export interface DownloadQueueOptions {
+  // Delay between finishing one application and starting the next, to avoid
+  // rate limiting the target portal.
+  delayMs?: number;
+  // Start processing immediately when an item is enqueued. Disable in tests
+  // that only exercise the queue's bookkeeping.
+  autoStart?: boolean;
+}
 
-class DownloadQueue {
+export class DownloadQueue {
   private queue: QueueItem[] = [];
   private isProcessing = false;
+  private delayMs: number;
+  private autoStart: boolean;
+
+  constructor(options: DownloadQueueOptions = {}) {
+    this.delayMs = options.delayMs ?? 5000;
+    this.autoStart = options.autoStart ?? true;
+  }
 
   enqueue(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID) {
     const existing = this.queue.find(item => item.reference === reference && item.authorityId === authorityId && (item.status === 'pending' || item.status === 'in_progress'));
@@ -22,17 +37,19 @@ class DownloadQueue {
       enqueuedAt: new Date().toISOString()
     };
     this.queue.push(item);
-    
+
     // Start processing asynchronously
-    setImmediate(() => this.process());
-    
+    if (this.autoStart) {
+      setImmediate(() => this.process());
+    }
+
     return item;
   }
 
   getQueue() {
     return this.queue;
   }
-  
+
   clearCompleted() {
     this.queue = this.queue.filter(item => item.status !== 'completed' && item.status !== 'failed');
   }
@@ -66,9 +83,9 @@ class DownloadQueue {
         item.completedAt = new Date().toISOString();
       }
 
-      // Add a 5-second delay between processing items to avoid rate limiting
+      // Delay between processing items to avoid rate limiting
       const { promise, resolve } = Promise.withResolvers<void>();
-      setTimeout(resolve, 5000);
+      setTimeout(resolve, this.delayMs);
       await promise;
     }
 
