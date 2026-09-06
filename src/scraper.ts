@@ -303,56 +303,62 @@ export async function scrapeLocation(page: Page, reference: string, authority: A
   return null;
 }
 
-async function createPage(): Promise<{ page: Page; close: () => Promise<void>; download: DownloadFn }> {
-  if (process.env.PLANBROWSER_ELECTRON === '1') {
-    // Running inside Electron: launch this same binary in scraper-host mode to
-    // reuse its own Chromium, so no separate Playwright browser is required. A
-    // temp user-data dir keeps it isolated from the app's own session.
-    // Downloads are captured via CDP into a temp dir (Electron pages don't
-    // emit Playwright's "download" event).
-    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'planbrowser-scrape-'));
-    const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'planbrowser-dl-'));
-    const electronApp = await electron.launch({
-      executablePath: process.execPath,
-      args: [`--user-data-dir=${userDataDir}`],
-      env: { ...process.env, PLANBROWSER_SCRAPER_MODE: '1' }
-    });
-    const page = await electronApp.firstWindow();
-    // Electron surfaces page alert()/confirm()/prompt() as native dialogs
-    // (e.g. the Idox "maximum 25 documents" message), which would pop a
-    // visible dialog over everything and block the scrape. Neutralise them and
-    // auto-accept anything that still slips through.
-    await page.addInitScript(() => {
-      (window as any).alert = () => {};
-      (window as any).confirm = () => true;
-      (window as any).prompt = () => null;
-    });
-    page.on('dialog', (dialog) => { void dialog.accept(); });
-    const session = await page.context().newCDPSession(page);
-    await session.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir });
-    return {
-      page,
-      close: async () => {
-        await electronApp.close();
-        fs.rmSync(userDataDir, { recursive: true, force: true });
-        fs.rmSync(downloadDir, { recursive: true, force: true });
-      },
-      download: async (trigger, timeout) => {
-        const before = new Set(fs.readdirSync(downloadDir));
-        await trigger();
-        const deadline = Date.now() + timeout;
-        while (Date.now() < deadline) {
-          const file = fs.readdirSync(downloadDir).find((f) => !before.has(f) && !f.endsWith('.crdownload') && !f.endsWith('.download'));
-          if (file) {
-            return { filePath: path.join(downloadDir, file), filename: file };
-          }
-          await new Promise((r) => setTimeout(r, 200));
-        }
-        throw new Error('Download timed out');
-      }
-    };
-  }
+interface PageHandle {
+  page: Page;
+  close: () => Promise<void>;
+  download: DownloadFn;
+}
 
+async function createElectronPage(): Promise<PageHandle> {
+  // Running inside Electron: launch this same binary in scraper-host mode to
+  // reuse its own Chromium, so no separate Playwright browser is required. A
+  // temp user-data dir keeps it isolated from the app's own session.
+  // Downloads are captured via CDP into a temp dir (Electron pages don't
+  // emit Playwright's "download" event).
+  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'planbrowser-scrape-'));
+  const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'planbrowser-dl-'));
+  const electronApp = await electron.launch({
+    executablePath: process.execPath,
+    args: [`--user-data-dir=${userDataDir}`],
+    env: { ...process.env, PLANBROWSER_SCRAPER_MODE: '1' }
+  });
+  const page = await electronApp.firstWindow();
+  // Electron surfaces page alert()/confirm()/prompt() as native dialogs
+  // (e.g. the Idox "maximum 25 documents" message), which would pop a
+  // visible dialog over everything and block the scrape. Neutralise them and
+  // auto-accept anything that still slips through.
+  await page.addInitScript(() => {
+    (window as any).alert = () => {};
+    (window as any).confirm = () => true;
+    (window as any).prompt = () => null;
+  });
+  page.on('dialog', (dialog) => { void dialog.accept(); });
+  const session = await page.context().newCDPSession(page);
+  await session.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir });
+  return {
+    page,
+    close: async () => {
+      await electronApp.close();
+      fs.rmSync(userDataDir, { recursive: true, force: true });
+      fs.rmSync(downloadDir, { recursive: true, force: true });
+    },
+    download: async (trigger, timeout) => {
+      const before = new Set(fs.readdirSync(downloadDir));
+      await trigger();
+      const deadline = Date.now() + timeout;
+      while (Date.now() < deadline) {
+        const file = fs.readdirSync(downloadDir).find((f) => !before.has(f) && !f.endsWith('.crdownload') && !f.endsWith('.download'));
+        if (file) {
+          return { filePath: path.join(downloadDir, file), filename: file };
+        }
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      throw new Error('Download timed out');
+    }
+  };
+}
+
+async function createChromiumPage(): Promise<PageHandle> {
   const browser = await chromium.launch({ headless: true, chromiumSandbox: false });
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
@@ -378,6 +384,12 @@ async function createPage(): Promise<{ page: Page; close: () => Promise<void>; d
       return { filePath, filename };
     }
   };
+}
+
+function createPage(): Promise<PageHandle> {
+  return process.env.PLANBROWSER_ELECTRON === '1'
+    ? createElectronPage()
+    : createChromiumPage();
 }
 
 export async function downloadApplication(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID, onProgress?: (message: string, current?: number, total?: number) => void) {
