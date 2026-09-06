@@ -515,9 +515,26 @@ export async function downloadApplication(reference: string, authorityId: string
     }
 
     meta.documents = await downloadDocuments(page, download, outDir, onProgress);
-    meta.hasComments = await scrapeComments(page, outDir);
+
+    // Persist the document list immediately, before anything later (like comment
+    // scraping) can fail and leave freshly-downloaded documents unrecorded. Keep
+    // the previous comment flag so a failed comment scrape doesn't hide comments
+    // that were already known.
+    meta.hasComments = previous?.hasComments ?? false;
     saveApplicationMeta(reference, meta, authority.id);
     console.log('Saved metadata.json');
+
+    // Comment scraping is best-effort: it must not lose the document metadata
+    // above or fail the whole download.
+    try {
+      const hasComments = await scrapeComments(page, outDir);
+      if (hasComments !== meta.hasComments) {
+        meta.hasComments = hasComments;
+        saveApplicationMeta(reference, meta, authority.id);
+      }
+    } catch (err) {
+      console.error('Failed to scrape comments (continuing):', err);
+    }
 
     const { changes, message, newDocuments } = diffMeta(previous, meta);
     if (!previous || changes.length > 0) {
