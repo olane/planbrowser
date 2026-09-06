@@ -14,6 +14,9 @@
         <button v-if="app" @click="syncApp" :disabled="syncing" class="text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm disabled:opacity-50">
           {{ syncing ? 'Syncing...' : 'Sync / Update' }}
         </button>
+        <a v-if="app?.portalUrl" :href="app.portalUrl" target="_blank" rel="noopener" class="text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm">
+          View on portal
+        </a>
       </div>
     </div>
 

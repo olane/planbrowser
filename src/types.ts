@@ -43,6 +43,7 @@ export interface ApplicationMeta {
   documents: DocumentMeta[];
   hasComments: boolean;
   scrapedAt: string;
+  portalUrl?: string;
   furtherInformation?: Record<string, string>;
   importantDates?: Record<string, string>;
   location?: ApplicationLocation;

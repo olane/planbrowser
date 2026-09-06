@@ -512,7 +512,8 @@ export async function downloadApplication(reference: string, authorityId: string
       dates: {},
       documents: [],
       hasComments: false,
-      scrapedAt: new Date().toISOString()
+      scrapedAt: new Date().toISOString(),
+      portalUrl: page.url()
     };
 
     const detailsTable = page.locator('#simpleDetailsTable tr');
