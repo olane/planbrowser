@@ -8,27 +8,9 @@ import { downloadQueue } from './queue.js';
 import { resolveAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
 import { setFlags, readActivity, setDocFlags } from './userData.js';
 import { getDownloadsDir, getUiDistDir } from './config.js';
+import { SEARCH_FILTER_KEYS } from './types.js';
 import type { SearchFilters, ApplicationFlags, DocumentFlags } from './types.js';
 
-const FILTER_KEYS = [
-  'search',
-  'developer',
-  'app_type',
-  'app_state',
-  'app_size',
-  'recent',
-  'start_date',
-  'end_date',
-  'changed',
-  'changed_start',
-  'changed_end',
-  'decided',
-  'decided_start',
-  'decided_end',
-  'different',
-  'different_start',
-  'different_end'
-] as const;
 
 export function createApp(): express.Express {
   const app = express();
@@ -43,7 +25,7 @@ export function createApp(): express.Express {
         return res.status(400).json({ error: 'Postcode is required' });
       }
       const filters: SearchFilters = {};
-      for (const key of FILTER_KEYS) {
+      for (const key of SEARCH_FILTER_KEYS) {
         const value = req.query[key];
         if (typeof value === 'string' && value !== '') {
           filters[key] = value;

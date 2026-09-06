@@ -82,25 +82,29 @@ export interface Comment {
   expanded?: boolean;
 }
 
-export interface SearchFilters {
-  search?: string;
-  developer?: string;
-  app_type?: string;
-  app_state?: string;
-  app_size?: string;
-  recent?: string;
-  start_date?: string;
-  end_date?: string;
-  changed?: string;
-  changed_start?: string;
-  changed_end?: string;
-  decided?: string;
-  decided_start?: string;
-  decided_end?: string;
-  different?: string;
-  different_start?: string;
-  different_end?: string;
-}
+export const SEARCH_FILTER_KEYS = [
+  'search',
+  'developer',
+  'app_type',
+  'app_state',
+  'app_size',
+  'recent',
+  'start_date',
+  'end_date',
+  'changed',
+  'changed_start',
+  'changed_end',
+  'decided',
+  'decided_start',
+  'decided_end',
+  'different',
+  'different_start',
+  'different_end'
+] as const;
+
+export type SearchFilterKey = (typeof SEARCH_FILTER_KEYS)[number];
+
+export type SearchFilters = Partial<Record<SearchFilterKey, string>>;
 
 export interface PlanItRecord {
   uid: string;
