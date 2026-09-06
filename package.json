@@ -12,7 +12,7 @@
     "electron": "npm run build && npm run build --prefix ui && electron electron/main.mjs",
     "electron:pack": "npm run build && npm run build --prefix ui && electron-builder --dir",
     "electron:dist": "npm run build && npm run build --prefix ui && electron-builder",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run"
   },
   "keywords": [],
   "author": {
@@ -28,7 +28,8 @@
     "concurrently": "^10.0.5",
     "electron": "^33.0.0",
     "electron-builder": "^25.1.8",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
   },
   "dependencies": {
     "@types/proj4": "^2.5.6",
