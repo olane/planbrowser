@@ -8,8 +8,8 @@
         <div v-for="event in events" :key="event.id" class="bg-white p-4 rounded shadow-sm border border-gray-200">
           <div class="flex justify-between items-start gap-4">
             <div>
-              <div class="flex items-center gap-2">
-                <router-link :to="`/app/${encodeURIComponent(event.reference)}`" class="font-medium text-blue-600 hover:underline">{{ event.reference }}</router-link>
+              <div class="flex items-center gap-2 flex-wrap">
+                <router-link :to="`/app/${encodeURIComponent(event.reference)}`" class="font-medium text-blue-600 hover:underline break-all">{{ event.reference }}</router-link>
                 <span v-if="authorityName(event.authorityId) && event.authorityId !== DEFAULT_AUTHORITY_ID" class="text-xs text-gray-400">{{ authorityName(event.authorityId) }}</span>
                 <span class="text-xs text-gray-500">{{ timeAgo(event.happenedAt) }}</span>
               </div>

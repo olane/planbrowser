@@ -22,16 +22,16 @@
     <section>
       <h2 class="text-xl font-semibold mb-4">Search PlanIt API</h2>
       <form @submit.prevent="searchPlanIt" class="mb-6">
-        <div class="flex gap-4 items-end">
-          <div>
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-end">
+          <div class="w-full sm:flex-1">
             <label class="block text-sm font-medium text-gray-700 mb-1">Postcode</label>
             <input v-model="searchForm.postcode" required type="text" placeholder="e.g. CB1 2JW" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
           </div>
-          <div>
+          <div class="w-full sm:w-32">
             <label class="block text-sm font-medium text-gray-700 mb-1">Radius (km)</label>
             <input v-model="searchForm.radius" required type="number" step="0.1" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
           </div>
-          <button type="submit" :disabled="isSearching" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
+          <button type="submit" :disabled="isSearching" class="shrink-0 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
             {{ isSearching ? 'Searching...' : 'Search' }}
           </button>
         </div>
@@ -101,9 +101,9 @@
         </div>
         <div class="space-y-4">
           <div v-for="res in searchResults" :key="res.uid" :ref="(el) => setResultRef(res.uid, el)" class="bg-white p-4 rounded shadow border border-gray-200 flex justify-between items-start gap-4">
-            <div>
-              <div class="font-bold">{{ res.uid }}<span v-if="res.app_type" class="ml-2 text-xs font-normal text-gray-500">({{ res.app_type }})</span></div>
-              <div class="text-sm text-gray-600">{{ res.description }}</div>
+            <div class="min-w-0">
+              <div class="font-bold break-words">{{ res.uid }}<span v-if="res.app_type" class="ml-2 text-xs font-normal text-gray-500">({{ res.app_type }})</span></div>
+              <div class="text-sm text-gray-600 break-words">{{ res.description }}</div>
               <div v-if="res.address" class="text-xs text-gray-500 mt-1">{{ res.address }}</div>
               <div class="text-xs text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
                 <span>{{ res.app_state }}</span>
@@ -136,19 +136,19 @@
     <section>
       <h2 class="text-xl font-semibold mb-4">Direct Reference Lookup</h2>
       <form @submit.prevent="lookupReference" class="flex flex-col gap-4 mb-6">
-        <div class="flex gap-4 items-end">
-        <div class="flex-1 max-w-sm">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-end">
+        <div class="flex-1 max-w-sm w-full">
           <label class="block text-sm font-medium text-gray-700 mb-1">Application Reference</label>
           <input v-model="directReference" required type="text" placeholder="e.g. 24/02737/FUL" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
         </div>
-        <div class="flex-1 max-w-sm">
+        <div class="flex-1 max-w-sm w-full">
           <label class="block text-sm font-medium text-gray-700 mb-1">Authority (default: cambridge)</label>
           <input v-model="directAuthority" list="authority-list" type="text" placeholder="cambridge" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
           <datalist id="authority-list">
             <option v-for="a in AUTHORITIES" :key="a.id" :value="a.id">{{ a.name }}</option>
           </datalist>
         </div>
-        <button type="submit" :disabled="isLookingUp" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
+        <button type="submit" :disabled="isLookingUp" class="shrink-0 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
           {{ isLookingUp ? 'Fetching...' : 'Fetch' }}
         </button>
         </div>
