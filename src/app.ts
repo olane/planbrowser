@@ -7,7 +7,7 @@ import { getApplications, getApplication } from './storage.js';
 import { downloadQueue } from './queue.js';
 import { resolveAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
 import { setFlags, readActivity, setDocFlags } from './userData.js';
-import { DOWNLOADS_DIR, UI_DIST_DIR } from './config.js';
+import { getDownloadsDir, getUiDistDir } from './config.js';
 import type { SearchFilters, ApplicationFlags, DocumentFlags } from './types.js';
 
 const FILTER_KEYS = [
@@ -180,17 +180,17 @@ export function createApp(): express.Express {
   });
 
   // Serve static documents
-  app.use('/api/documents', express.static(DOWNLOADS_DIR));
+  app.use('/api/documents', express.static(getDownloadsDir()));
 
   // Serve the built web UI when present. In local dev the Vite dev server
   // serves the UI and proxies /api here (and never hits this for non-API
   // routes), so this is harmless. It is what makes both the Docker container
   // and the Electron app serve their own copy of the UI.
-  if (fs.existsSync(UI_DIST_DIR)) {
-    app.use(express.static(UI_DIST_DIR));
+  if (fs.existsSync(getUiDistDir())) {
+    app.use(express.static(getUiDistDir()));
     app.use((req, res, next) => {
       if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
-      res.sendFile(path.join(UI_DIST_DIR, 'index.html'));
+      res.sendFile(path.join(getUiDistDir(), 'index.html'));
     });
   }
 

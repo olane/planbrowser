@@ -3,21 +3,21 @@ import path from 'path';
 import type { ApplicationMeta, Comment, DocumentMeta } from './types.js';
 import { DEFAULT_AUTHORITY_ID } from './authorities.js';
 import { getFlags, getDocFlags } from './userData.js';
-import { DOWNLOADS_DIR } from './config.js';
+import { getDownloadsDir } from './config.js';
 
 export function getApplicationDir(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID): string {
   const safeRef = reference.replace(/\//g, '-');
-  return path.join(DOWNLOADS_DIR, authorityId, safeRef);
+  return path.join(getDownloadsDir(), authorityId, safeRef);
 }
 
 export function getApplications(): ApplicationMeta[] {
-  if (!fs.existsSync(DOWNLOADS_DIR)) {
+  if (!fs.existsSync(getDownloadsDir())) {
     return [];
   }
   const apps: ApplicationMeta[] = [];
-  const topLevel = fs.readdirSync(DOWNLOADS_DIR);
+  const topLevel = fs.readdirSync(getDownloadsDir());
   for (const dir of topLevel) {
-    const appDir = path.join(DOWNLOADS_DIR, dir);
+    const appDir = path.join(getDownloadsDir(), dir);
     if (!fs.statSync(appDir).isDirectory()) continue;
     const metaPath = path.join(appDir, 'metadata.json');
     if (fs.existsSync(metaPath)) {
@@ -70,13 +70,13 @@ export function getApplication(reference: string, authorityId?: string): Applica
   }
 
   // Legacy flat layout fallback
-  const legacyMeta = readMeta(path.join(DOWNLOADS_DIR, safeRef, 'metadata.json'));
+  const legacyMeta = readMeta(path.join(getDownloadsDir(), safeRef, 'metadata.json'));
   if (legacyMeta) return withFlags(legacyMeta);
 
   // Search any authority namespaced directory for this reference
-  if (!authorityId && fs.existsSync(DOWNLOADS_DIR)) {
-    for (const dir of fs.readdirSync(DOWNLOADS_DIR)) {
-      const appDir = path.join(DOWNLOADS_DIR, dir);
+  if (!authorityId && fs.existsSync(getDownloadsDir())) {
+    for (const dir of fs.readdirSync(getDownloadsDir())) {
+      const appDir = path.join(getDownloadsDir(), dir);
       if (!fs.statSync(appDir).isDirectory()) continue;
       if (!fs.existsSync(path.join(appDir, 'metadata.json'))) {
         const meta = readMeta(path.join(appDir, safeRef, 'metadata.json'));

@@ -2,11 +2,19 @@ import fs from 'fs';
 import path from 'path';
 import type { ActivityEvent, ApplicationFlags, DocumentFlags } from './types.js';
 import { DEFAULT_AUTHORITY_ID } from './authorities.js';
-import { DOWNLOADS_DIR } from './config.js';
+import { getDownloadsDir } from './config.js';
 
-const STATE_FILE = path.join(DOWNLOADS_DIR, '_state.json');
-const ACTIVITY_FILE = path.join(DOWNLOADS_DIR, '_activity.json');
-const DOC_STATE_FILE = path.join(DOWNLOADS_DIR, '_documents.json');
+function statePath(): string {
+  return path.join(getDownloadsDir(), '_state.json');
+}
+
+function activityPath(): string {
+  return path.join(getDownloadsDir(), '_activity.json');
+}
+
+function docStatePath(): string {
+  return path.join(getDownloadsDir(), '_documents.json');
+}
 
 interface StateFile {
   version: number;
@@ -23,15 +31,15 @@ function appKey(reference: string, authorityId?: string): string {
 }
 
 function ensureDir(): void {
-  if (!fs.existsSync(DOWNLOADS_DIR)) {
-    fs.mkdirSync(DOWNLOADS_DIR, { recursive: true });
+  if (!fs.existsSync(getDownloadsDir())) {
+    fs.mkdirSync(getDownloadsDir(), { recursive: true });
   }
 }
 
 function readState(): StateFile {
   try {
-    if (fs.existsSync(STATE_FILE)) {
-      const parsed = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
+    if (fs.existsSync(statePath())) {
+      const parsed = JSON.parse(fs.readFileSync(statePath(), 'utf-8'));
       if (parsed && typeof parsed === 'object' && parsed.apps) {
         return parsed as StateFile;
       }
@@ -44,7 +52,7 @@ function readState(): StateFile {
 
 function writeState(state: StateFile): void {
   ensureDir();
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  fs.writeFileSync(statePath(), JSON.stringify(state, null, 2));
 }
 
 export function getFlags(reference: string, authorityId?: string): ApplicationFlags {
@@ -81,8 +89,8 @@ function docKey(reference: string, authorityId: string | undefined, filename: st
 
 function readDocState(): DocStateFile {
   try {
-    if (fs.existsSync(DOC_STATE_FILE)) {
-      const parsed = JSON.parse(fs.readFileSync(DOC_STATE_FILE, 'utf-8'));
+    if (fs.existsSync(docStatePath())) {
+      const parsed = JSON.parse(fs.readFileSync(docStatePath(), 'utf-8'));
       if (parsed && typeof parsed === 'object' && parsed.docs) {
         return parsed as DocStateFile;
       }
@@ -95,7 +103,7 @@ function readDocState(): DocStateFile {
 
 function writeDocState(state: DocStateFile): void {
   ensureDir();
-  fs.writeFileSync(DOC_STATE_FILE, JSON.stringify(state, null, 2));
+  fs.writeFileSync(docStatePath(), JSON.stringify(state, null, 2));
 }
 
 export function getDocFlags(reference: string, authorityId: string | undefined, filename: string): DocumentFlags {
@@ -125,8 +133,8 @@ export function setDocFlags(reference: string, authorityId: string | undefined, 
 
 export function readActivity(): ActivityEvent[] {
   try {
-    if (fs.existsSync(ACTIVITY_FILE)) {
-      const parsed = JSON.parse(fs.readFileSync(ACTIVITY_FILE, 'utf-8'));
+    if (fs.existsSync(activityPath())) {
+      const parsed = JSON.parse(fs.readFileSync(activityPath(), 'utf-8'));
       if (Array.isArray(parsed)) {
         return parsed as ActivityEvent[];
       }
@@ -146,6 +154,6 @@ export function recordActivity(event: Omit<ActivityEvent, 'id' | 'happenedAt'>):
   };
   events.unshift(full);
   ensureDir();
-  fs.writeFileSync(ACTIVITY_FILE, JSON.stringify(events, null, 2));
+  fs.writeFileSync(activityPath(), JSON.stringify(events, null, 2));
   return full;
 }
