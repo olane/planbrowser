@@ -37,23 +37,45 @@ function ensureDir(): void {
   }
 }
 
+// State files are read on every request, so cache the parsed contents in
+// memory and invalidate on write (or when the downloads directory changes).
+let cachedDir: string | undefined;
+let stateCache: StateFile | undefined;
+let docStateCache: DocStateFile | undefined;
+let activityCache: ActivityEvent[] | undefined;
+
+function refreshCaches(): void {
+  const dir = getDownloadsDir();
+  if (cachedDir !== dir) {
+    cachedDir = dir;
+    stateCache = undefined;
+    docStateCache = undefined;
+    activityCache = undefined;
+  }
+}
+
 function readState(): StateFile {
+  refreshCaches();
+  if (stateCache) return stateCache;
   try {
     if (fs.existsSync(statePath())) {
       const parsed = JSON.parse(fs.readFileSync(statePath(), 'utf-8'));
       if (parsed && typeof parsed === 'object' && parsed.apps) {
-        return parsed as StateFile;
+        stateCache = parsed as StateFile;
+        return stateCache;
       }
     }
   } catch (e) {
     console.error('Failed to read state file, starting fresh:', e);
   }
-  return { version: 1, apps: {} };
+  stateCache = { version: 1, apps: {} };
+  return stateCache;
 }
 
 function writeState(state: StateFile): void {
   ensureDir();
   fs.writeFileSync(statePath(), JSON.stringify(state, null, 2));
+  stateCache = state;
 }
 
 export function getFlags(reference: string, authorityId?: string): ApplicationFlags {
@@ -88,22 +110,27 @@ function docKey(reference: string, authorityId: string | undefined, filename: st
 }
 
 function readDocState(): DocStateFile {
+  refreshCaches();
+  if (docStateCache) return docStateCache;
   try {
     if (fs.existsSync(docStatePath())) {
       const parsed = JSON.parse(fs.readFileSync(docStatePath(), 'utf-8'));
       if (parsed && typeof parsed === 'object' && parsed.docs) {
-        return parsed as DocStateFile;
+        docStateCache = parsed as DocStateFile;
+        return docStateCache;
       }
     }
   } catch (e) {
     console.error('Failed to read document state file, starting fresh:', e);
   }
-  return { version: 1, docs: {} };
+  docStateCache = { version: 1, docs: {} };
+  return docStateCache;
 }
 
 function writeDocState(state: DocStateFile): void {
   ensureDir();
   fs.writeFileSync(docStatePath(), JSON.stringify(state, null, 2));
+  docStateCache = state;
 }
 
 export function getDocFlags(reference: string, authorityId: string | undefined, filename: string): DocumentFlags {
@@ -132,17 +159,21 @@ export function setDocFlags(reference: string, authorityId: string | undefined, 
 }
 
 export function readActivity(): ActivityEvent[] {
+  refreshCaches();
+  if (activityCache) return activityCache;
   try {
     if (fs.existsSync(activityPath())) {
       const parsed = JSON.parse(fs.readFileSync(activityPath(), 'utf-8'));
       if (Array.isArray(parsed)) {
-        return parsed as ActivityEvent[];
+        activityCache = parsed as ActivityEvent[];
+        return activityCache;
       }
     }
   } catch (e) {
     console.error('Failed to read activity file, starting fresh:', e);
   }
-  return [];
+  activityCache = [];
+  return activityCache;
 }
 
 export function recordActivity(event: Omit<ActivityEvent, 'id' | 'happenedAt'>): ActivityEvent {
@@ -155,5 +186,6 @@ export function recordActivity(event: Omit<ActivityEvent, 'id' | 'happenedAt'>):
   events.unshift(full);
   ensureDir();
   fs.writeFileSync(activityPath(), JSON.stringify(events, null, 2));
+  activityCache = events;
   return full;
 }
