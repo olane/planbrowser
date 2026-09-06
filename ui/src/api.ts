@@ -7,6 +7,11 @@ export function docUrlPrefix(authorityId?: string): string {
   return `${authorityId || DEFAULT_AUTHORITY_ID}/`;
 }
 
+export function documentUrl(reference: string, authorityId: string | undefined, filename: string): string {
+  const safeRef = encodeURIComponent(reference.replace(/\//g, '-'));
+  return `/api/documents/${docUrlPrefix(authorityId)}${safeRef}/${encodeURIComponent(filename)}`;
+}
+
 export async function fetchApplications(): Promise<ApplicationMeta[]> {
   const res = await fetch('/api/applications');
   if (!res.ok) throw new Error('Failed to fetch applications');

@@ -352,9 +352,9 @@ export async function scrapeLocation(page: Page, reference: string, authority: A
   return null;
 }
 
-function diffMeta(previous: ApplicationMeta | null, meta: ApplicationMeta): { changes: ChangeEntry[]; message: string } {
+function diffMeta(previous: ApplicationMeta | null, meta: ApplicationMeta): { changes: ChangeEntry[]; message: string; newDocuments: DocumentMeta[] } {
   if (!previous) {
-    return { changes: [], message: 'Application added' };
+    return { changes: [], message: 'Application added', newDocuments: [] };
   }
   const changes: ChangeEntry[] = [];
   if (previous.status && meta.status && previous.status !== meta.status) {
@@ -384,7 +384,8 @@ function diffMeta(previous: ApplicationMeta | null, meta: ApplicationMeta): { ch
   }
   return {
     changes,
-    message: changes.length > 0 ? 'Application updated' : 'No changes detected'
+    message: changes.length > 0 ? 'Application updated' : 'No changes detected',
+    newDocuments: newDocs
   };
 }
 
@@ -593,13 +594,14 @@ export async function downloadApplication(reference: string, authorityId: string
     saveApplicationMeta(reference, meta, authority.id);
     console.log('Saved metadata.json');
 
-    const { changes, message } = diffMeta(previous, meta);
+    const { changes, message, newDocuments } = diffMeta(previous, meta);
     if (!previous || changes.length > 0) {
       recordActivity({
         reference: meta.reference,
         authorityId: authority.id,
         message,
-        changes
+        changes,
+        newDocuments
       });
     }
 

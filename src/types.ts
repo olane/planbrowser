@@ -70,6 +70,7 @@ export interface ActivityEvent {
   authorityId: string;
   message: string;
   changes: ChangeEntry[];
+  newDocuments?: DocumentMeta[];
   happenedAt: string;
 }
 export interface Comment {

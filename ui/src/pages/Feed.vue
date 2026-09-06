@@ -14,6 +14,15 @@
                 <span class="text-xs text-gray-500">{{ timeAgo(event.happenedAt) }}</span>
               </div>
               <p class="text-sm text-gray-700 mt-1">{{ event.message }}</p>
+              <ul v-if="event.newDocuments && event.newDocuments.length > 0" class="mt-3 space-y-1">
+                <li v-for="doc in event.newDocuments" :key="doc.localFilename" class="flex items-start justify-between gap-3 text-sm">
+                  <div class="min-w-0">
+                    <span class="inline-flex items-center rounded-md bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 ring-1 ring-inset ring-green-600/20 mr-1">New</span>
+                    <a :href="documentUrl(event, doc)" target="_blank" class="text-blue-600 hover:underline break-all">{{ doc.description || doc.documentType || doc.localFilename }}</a>
+                    <div class="text-xs text-gray-500">{{ doc.datePublished }}<template v-if="doc.documentType"> &middot; {{ doc.documentType }}</template></div>
+                  </div>
+                </li>
+              </ul>
             </div>
           </div>
           <ul v-if="event.changes.length > 0" class="mt-3 space-y-1 text-sm">
@@ -35,13 +44,16 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import type { ActivityEvent } from '../../../src/types.js'
+import type { ActivityEvent, DocumentMeta } from '../../../src/types.js'
 import { DEFAULT_AUTHORITY_ID, authorityName } from '../../../src/authorities.js'
 import { timeAgo } from '../utils'
 import * as api from '../api'
 
 const events = ref<ActivityEvent[]>([])
 const loading = ref(true)
+
+const documentUrl = (event: ActivityEvent, doc: DocumentMeta) =>
+  api.documentUrl(event.reference, event.authorityId, doc.localFilename)
 
 const fetchFeed = async () => {
   try {
