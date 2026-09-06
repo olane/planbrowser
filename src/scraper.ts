@@ -407,15 +407,13 @@ export async function downloadApplication(reference: string, authorityId: string
     } else if (await page.locator('.messagebox:has-text("No results found")').count() > 0) {
       throw new Error(`Application reference "${reference}" not found on ${authority.name} (${authority.baseUrl}).`);
     } else if (!await page.locator('#applicationDetails').count() && !await page.locator('#simpleDetailsTable').count()) {
-      throw new Error(`Did not land on the application details page for "${reference}" on ${authority.name}. Unexpected page structure (is this portal actually Idox?).`);
+      const html = (await page.content()).slice(0, 500);
+      throw new Error(`Did not land on the application details page for "${reference}" on ${authority.name}. Unexpected page structure (is this portal actually Idox?). HTML: ${html}`);
     }
     
     const title = await page.title();
     console.log(`Page title: ${title}`);
     
-    if (!await page.locator('#applicationDetails').count() && !await page.locator('#simpleDetailsTable').count()) {
-       throw new Error(`Did not land on the application details page for "${reference}" on ${authority.name}. HTML: ${(await page.content()).slice(0, 500)}`);
-    }
 
     const meta: ApplicationMeta = {
       reference: reference,
