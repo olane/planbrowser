@@ -127,7 +127,16 @@ export function createApp(): express.Express {
 
   app.get('/api/feed', (req, res) => {
     try {
-      res.json(readActivity());
+      const events = readActivity();
+      const appsById = new Map(
+        getApplications().map((a) => [`${a.authorityId || DEFAULT_AUTHORITY_ID}/${a.reference}`, a])
+      );
+      res.json(
+        events.map((e) => ({
+          ...e,
+          application: appsById.get(`${e.authorityId || DEFAULT_AUTHORITY_ID}/${e.reference}`) ?? null
+        }))
+      );
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

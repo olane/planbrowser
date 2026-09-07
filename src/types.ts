@@ -73,6 +73,10 @@ export interface ActivityEvent {
   changes: ChangeEntry[];
   newDocuments?: DocumentMeta[];
   happenedAt: string;
+  // The application metadata at the time the feed was read, attached by the
+  // API so the UI can render the event alongside a full application card.
+  // Null when the application is no longer downloaded.
+  application?: ApplicationMeta | null;
 }
 export interface Comment {
   address: string;

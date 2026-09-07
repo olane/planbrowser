@@ -4,38 +4,62 @@
       <h2 class="text-xl font-semibold mb-4">Activity Feed</h2>
       <div v-if="loading" class="text-gray-500">Loading...</div>
       <div v-else-if="events.length === 0" class="text-gray-500">No activity yet. Changes to synced applications will appear here.</div>
-      <div v-else class="space-y-3">
-        <div v-for="event in events" :key="event.id" class="bg-white p-4 rounded shadow-sm border border-gray-200">
-          <div class="flex justify-between items-start gap-4">
-            <div>
-              <div class="flex items-center gap-2 flex-wrap">
-                <router-link :to="`/app/${encodeURIComponent(event.reference)}`" class="font-medium text-blue-600 hover:underline break-all">{{ event.reference }}</router-link>
-                <span v-if="authorityName(event.authorityId) && event.authorityId !== DEFAULT_AUTHORITY_ID" class="text-xs text-gray-400">{{ authorityName(event.authorityId) }}</span>
-                <span class="text-xs text-gray-500">{{ timeAgo(event.happenedAt) }}</span>
+      <div v-else class="space-y-4">
+        <div v-for="event in events" :key="event.id">
+          <!-- Full application card with the changes shown inside it -->
+          <ApplicationCard v-if="event.application" :app="event.application" readonly>
+            <template #extra>
+              <div class="flex items-center justify-between gap-3 mb-2">
+                <h3 class="text-sm font-semibold text-gray-900 break-words">{{ event.message }}</h3>
+                <span class="text-xs text-gray-500 whitespace-nowrap shrink-0">{{ timeAgo(event.happenedAt) }}</span>
               </div>
-              <p class="text-sm text-gray-700 mt-1">{{ event.message }}</p>
-              <ul v-if="event.newDocuments && event.newDocuments.length > 0" class="mt-3 space-y-1">
-                <li v-for="doc in event.newDocuments" :key="doc.localFilename" class="flex items-start justify-between gap-3 text-sm">
-                  <div class="min-w-0">
-                    <span class="inline-flex items-center rounded-md bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 ring-1 ring-inset ring-green-600/20 mr-1">New</span>
-                    <a :href="documentUrl(event, doc)" target="_blank" class="text-blue-600 hover:underline break-all">{{ doc.description || doc.documentType || doc.localFilename }}</a>
-                    <div class="text-xs text-gray-500">{{ doc.datePublished }}<template v-if="doc.documentType"> &middot; {{ doc.documentType }}</template></div>
-                  </div>
+              <ul v-if="(event.changes ?? []).length > 0" class="space-y-1.5 text-sm">
+                <li v-for="(change, idx) in event.changes" :key="idx" class="text-gray-600">
+                  <span class="font-medium text-gray-800">{{ change.field }}:</span>
+                  <template v-if="change.before && change.after">
+                    <span class="line-through text-gray-400">{{ change.before }}</span>
+                    <span class="text-gray-400"> &rarr; </span>
+                    <span>{{ change.after }}</span>
+                  </template>
+                  <span v-else>{{ change.after || change.before }}</span>
                 </li>
               </ul>
+              <p v-else class="text-xs text-gray-500">No detailed changes recorded.</p>
+              <ul v-if="event.newDocuments && event.newDocuments.length > 0" class="mt-3 space-y-1.5 border-t border-gray-200 pt-3">
+                <li v-for="doc in event.newDocuments" :key="doc.localFilename" class="text-sm">
+                  <span class="inline-flex items-center rounded-md bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 ring-1 ring-inset ring-green-600/20 mr-1.5">New</span>
+                  <a :href="documentUrl(event, doc)" target="_blank" class="text-blue-600 hover:underline break-all">{{ doc.description || doc.documentType || doc.localFilename }}</a>
+                  <div class="text-xs text-gray-500">{{ doc.datePublished }}<template v-if="doc.documentType"> &middot; {{ doc.documentType }}</template></div>
+                </li>
+              </ul>
+            </template>
+          </ApplicationCard>
+
+          <!-- Fallback: the application is no longer downloaded -->
+          <div v-else class="bg-white p-4 rounded shadow-sm border border-gray-200">
+            <div class="flex justify-between items-start gap-4">
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-medium text-gray-800 break-all">{{ event.reference }}</span>
+                  <span v-if="authorityName(event.authorityId) && event.authorityId !== DEFAULT_AUTHORITY_ID" class="text-xs text-gray-400">{{ authorityName(event.authorityId) }}</span>
+                  <span class="text-xs text-gray-500">{{ timeAgo(event.happenedAt) }}</span>
+                  <span class="text-xs text-gray-400">(no longer downloaded)</span>
+                </div>
+                <p class="text-sm text-gray-700 mt-1">{{ event.message }}</p>
+              </div>
             </div>
+            <ul v-if="(event.changes ?? []).length > 0" class="mt-3 space-y-1 text-sm">
+              <li v-for="(change, idx) in event.changes" :key="idx" class="text-gray-600">
+                <span class="font-medium text-gray-800">{{ change.field }}:</span>
+                <template v-if="change.before && change.after">
+                  <span class="line-through text-gray-400">{{ change.before }}</span>
+                  <span class="text-gray-400"> &rarr; </span>
+                  <span>{{ change.after }}</span>
+                </template>
+                <span v-else>{{ change.after || change.before }}</span>
+              </li>
+            </ul>
           </div>
-          <ul v-if="event.changes.length > 0" class="mt-3 space-y-1 text-sm">
-            <li v-for="(change, idx) in event.changes" :key="idx" class="text-gray-600">
-              <span class="font-medium text-gray-800">{{ change.field }}:</span>
-              <template v-if="change.before && change.after">
-                <span class="line-through text-gray-400">{{ change.before }}</span>
-                <span class="text-gray-400"> &rarr; </span>
-                <span>{{ change.after }}</span>
-              </template>
-              <span v-else>{{ change.after || change.before }}</span>
-            </li>
-          </ul>
         </div>
       </div>
     </section>
@@ -47,6 +71,7 @@ import { ref, onMounted } from 'vue'
 import type { ActivityEvent, DocumentMeta } from '../../../src/types.js'
 import { DEFAULT_AUTHORITY_ID, authorityName } from '../../../src/authorities.js'
 import { timeAgo } from '../utils'
+import ApplicationCard from '../components/ApplicationCard.vue'
 import * as api from '../api'
 
 const events = ref<ActivityEvent[]>([])
