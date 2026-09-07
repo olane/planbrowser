@@ -1,4 +1,5 @@
 import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags } from '../../src/types.js';
+import type { SyncScope } from '../../src/decision.js';
 import { DEFAULT_AUTHORITY_ID } from '../../src/authorities.js';
 import { safeReference } from '../../src/refs.js';
 
@@ -91,11 +92,15 @@ export async function fetchFeed(): Promise<ActivityEvent[]> {
   return res.json();
 }
 
-export async function syncStarred(): Promise<{ queued: number }> {
-  const res = await fetch('/api/sync-starred', { method: 'POST' });
+export async function syncApplications(scope: SyncScope): Promise<{ queued: number }> {
+  const res = await fetch('/api/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(scope)
+  });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Failed to sync starred applications');
+    throw new Error(err.error || 'Failed to sync applications');
   }
   return res.json();
 }

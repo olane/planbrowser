@@ -5,10 +5,25 @@
     <section>
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl font-semibold">Downloaded Applications</h2>
-        <button v-if="starredApps.length > 0" @click="syncStarredApps" :disabled="syncingStarred" class="text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm disabled:opacity-50">
-          {{ syncingStarred ? 'Queuing...' : (starredSyncMessage || `Sync ${starredApps.length} starred`) }}
-        </button>
+        <div v-if="hasSyncCandidates || activeQueueCount > 0" class="flex items-center gap-2 flex-wrap justify-end">
+          <template v-if="!queueBusy">
+            <button v-if="everythingCount > 0" @click="runScopeSync({ all: true })" :disabled="queueing" title="Re-scrape every downloaded application" class="cursor-pointer text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm disabled:opacity-50 disabled:cursor-default">
+              Sync everything ({{ everythingCount }})
+            </button>
+            <button v-if="starredCount > 0" @click="runScopeSync({ starred: true })" :disabled="queueing" title="Re-scrape your starred applications" class="cursor-pointer text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm disabled:opacity-50 disabled:cursor-default">
+              Sync starred ({{ starredCount }})
+            </button>
+            <button v-if="awaitingDecisionCount > 0" @click="runScopeSync({ awaitingDecision: true })" :disabled="queueing" title="Re-scrape applications that have no decision recorded yet" class="cursor-pointer text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm disabled:opacity-50 disabled:cursor-default">
+              Sync awaiting decision ({{ awaitingDecisionCount }})
+            </button>
+          </template>
+          <button v-else @click="router.push('/queue')" title="View the queue" class="flex items-center gap-2 text-sm bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-md shadow-sm cursor-pointer">
+            <svg class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+            <span>Syncing {{ activeQueueCount }} left — view queue</span>
+          </button>
+        </div>
       </div>
+      <div v-if="syncError" class="mb-2 text-sm text-red-700">{{ syncError }}</div>
       <div v-if="loadingApps" class="text-gray-500">Loading...</div>
       <div v-else-if="activeApps.length === 0" class="text-gray-500">No active applications. Archived applications are on the Archived page.</div>
       <div v-else class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -166,7 +181,9 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { timeAgo, progressText } from '../utils'
 import type { ApplicationMeta, PlanItRecord, SearchFilters } from '../../../src/types.js'
-import { queueItems, refreshQueue } from '../queueStore'
+import { isAwaitingDecision } from '../../../src/decision.js'
+import type { SyncScope } from '../../../src/decision.js'
+import { queueItems, refreshQueue, activeQueueCount } from '../queueStore'
 import { AUTHORITIES, DEFAULT_AUTHORITY_ID, isKnownAuthority } from '../../../src/authorities.js'
 import * as api from '../api'
 import { useRouter } from 'vue-router'
@@ -189,10 +206,30 @@ const activeApps = computed(() =>
     .filter((a) => !a.archived)
     .sort((a, b) => Number(!!b.starred) - Number(!!a.starred))
 )
-const starredApps = computed(() => downloadedApps.value.filter((a) => a.starred))
-const syncingStarred = ref(false)
-const starredSyncMessage = ref('')
-let syncMessageTimer: any = null
+
+const queueing = ref(false)
+const syncError = ref('')
+
+const awaitingDecisionCount = computed(() => downloadedApps.value.filter((a) => !a.archived && isAwaitingDecision(a)).length)
+const starredCount = computed(() => downloadedApps.value.filter((a) => !a.archived && a.starred).length)
+const everythingCount = computed(() => downloadedApps.value.filter((a) => !a.archived).length)
+const hasSyncCandidates = computed(() => everythingCount.value > 0 || activeQueueCount.value > 0)
+const queueBusy = computed(() => activeQueueCount.value > 0 && !queueing.value)
+
+const runScopeSync = async (scope: SyncScope) => {
+  if (queueing.value) return
+  queueing.value = true
+  syncError.value = ''
+  try {
+    await api.syncApplications(scope)
+    await fetchQueue()
+  } catch (e: any) {
+    console.error(e)
+    syncError.value = e.message || 'Failed to sync applications'
+  } finally {
+    queueing.value = false
+  }
+}
 
 const searchForm = ref({
   postcode: '',
@@ -325,21 +362,6 @@ const fetchApps = async () => {
     console.error(e)
   } finally {
     loadingApps.value = false
-  }
-}
-
-const syncStarredApps = async () => {
-  syncingStarred.value = true
-  try {
-    const result = await api.syncStarred()
-    starredSyncMessage.value = `Queued ${result.queued} application${result.queued === 1 ? '' : 's'}`
-    if (syncMessageTimer) clearTimeout(syncMessageTimer)
-    syncMessageTimer = setTimeout(() => { starredSyncMessage.value = '' }, 4000)
-    await fetchQueue()
-  } catch (e) {
-    console.error(e)
-  } finally {
-    syncingStarred.value = false
   }
 }
 
