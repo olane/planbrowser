@@ -14,7 +14,8 @@
         <span v-if="app.furtherInformation?.['Application Type']" class="text-xs text-gray-500 whitespace-nowrap">{{ app.furtherInformation['Application Type'] }}</span>
       </div>
     </div>
-    <p class="text-sm text-gray-600 mb-2 truncate">{{ app.address }}</p>
+    <p class="text-sm text-gray-600 mb-1 truncate">{{ app.address }}</p>
+    <p class="text-sm text-gray-500 mb-1 truncate" :title="app.description">{{ app.description }}</p>
     <p class="text-xs text-gray-500 mb-2">Synced: {{ timeAgo(app.scrapedAt) }}</p>
     <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 mt-2">
       <span :class="['inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset', statusBadgeClass(app)]">{{ statusLabel(app) }}</span>
