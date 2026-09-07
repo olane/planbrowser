@@ -97,7 +97,7 @@
               Favourites ({{ favouriteDocs.length }})
             </button>
             <button @click="activeTab = 'documents'" :class="[activeTab === 'documents' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
-              Documents ({{ filteredDocs?.length || 0 }})
+              Documents ({{ enhancedAppDocuments.length }})
             </button>
             <button v-if="app.hasComments" @click="activeTab = 'comments'" :class="[activeTab === 'comments' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
               Comments ({{ commentsList.length > 0 ? commentsList.length : (commentsError ? '!' : '...') }})
@@ -125,15 +125,23 @@
           </div>
 
           <div v-show="activeTab === 'documents'">
-            <div class="flex items-center justify-end mb-3 border-b pb-2" v-if="docTypesWithCounts.length > 1">
-              <select v-model="selectedDocType" class="text-sm border-gray-300 rounded-md py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500">
+            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-3 border-b pb-2">
+              <div class="relative">
+                <svg class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"></path></svg>
+                <input v-model="docSearch" type="text" placeholder="Search documents..." class="w-full sm:w-72 text-sm border-gray-300 rounded-md py-1.5 pl-8 pr-8 focus:ring-blue-500 focus:border-blue-500" />
+                <button v-if="docSearch" @click="docSearch = ''" :aria-label="'Clear document search'" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="Clear search">
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
+              <select v-if="docTypesWithCounts.length > 1" v-model="selectedDocType" class="text-sm border-gray-300 rounded-md py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500">
                 <option v-for="t in docTypesWithCounts" :key="t.value" :value="t.value">{{ t.label }} ({{ t.count }})</option>
               </select>
             </div>
-          
-          <ul class="divide-y divide-gray-100">
-            <DocumentRow v-for="doc in filteredDocs" :key="doc.localFilename" :doc="doc" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged(doc, $event)" />
-          </ul>
+
+            <ul v-if="filteredDocs.length > 0" class="divide-y divide-gray-100">
+              <DocumentRow v-for="doc in filteredDocs" :key="doc.localFilename" :doc="doc" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged(doc, $event)" />
+            </ul>
+            <div v-else class="text-sm text-gray-500 py-4 text-center">No documents match your search.</div>
           </div>
 
           <div v-show="activeTab === 'location'" v-if="app.location">
@@ -155,8 +163,15 @@
 
           <div v-show="activeTab === 'comments'" v-if="app.hasComments">
             <div v-if="commentsList.length > 0">
-              <div class="flex items-center justify-end mb-3 border-b pb-2" v-if="commentStancesWithCounts.length > 1">
-                <select v-model="selectedStance" class="text-sm border-gray-300 rounded-md py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500">
+              <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-3 border-b pb-2">
+                <div class="relative">
+                  <svg class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"></path></svg>
+                  <input v-model="commentSearch" type="text" placeholder="Search comments..." class="w-full sm:w-72 text-sm border-gray-300 rounded-md py-1.5 pl-8 pr-8 focus:ring-blue-500 focus:border-blue-500" />
+                  <button v-if="commentSearch" @click="commentSearch = ''" :aria-label="'Clear comment search'" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="Clear search">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+                <select v-if="commentStancesWithCounts.length > 1" v-model="selectedStance" class="text-sm border-gray-300 rounded-md py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500">
                   <option v-for="t in commentStancesWithCounts" :key="t.value" :value="t.value">{{ t.label }} ({{ t.count }})</option>
                 </select>
               </div>
@@ -179,7 +194,7 @@
                 </div>
               </div>
               </div>
-              <div v-else class="text-sm text-gray-500 py-4 text-center">No comments match the selected filter.</div>
+              <div v-else class="text-sm text-gray-500 py-4 text-center">No comments match your search.</div>
             </div>
             <div v-else-if="commentsError" class="text-sm text-red-600">{{ commentsError }}</div>
           </div>
@@ -210,6 +225,8 @@ const docPrefix = computed(() => api.docUrlPrefix(app.value?.authorityId))
 const commentsList = ref<Comment[]>([])
 const activeTab = ref('documents')
 const commentsError = ref('')
+const docSearch = ref('')
+const commentSearch = ref('')
 const getStanceClass = (stance?: string) => {
   if (!stance) return 'bg-gray-100 text-gray-600 ring-gray-500/10'
   const lower = stance.toLowerCase()
@@ -293,7 +310,16 @@ const toggleArchive = async () => {
 
 const enhancedAppDocuments = computed<EnhancedDocument[]>(() => {
   if (!app.value?.documents) return []
-  const docs: EnhancedDocument[] = app.value.documents.map((d) => ({
+  // The portal (and therefore metadata.json) can list the same file more than
+  // once. Collapse duplicates by filename so every rendered row has a unique
+  // key — duplicate keys in a v-for break Vue's diffing and leave stale rows.
+  const seen = new Set<string>()
+  const unique = app.value.documents.filter((d) => {
+    if (!d.localFilename || seen.has(d.localFilename)) return false
+    seen.add(d.localFilename)
+    return true
+  })
+  const docs: EnhancedDocument[] = unique.map((d) => ({
     ...d,
     url: `/api/documents/${docPrefix.value}${encodeURIComponent(app.value!.reference.replace(/\//g, '-'))}/${encodeURIComponent(d.localFilename)}`,
     isSuperseded: d.documentType.toLowerCase().includes('superseded'),
@@ -379,14 +405,34 @@ const commentStancesWithCounts = computed(() => {
 })
 
 const filteredComments = computed(() => {
-  if (selectedStance.value === 'All') return commentsList.value
-  return commentsList.value.filter(c => (c.stance || 'None') === selectedStance.value)
+  let list = commentsList.value
+  if (selectedStance.value !== 'All') {
+    list = list.filter(c => (c.stance || 'None') === selectedStance.value)
+  }
+  const q = commentSearch.value.trim().toLowerCase()
+  if (q) {
+    list = list.filter(c => {
+      const haystack = `${c.address} ${c.date} ${c.stance} ${c.text}`.toLowerCase()
+      return haystack.includes(q)
+    })
+  }
+  return list
 })
 
 const filteredDocs = computed(() => {
   if (!enhancedAppDocuments.value.length) return []
-  if (selectedDocType.value === 'All') return enhancedAppDocuments.value
-  return enhancedAppDocuments.value.filter((d) => d.documentType === selectedDocType.value)
+  let docs = enhancedAppDocuments.value
+  if (selectedDocType.value !== 'All') {
+    docs = docs.filter((d) => d.documentType === selectedDocType.value)
+  }
+  const q = docSearch.value.trim().toLowerCase()
+  if (q) {
+    docs = docs.filter((d) => {
+      const haystack = `${d.description || ''} ${d.documentType || ''} ${d.localFilename || ''} ${d.datePublished || ''} ${d.note || ''}`.toLowerCase()
+      return haystack.includes(q)
+    })
+  }
+  return docs
 })
 
 onMounted(async () => {
