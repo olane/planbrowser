@@ -12,7 +12,8 @@ A tool to search for and download documents for Cambridgeshire planning applicat
 - **Background queue** for processing download requests sequentially, with a 5-second delay between applications to avoid rate limiting
 - **Favourite/star** applications so they float to the top of the list, and **archive** applications so they move to a separate Archived page
 - **Favourite/star individual documents** and attach **notes** to them; starred documents are grouped under a Favourites tab on each application's page
-- **Sync all starred** applications in one click
+- **Bulk sync** from the Home header with one-click buttons: sync *everything*, *all starred*, or *all still awaiting a decision* (each shows a count; any other combination is done per application via its card icon). Archived applications are excluded from bulk sync. While the queue runs, the buttons become a live progress indicator that stays until it drains.
+- **Per-application sync** via an icon on every application card (including on the Archived page) that shows queued/syncing state and doubles as a retry on failure
 - **Activity feed** showing what changed each time a synced application was re-scraped (new documents, status changes, new comments, etc.)
 
 ## Requirements
@@ -133,7 +134,8 @@ npm run electron:dist   # build installers (dmg/zip, exe, AppImage/deb)
 | PATCH  | `/api/documents`         | Set `starred`/`note` on a document (body: `reference`, `filename`, optional `authority`, `starred`, `note`) |
 | GET    | `/api/applications/:ref` | Get metadata for a single application (optional `?authority=` to disambiguate) |
 | GET    | `/api/feed`            | List the activity feed (changes detected on re-sync) |
-| POST   | `/api/sync-starred`    | Enqueue all starred applications for re-download |
+| POST   | `/api/sync`            | Enqueue applications for re-sync. Body: `{ starred, awaitingDecision }` (queue apps matching *every* ticked option) or `{ all: true }` (queue everything). Archived applications are never included; an empty body enqueues nothing |
+| POST   | `/api/sync-starred`    | Backwards-compatible: enqueue all starred applications (same as `POST /api/sync` with `{ starred: true }`) |
 | GET    | `/api/documents/*`     | Serve downloaded files and metadata statically |
 
 Downloaded files are stored under `downloads/<authorityId>/<reference>/`, with `metadata.json` and (when present) `comments.json` alongside the document files.
