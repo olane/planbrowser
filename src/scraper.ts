@@ -94,15 +94,29 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
     }
   }
 
+  // Idox portals can list the same document in the table more than once (e.g.
+  // under both "Documents" and another category). Two rows produce the same
+  // local filename, so collapse them here — otherwise we'd download the same
+  // file twice and record duplicate entries in metadata.json.
+  const seenBaseNames = new Set<string>();
+  const uniqueDocs = allDocs.filter((d) => {
+    if (seenBaseNames.has(d.baseName)) {
+      console.log(`Skipping duplicate row: ${d.baseName}`);
+      return false;
+    }
+    seenBaseNames.add(d.baseName);
+    return true;
+  });
+
   const missingDocs = [];
   
-  const total = allDocs.length;
+  const total = uniqueDocs.length;
   let done = 0;
   const report = () => onProgress?.('Downloading documents', done, total);
   report();
 
   const existingFiles = fs.existsSync(outDir) ? fs.readdirSync(outDir) : [];
-  for (const doc of allDocs) {
+  for (const doc of uniqueDocs) {
       const existing = existingFiles.find(f => f.startsWith(doc.baseName + '.'));
       if (existing) {
           console.log(`Skipping existing: ${existing}`);

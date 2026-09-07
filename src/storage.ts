@@ -40,7 +40,8 @@ export function getApplications(): ApplicationMeta[] {
 
 function readMeta(metaPath: string): ApplicationMeta | null {
   try {
-    return JSON.parse(fs.readFileSync(metaPath, 'utf-8')) as ApplicationMeta;
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8')) as ApplicationMeta;
+    return meta ? dedupeMeta(meta) : null;
   } catch (e) {
     return null;
   }
@@ -92,7 +93,22 @@ export function saveApplicationMeta(reference: string, meta: ApplicationMeta, au
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });
   }
-  fs.writeFileSync(path.join(outDir, 'metadata.json'), JSON.stringify(meta, null, 2));
+  fs.writeFileSync(path.join(outDir, 'metadata.json'), JSON.stringify(dedupeMeta(meta), null, 2));
+}
+
+// The portal (and older scrapes) can list the same file more than once. Keep
+// at most one entry per localFilename so downstream lists never see duplicate
+// keys.
+function dedupeMeta(meta: ApplicationMeta): ApplicationMeta {
+  const seen = new Set<string>();
+  return {
+    ...meta,
+    documents: (meta.documents || []).filter((d) => {
+      if (!d.localFilename || seen.has(d.localFilename)) return false;
+      seen.add(d.localFilename);
+      return true;
+    })
+  };
 }
 
 export function saveComments(reference: string, comments: Comment[], authorityId: string = DEFAULT_AUTHORITY_ID): void {

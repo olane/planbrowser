@@ -66,6 +66,29 @@ describe('saveApplicationMeta / getApplication', () => {
   it('returns null for an unknown reference', () => {
     expect(getApplication('99/99999/NOPE')).toBeNull();
   });
+
+  it('dedupes documents with the same localFilename when saving', () => {
+    const app = meta('24/00123/FUL', 'cambridge');
+    app.documents = [
+      { localFilename: 'a.pdf', datePublished: '01 Jan 2026', documentType: 'Drawings', description: 'A' },
+      { localFilename: 'a.pdf', datePublished: '01 Jan 2026', documentType: 'Drawings', description: 'A' },
+      { localFilename: 'b.pdf', datePublished: '02 Jan 2026', documentType: 'Drawings', description: 'B' }
+    ];
+    saveApplicationMeta('24/00123/FUL', app, 'cambridge');
+    const stored = JSON.parse(fs.readFileSync(path.join(tmpDir, 'cambridge', '24-00123-FUL', 'metadata.json'), 'utf-8'));
+    expect(stored.documents.map((d: { localFilename: string }) => d.localFilename)).toEqual(['a.pdf', 'b.pdf']);
+  });
+
+  it('dedupes documents with the same localFilename when reading', () => {
+    const app = meta('24/00123/FUL', 'cambridge');
+    app.documents = [
+      { localFilename: 'a.pdf', datePublished: '01 Jan 2026', documentType: 'Drawings', description: 'A' },
+      { localFilename: 'a.pdf', datePublished: '01 Jan 2026', documentType: 'Drawings', description: 'A' }
+    ];
+    writeMeta(path.join('cambridge', '24-00123-FUL'), app);
+    const got = getApplication('24/00123/FUL', 'cambridge');
+    expect(got?.documents.map((d) => d.localFilename)).toEqual(['a.pdf']);
+  });
 });
 
 describe('getApplications', () => {
