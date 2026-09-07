@@ -138,6 +138,15 @@ npm run electron:dist   # build installers (dmg/zip, exe, AppImage/deb)
 
 Downloaded files are stored under `downloads/<authorityId>/<reference>/`, with `metadata.json` and (when present) `comments.json` alongside the document files.
 
+## Notes on Idox portals
+
+These tripped us up repeatedly, so writing them down:
+
+- **A reference search that returns one match does not deep-link.** After submitting a single exact reference, the browser stays on the search-results URL `advancedSearchResults.do?action=firstPage` (which renders the one application's summary inline) rather than navigating to the application page. Don't be tempted to store `page.url()` here.
+- **That results URL is session-bound.** Idox keeps the search results server-side against your `JSESSIONID`. Opening the `advancedSearchResults.do?action=firstPage` URL later — e.g. in a fresh browser via the "View on portal" link — fails with a 500 "Server Problem" page. This is not a bot-wall on deep links; the page genuinely needs a live search session.
+- **The real deep links are stable.** Every application page exposes `applicationDetails.do?…&keyVal=<token>` links (Summary/Details/Dates/etc.). The `keyVal` token is not session-bound — it stays constant across sessions and the URL loads fine from a cold browser on every portal we've tested.
+- planbrowser therefore records the canonical `applicationDetails.do` link (preferring `activeTab=summary`) as `portalUrl` — see `resolvePortalUrl` in `src/scraper.ts`.
+
 ## Project structure
 
 ```

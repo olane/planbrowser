@@ -392,6 +392,23 @@ function createPage(): Promise<PageHandle> {
     : createChromiumPage();
 }
 
+// Pick a stable, shareable URL for an application. After a single-result search
+// the browser sits on the session-bound "advancedSearchResults.do" page (Idox
+// stores the results server-side against the JSESSIONID), so page.url() 500s when
+// opened later in a fresh session. The canonical applicationDetails.do?keyVal=
+// links on that page are not session-bound and work from a cold browser, so
+// prefer one of those; fall back to the current URL only if none are present.
+export function resolvePortalUrl(currentUrl: string, hrefs: string[]): string {
+  if (/applicationDetails\.do/.test(currentUrl) && /keyVal=/.test(currentUrl)) {
+    return currentUrl;
+  }
+  const isDetailLink = (href: string) => /applicationDetails\.do/.test(href) && /keyVal=/.test(href);
+  const summary = hrefs.find((href) => isDetailLink(href) && /activeTab=summary/.test(href));
+  if (summary) return summary;
+  const first = hrefs.find(isDetailLink);
+  return first ?? currentUrl;
+}
+
 export async function downloadApplication(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID, onProgress?: (message: string, current?: number, total?: number) => void) {
   const authority = getAuthority(authorityId);
   console.log(`Starting search for reference: ${reference} (authority: ${authority.id})`);
@@ -426,6 +443,10 @@ export async function downloadApplication(reference: string, authorityId: string
     const title = await page.title();
     console.log(`Page title: ${title}`);
     
+    const currentUrl = page.url();
+    const detailHrefs = await page.evaluate(() =>
+      Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href*="applicationDetails.do"]')).map((a) => a.href)
+    );
 
     const meta: ApplicationMeta = {
       reference: reference,
@@ -437,7 +458,7 @@ export async function downloadApplication(reference: string, authorityId: string
       documents: [],
       hasComments: false,
       scrapedAt: new Date().toISOString(),
-      portalUrl: page.url()
+      portalUrl: resolvePortalUrl(currentUrl, detailHrefs)
     };
 
     const detailsTable = page.locator('#simpleDetailsTable tr');
