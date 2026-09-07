@@ -84,7 +84,7 @@ docker run -d --name planbrowser -p 3000:3000 -v "$PWD/downloads:/app/downloads"
 
 ## Electron (desktop app)
 
-Desktop installers are built by GitHub Actions on every version tag (`v*`) and attached to the corresponding [GitHub Release](https://github.com/olane/planbrowser/releases): a macOS `.dmg`, a Windows `.exe` installer, and a Linux `.AppImage`/`.deb`.
+Desktop installers are built by GitHub Actions on every version tag (`v*`) and attached to the corresponding [GitHub Release](https://github.com/olane/planbrowser/releases): a macOS `.dmg`, a Windows `.exe` installer, and a Linux `.AppImage`/`.deb`. See [Releasing](#releasing) for how to cut a new version.
 
 ### Install
 
@@ -120,6 +120,42 @@ npm run electron        # build backend + UI, then launch the app
 npm run electron:pack   # build an unpacked .app in release/
 npm run electron:dist   # build installers (dmg/zip, exe, AppImage/deb)
 ```
+
+## Releasing
+
+PlanBrowser publishes two artifacts from this repo:
+
+- a **Docker image** (`ghcr.io/olane/planbrowser:latest`) rebuilt on every push to `main` (see [Docker](#docker));
+- **desktop installers** for macOS/Windows/Linux, built from a `v*` tag and attached to the matching [GitHub Release](https://github.com/olane/planbrowser/releases) (see [Electron](#electron-desktop-app)).
+
+To cut a release:
+
+1. Make sure the changes you want to ship are on `main` and the tests pass:
+
+   ```bash
+   npm test
+   ```
+
+2. Pick the next version. This repo follows [semver](https://semver.org/): bump the **minor** (`X.Y.0`) for new features, the **patch** (`X.Y.Z`) for bug fixes.
+
+3. Bump the `version` field in `package.json`, then commit and push it as its own commit so the tag points at exactly the released state:
+
+   ```bash
+   git add package.json
+   git commit -m "chore: bump version to X.Y.Z"
+   git push origin main
+   ```
+
+4. Tag the release and push the tag. GitHub Actions then builds the desktop installers and publishes a GitHub Release with them attached:
+
+   ```bash
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+
+5. Watch the release workflow complete, then confirm the installers are attached under <https://github.com/olane/planbrowser/releases>. Release notes are generated automatically; edit them there if you want a curated summary.
+
+To smoke-test the desktop build locally before tagging, run `npm run electron:dist`.
 
 ## API
 
