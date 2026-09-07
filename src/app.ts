@@ -9,7 +9,12 @@ import { resolveAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
 import { setFlags, readActivity, setDocFlags } from './userData.js';
 import { getDownloadsDir, getUiDistDir } from './config.js';
 import { SEARCH_FILTER_KEYS } from './types.js';
-import type { SearchFilters, ApplicationFlags, DocumentFlags } from './types.js';
+import { selectSyncApps } from './decision.js';
+import type { SearchFilters, ApplicationFlags, DocumentFlags, QueueItem, ApplicationMeta } from './types.js';
+
+function enqueueApplications(apps: ApplicationMeta[]): QueueItem[] {
+  return apps.map((a) => downloadQueue.enqueue(a.reference, a.authorityId || DEFAULT_AUTHORITY_ID));
+}
 
 
 export function createApp(): express.Express {
@@ -128,10 +133,23 @@ export function createApp(): express.Express {
     }
   });
 
+  app.post('/api/sync', (req, res) => {
+    try {
+      const body = req.body ?? {};
+      const starred = body.starred === true;
+      const awaitingDecision = body.awaitingDecision === true;
+      const all = body.all === true;
+      const apps = selectSyncApps(getApplications(), { starred, awaitingDecision, all });
+      const items = enqueueApplications(apps);
+      res.json({ success: true, queued: items.length, items });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post('/api/sync-starred', (req, res) => {
     try {
-      const starred = getApplications().filter((a) => a.starred);
-      const items = starred.map((a) => downloadQueue.enqueue(a.reference, a.authorityId || DEFAULT_AUTHORITY_ID));
+      const items = enqueueApplications(selectSyncApps(getApplications(), { starred: true, awaitingDecision: false }));
       res.json({ success: true, queued: items.length, items });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
