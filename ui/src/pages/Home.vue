@@ -3,12 +3,14 @@
     <!-- Downloaded Applications -->
     <section>
       <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
-        <h2 class="text-xl font-semibold">Downloaded Applications</h2>
-        <div class="flex items-center gap-2 flex-wrap justify-end">
+        <div class="flex items-center gap-3 flex-wrap">
+          <h2 class="text-xl font-semibold">Downloaded Applications</h2>
           <button v-if="mappedCount > 0" @click="showAppsMap = !showAppsMap" :title="showAppsMap ? 'Hide the map' : 'Show downloaded applications on a map'" class="cursor-pointer text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
             <span>{{ showAppsMap ? 'Hide map' : 'View map' }}</span>
           </button>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap justify-end">
           <div v-if="hasSyncCandidates || activeQueueCount > 0" class="flex items-center gap-2 flex-wrap justify-end">
             <template v-if="!queueBusy">
               <button v-if="everythingCount > 0" @click="runScopeSync({ all: true })" :disabled="queueing" title="Re-scrape every downloaded application" class="cursor-pointer text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm disabled:opacity-50 disabled:cursor-default">
