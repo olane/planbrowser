@@ -7,7 +7,7 @@
         <div class="flex items-center gap-2 flex-wrap justify-end">
           <button v-if="mappedCount > 0" @click="showAppsMap = !showAppsMap" :title="showAppsMap ? 'Hide the map' : 'Show downloaded applications on a map'" class="cursor-pointer text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
-            <span>{{ showAppsMap ? 'Hide map' : `View map (${mappedCount})` }}</span>
+            <span>{{ showAppsMap ? 'Hide map' : 'View map' }}</span>
           </button>
           <div v-if="hasSyncCandidates || activeQueueCount > 0" class="flex items-center gap-2 flex-wrap justify-end">
             <template v-if="!queueBusy">
@@ -31,6 +31,9 @@
       <div v-if="syncError" class="mb-2 text-sm text-red-700">{{ syncError }}</div>
       <div v-if="showAppsMap && mappedApps.length > 0" class="mb-6">
         <ApplicationsMap :apps="mappedApps" @select="openAppFromMap" />
+        <p v-if="unmappedCount > 0" class="mt-2 text-xs text-gray-500">
+          {{ unmappedCount }} {{ unmappedCount === 1 ? 'application has' : 'applications have' }} no location {{ unmappedCount === 1 ? 'and isn\u2019t' : "and aren\u2019t" }} shown on the map.
+        </p>
       </div>
       <div v-if="loadingApps" class="text-gray-500">Loading...</div>
       <div v-else-if="activeApps.length === 0" class="text-gray-500">No active applications. Archived applications are on the Archived page.</div>
@@ -65,6 +68,7 @@ const activeApps = computed(() =>
 const showAppsMap = ref(false)
 const mappedApps = computed(() => activeApps.value.filter((a) => a.location))
 const mappedCount = computed(() => mappedApps.value.length)
+const unmappedCount = computed(() => activeApps.value.length - mappedApps.value.length)
 const openAppFromMap = (reference: string) => router.push(`/app/${encodeURIComponent(reference)}`)
 
 // If the last mapped application disappears while the map is open (e.g. it was
