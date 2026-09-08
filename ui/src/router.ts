@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from './pages/Home.vue'
+import Search from './pages/Search.vue'
 import Viewer from './pages/Viewer.vue'
 import Queue from './pages/Queue.vue'
 import Archive from './pages/Archive.vue'
@@ -12,6 +13,11 @@ const router = createRouter({
       path: '/',
       name: 'Home',
       component: Home
+    },
+    {
+      path: '/search',
+      name: 'Search',
+      component: Search
     },
     {
       path: '/archive',

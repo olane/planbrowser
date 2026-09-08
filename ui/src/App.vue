@@ -6,7 +6,8 @@
           <router-link to="/">PlanBrowser</router-link>
         </h1>
         <nav class="flex items-center gap-4 flex-wrap">
-          <router-link to="/" class="text-sm font-medium text-blue-600 hover:text-blue-800">Applications</router-link>
+          <router-link to="/" class="text-sm font-medium text-blue-600 hover:text-blue-800">Downloaded</router-link>
+          <router-link to="/search" class="text-sm font-medium text-blue-600 hover:text-blue-800">Search</router-link>
           <router-link to="/archive" class="text-sm font-medium text-blue-600 hover:text-blue-800">Archived</router-link>
           <router-link to="/feed" class="text-sm font-medium text-blue-600 hover:text-blue-800">Feed</router-link>
           <router-link to="/queue" class="text-sm font-medium text-blue-600 hover:text-blue-800">Queue<span v-if="activeQueueCount > 0"> ({{ activeQueueCount }})</span></router-link>
