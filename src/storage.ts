@@ -88,12 +88,21 @@ export function getApplication(reference: string, authorityId?: string): Applica
   return null;
 }
 
+// Metadata is rewritten progressively during a download (and read live by the
+// UI while that happens), so write to a temp file and rename to avoid a viewer
+// ever reading a half-written JSON file.
+function atomicWriteJson(filePath: string, data: unknown): void {
+  const tmp = `${filePath}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+  fs.renameSync(tmp, filePath);
+}
+
 export function saveApplicationMeta(reference: string, meta: ApplicationMeta, authorityId: string = DEFAULT_AUTHORITY_ID): void {
   const outDir = getApplicationDir(reference, authorityId);
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });
   }
-  fs.writeFileSync(path.join(outDir, 'metadata.json'), JSON.stringify(dedupeMeta(meta), null, 2));
+  atomicWriteJson(path.join(outDir, 'metadata.json'), dedupeMeta(meta));
 }
 
 // The portal (and older scrapes) can list the same file more than once. Keep
@@ -116,5 +125,5 @@ export function saveComments(reference: string, comments: Comment[], authorityId
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });
   }
-  fs.writeFileSync(path.join(outDir, 'comments.json'), JSON.stringify(comments, null, 2));
+  atomicWriteJson(path.join(outDir, 'comments.json'), comments);
 }

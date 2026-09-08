@@ -8,6 +8,7 @@ A tool to search for and download documents for Cambridgeshire planning applicat
 - **Download** applications from any [Idox Public Access](https://www.idoxgroup.com/) planning portal using headless browser automation (Playwright). 230+ UK authorities are configured in `src/authorities.ts` (generated from the PlanIt API); Cambridge (Greater Cambridge) is the default and the only one with map geometry configured.
 - **Extract documents** from applications, batching bulk downloads where possible, with incremental re-scraping (already-downloaded files are skipped)
 - **Scrape comments** submitted by neighbours for each application
+- **Progressive downloads**: each application is fetched in order of value — main details first, then comments, then document files — and everything is committed to disk as it arrives, so an application can be opened and read in the browser before its download has finished (the page updates as more data lands)
 - **View** application metadata, key dates, documents, comments, and location on a map in the browser
 - **Background queue** for processing download requests sequentially, with a 5-second delay between applications to avoid rate limiting
 - **Favourite/star** applications so they float to the top of the list, and **archive** applications so they move to a separate Archived page

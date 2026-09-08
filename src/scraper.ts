@@ -23,7 +23,7 @@ export function extractDocId(urlOrName: string): string | undefined {
   return m?.[1];
 }
 
-export async function downloadDocuments(page: Page, download: DownloadFn, outDir: string, onProgress?: (message: string, current?: number, total?: number) => void, previousDocs?: DocumentMeta[]): Promise<DocumentMeta[]> {
+export async function downloadDocuments(page: Page, download: DownloadFn, outDir: string, onProgress?: (message: string, current?: number, total?: number) => void, previousDocs?: DocumentMeta[], onCommitted?: (docs: DocumentMeta[]) => void): Promise<DocumentMeta[]> {
   console.log('Navigating to Documents tab...');
   const docsTab = page.locator('#tab_documents');
   if (await docsTab.count() > 0) {
@@ -169,6 +169,7 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
         localFilename: recorded.localFilename,
         ...docMetaFields(doc)
       });
+      onCommitted?.(docs);
       reusedFiles.add(recorded.localFilename);
       done++;
       report();
@@ -183,6 +184,7 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
         localFilename: fileOnDisk,
         ...docMetaFields(doc)
       });
+      onCommitted?.(docs);
       reusedFiles.add(fileOnDisk);
       done++;
       report();
@@ -260,6 +262,7 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
                     localFilename: finalName,
                     ...docMetaFields(doc)
                 });
+                onCommitted?.(docs);
                 console.log(`Extracted: ${finalName}`);
                 done++;
                 report();
@@ -298,6 +301,7 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
           localFilename: finalName,
           ...docMetaFields(doc)
         });
+        onCommitted?.(docs);
       } catch (e) {
         console.error(`Failed to download ${doc.baseName}:`, e);
       }
@@ -328,7 +332,7 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
   return docs;
 }
 
-export async function scrapeComments(page: Page, outDir: string): Promise<boolean> {
+export async function scrapeComments(page: Page, reference: string, authorityId: string): Promise<boolean> {
   console.log('Navigating to Comments tab...');
   
   const commentsTab = page.locator('#tab_makeComment');
@@ -370,7 +374,7 @@ export async function scrapeComments(page: Page, outDir: string): Promise<boolea
         }
       }
       if (allComments.length > 0) {
-        saveComments(path.basename(outDir), allComments);
+        saveComments(reference, allComments, authorityId);
         console.log(`Saved ${allComments.length} comments`);
         return true;
       } else {
@@ -572,6 +576,8 @@ export async function downloadApplication(reference: string, authorityId: string
       portalUrl: resolvePortalUrl(currentUrl, detailHrefs)
     };
 
+    onProgress?.('Fetching application details');
+
     const detailsTable = page.locator('#simpleDetailsTable tr');
     const rowCount = await detailsTable.count();
     for (let i = 0; i < rowCount; i++) {
@@ -646,27 +652,47 @@ export async function downloadApplication(reference: string, authorityId: string
       meta.location = location;
     }
 
-    meta.documents = await downloadDocuments(page, download, outDir, onProgress, previous?.documents);
-
-    // Persist the document list immediately, before anything later (like comment
-    // scraping) can fail and leave freshly-downloaded documents unrecorded. Keep
-    // the previous comment flag so a failed comment scrape doesn't hide comments
-    // that were already known.
+    // Persist the application's main details immediately, before the slower
+    // comment/document scraping, so the app is committed to disk (and viewable
+    // in the UI) as soon as the quick-to-fetch stuff is in hand. Start from the
+    // previously-known documents (minus any UI flags) so a re-scrape that dies
+    // partway never leaves a metadata.json with an empty document list.
+    const stripDocFlags = (d: DocumentMeta): DocumentMeta => ({
+      localFilename: d.localFilename,
+      datePublished: d.datePublished,
+      documentType: d.documentType,
+      description: d.description,
+      ...(d.docId ? { docId: d.docId } : {})
+    });
     meta.hasComments = previous?.hasComments ?? false;
-    saveApplicationMeta(reference, meta, authority.id);
-    console.log('Saved metadata.json');
+    meta.documents = (previous?.documents ?? []).map(stripDocFlags);
+    const persist = () => saveApplicationMeta(reference, meta, authority.id);
+    persist();
+    console.log('Saved metadata.json (details)');
 
-    // Comment scraping is best-effort: it must not lose the document metadata
-    // above or fail the whole download.
+    // Comments next: they are quick to fetch and far more useful for reading
+    // than document files, so they land on disk before the (potentially slow,
+    // bulk) document downloads. Comment scraping is best-effort: a failure here
+    // must not lose the details above or stop the document download.
+    onProgress?.('Scraping comments');
     try {
-      const hasComments = await scrapeComments(page, outDir);
+      const hasComments = await scrapeComments(page, reference, authority.id);
       if (hasComments !== meta.hasComments) {
         meta.hasComments = hasComments;
-        saveApplicationMeta(reference, meta, authority.id);
+        persist();
       }
     } catch (err) {
       console.error('Failed to scrape comments (continuing):', err);
     }
+
+    // Documents last — they are the largest and slowest part of a download.
+    // Each file is written to disk as it arrives and metadata.json is re-saved
+    // as documents are committed, so a viewer sees them appear as they land.
+    meta.documents = await downloadDocuments(page, download, outDir, onProgress, previous?.documents, (docs) => {
+      meta.documents = docs;
+      persist();
+    });
+    persist();
 
     const { changes, message, newDocuments } = diffMeta(previous, meta);
     if (!previous || changes.length > 0) {

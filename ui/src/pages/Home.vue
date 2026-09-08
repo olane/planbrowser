@@ -329,6 +329,13 @@ watch(queueItems, (items, oldItems) => {
   const currentCompleted = items.filter(q => q.status === 'completed').map(q => q.id)
   if (currentCompleted.some(id => !previousCompleted.has(id))) {
     fetchApps()
+    return
+  }
+  // While anything is queued or in progress, its metadata is being written to
+  // disk progressively, so re-list so partially-downloaded applications (and
+  // their growing document lists) appear as soon as they land.
+  if (activeQueueCount.value > 0) {
+    fetchApps()
   }
 })
 

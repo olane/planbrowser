@@ -21,14 +21,23 @@
     </div>
 
     <div v-if="loading" class="text-gray-500">Loading...</div>
-    <div v-else-if="error" class="text-red-600">{{ error }}</div>
-    <div v-if="syncError" class="mb-4 p-4 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
-      {{ syncError }}
-    </div>
-    <div v-if="syncMessage" class="mb-4 p-4 text-sm text-green-700 bg-green-50 rounded-md border border-green-200">
-      {{ syncMessage }}
-    </div>
-    <div v-else-if="app" class="bg-white p-6 rounded shadow border border-gray-200">
+    <template v-else>
+      <div v-if="isDownloading" class="mb-4 flex items-center gap-3 p-4 text-sm text-blue-700 bg-blue-50 rounded-md border border-blue-200">
+        <svg class="w-4 h-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+        <span>
+          Download in progress — details, comments and documents appear here as they're saved.
+          <span v-if="downloadProgress" class="font-medium">({{ progressText(downloadProgress) }})</span>
+        </span>
+      </div>
+      <div v-if="waitingForDownload" class="mb-4 text-gray-500">Waiting for the download to start — this page will populate automatically as details are saved.</div>
+      <div v-else-if="error" class="text-red-600">{{ error }}</div>
+      <div v-if="syncError" class="mb-4 p-4 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
+        {{ syncError }}
+      </div>
+      <div v-if="syncMessage" class="mb-4 p-4 text-sm text-green-700 bg-green-50 rounded-md border border-green-200">
+        {{ syncMessage }}
+      </div>
+      <div v-if="app" class="bg-white p-6 rounded shadow border border-gray-200">
       <div class="grid md:grid-cols-2 gap-8 mb-8">
         <div>
           <h2 class="text-2xl font-bold mb-2">{{ app.reference }}</h2>
@@ -201,17 +210,20 @@
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { timeAgo } from '../utils'
+import { ref, onMounted, computed, watch } from 'vue'
+import { timeAgo, progressText } from '../utils'
 import type { ApplicationMeta, Comment, EnhancedDocument } from '../../../src/types.js'
 import * as api from '../api'
 import DocumentRow from '../components/DocumentRow.vue'
 import { useRoute } from 'vue-router'
+import { queueItems } from '../queueStore'
 
 const route = useRoute()
+const refParam = computed(() => route.params.ref as string)
 const app = ref<ApplicationMeta | null>(null)
 const loading = ref(true)
 const syncError = ref('')
@@ -219,6 +231,16 @@ const syncMessage = ref('')
 const error = ref('')
 const syncing = ref(false)
 const selectedStance = ref('All')
+
+// While the application is queued or being downloaded, its metadata is written
+// to disk progressively (details, then comments, then documents), so poll the
+// API while the queue item is live to stream content into this page.
+const downloadingItem = computed(() =>
+  queueItems.value.find(q => q.reference === refParam.value && (q.status === 'pending' || q.status === 'in_progress'))
+)
+const isDownloading = computed(() => !!downloadingItem.value)
+const downloadProgress = computed(() => downloadingItem.value?.progress)
+const waitingForDownload = computed(() => !app.value && isDownloading.value)
 
 const docPrefix = computed(() => api.docUrlPrefix(app.value?.authorityId))
 
@@ -435,29 +457,91 @@ const filteredDocs = computed(() => {
   return docs
 })
 
-onMounted(async () => {
-  const refParam = route.params.ref as string
-  try {
-    app.value = await api.fetchApplication(refParam)
-    document.title = `PlanBrowser | ${app.value.reference}`
-    
-    if (app.value.hasComments) {
-      try {
-        const data = await api.fetchComments(app.value.reference, app.value.authorityId)
-        commentsList.value = data.map((c: Comment) => ({ ...c, expanded: false }))
-      } catch (err) {
-        commentsError.value = 'Failed to load comments.'
-      }
-    }
+const commentKey = (c: { address: string; date: string; stance: string }) =>
+  `${c.address}|${c.date}|${c.stance}`
 
-    if (keyDocs.value.length > 0 && activeTab.value === 'documents') {
+const loadComments = async () => {
+  if (!app.value?.hasComments) {
+    commentsList.value = []
+    commentsError.value = ''
+    return
+  }
+  try {
+    const data = await api.fetchComments(app.value.reference, app.value.authorityId)
+    // Re-fetching comments (while a download streams in) must not collapse
+    // comments the user has already expanded, so keep their state by content.
+    const expandedByKey = new Map<string, boolean>()
+    for (const c of commentsList.value) {
+      expandedByKey.set(commentKey(c), !!c.expanded)
+    }
+    commentsList.value = data.map((c: Comment) => ({
+      ...c,
+      expanded: expandedByKey.get(commentKey(c)) ?? false
+    }))
+    commentsError.value = ''
+  } catch (err) {
+    commentsError.value = 'Failed to load comments.'
+  }
+}
+
+let fetchInFlight = false
+const fetchApp = async () => {
+  const refNow = refParam.value
+  if (fetchInFlight || !refNow) return
+  fetchInFlight = true
+  try {
+    const fresh = await api.fetchApplication(refNow)
+    const firstLoad = app.value === null
+    app.value = fresh
+    error.value = ''
+    document.title = `PlanBrowser | ${fresh.reference}`
+    await loadComments()
+    if (firstLoad && keyDocs.value.length > 0 && activeTab.value === 'documents') {
       activeTab.value = 'key-documents'
     }
   } catch (e: any) {
     console.error(e)
-    error.value = e.message || 'Failed to load'
+    // While the app is queued/downloading the metadata may simply not be on
+    // disk yet; leave the error blank and let the next poll retry.
+    if (!isDownloading.value) {
+      error.value = e.message || 'Failed to load'
+    }
   } finally {
     loading.value = false
+    fetchInFlight = false
   }
+}
+
+// The queue is polled globally, so watch it and re-fetch this application
+// whenever it is (or has just been) downloaded — that streams the progressively
+// committed metadata into the page and grabs the final state on completion.
+let lastWasDownloading = false
+watch(queueItems, async () => {
+  const nowDownloading = isDownloading.value
+  if (nowDownloading || lastWasDownloading) {
+    lastWasDownloading = nowDownloading
+    await fetchApp()
+  } else {
+    lastWasDownloading = nowDownloading
+  }
+})
+
+// If the user navigates from one application to another without leaving the
+// viewer, reset and load the new reference rather than showing stale content.
+watch(refParam, () => {
+  if (!refParam.value) return
+  app.value = null
+  error.value = ''
+  commentsList.value = []
+  commentsError.value = ''
+  lastWasDownloading = false
+  loading.value = true
+  fetchApp()
+})
+
+onMounted(async () => {
+  document.title = 'PlanBrowser'
+  await fetchApp()
+  lastWasDownloading = isDownloading.value
 })
 </script>

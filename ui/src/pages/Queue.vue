@@ -13,7 +13,9 @@
       <div v-else class="space-y-3">
         <div v-for="item in queueItems" :key="item.id" class="bg-white p-3 rounded shadow-sm border border-gray-200 flex flex-wrap justify-between items-center gap-x-4 gap-y-2">
           <div class="min-w-0">
-            <router-link v-if="item.status === 'completed'" :to="`/app/${encodeURIComponent(item.reference)}`" class="font-medium text-blue-600 hover:underline">{{ item.reference }}</router-link>
+            <router-link v-if="item.status === 'completed' || item.status === 'in_progress' || item.status === 'pending'" :to="`/app/${encodeURIComponent(item.reference)}`" class="font-medium text-blue-600 hover:underline">
+              {{ item.reference }}
+            </router-link>
             <div v-else class="font-medium">{{ item.reference }}</div>
             <div class="text-xs text-gray-500">
               <span v-if="authorityName(item.authorityId)">{{ authorityName(item.authorityId) }} • </span>

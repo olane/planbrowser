@@ -39,6 +39,7 @@ The scraping logic that works around these quirks lives in `src/scraper.ts` (`do
 - Individual comments are `.comment` nodes with `.consultationAddress`, `.consultationStance` (the stance text is wrapped in parentheses on the portal and stripped), a heading of the form "Comment submitted date: …", and `.comment-text` for the body.
 - Comments are paginated; navigation is via `p.pager.bottom a.next`. Scraping walks pages until no `next` link remains.
 - Comment scraping is best-effort: a failure there must not lose the already-recorded document metadata or fail the whole download.
+- Downloads are ordered by value, not by whatever the portal happens to list first: main details (summary/dates/further information/location) are scraped first and saved, then comments, and the (potentially large, bulk) document files last. Each is committed to disk as it is fetched — `metadata.json` is written once the details are in hand and rewritten as documents land, so an application is viewable in the UI while still downloading. Files are written the moment they arrive, and writes are atomic (temp file + rename) so a live reader never sees a half-written JSON file. On a re-scrape the previously-recorded document list is kept in `metadata.json` until the fresh inventory replaces it, so a scrape that dies partway never loses already-recorded documents.
 
 ## Authority registry
 
