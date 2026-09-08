@@ -13,7 +13,17 @@ import { getAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
 
 type DownloadFn = (trigger: () => Promise<unknown>, timeout: number) => Promise<{ filePath: string; filename: string }>;
 
-export async function downloadDocuments(page: Page, download: DownloadFn, outDir: string, onProgress?: (message: string, current?: number, total?: number) => void): Promise<DocumentMeta[]> {
+// Idox names every uploaded document "<REF>-<NAME>-<id>.<ext>" (both in the bulk
+// zip member path and in the file URL "/online-applications/files/<hash>/pdf/…"),
+// so the trailing number is the stable per-document id. Two rows sharing an id are
+// the same file listed twice; two rows with different ids are genuinely different
+// documents even if they render the same date/type/description.
+export function extractDocId(urlOrName: string): string | undefined {
+  const m = /-(\d{4,})(?:\.\w+)?$/.exec(urlOrName.trim());
+  return m?.[1];
+}
+
+export async function downloadDocuments(page: Page, download: DownloadFn, outDir: string, onProgress?: (message: string, current?: number, total?: number) => void, previousDocs?: DocumentMeta[]): Promise<DocumentMeta[]> {
   console.log('Navigating to Documents tab...');
   const docsTab = page.locator('#tab_documents');
   if (await docsTab.count() > 0) {
@@ -69,7 +79,8 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
     if (await linkLocator.count() > 0) {
       const baseName = `${date.replace(/\//g, '-')} - ${type.replace(/\//g, '-').trim()} - ${description.replace(/[^a-zA-Z0-9 -]/g, '').trim()}`;
       
-      
+      const viewHref = (await linkLocator.getAttribute('href')) ?? '';
+
       const bulkCheckLocator = row.locator('.bulkCheck');
       const hasBulkCheck = await bulkCheckLocator.count() > 0;
       let zipFilename = '';
@@ -86,6 +97,8 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
           datePublished: date.trim(),
           documentType: type.trim(),
           description: description.trim(),
+          docId: extractDocId(viewHref) ?? extractDocId(zipFilename),
+          viewHref,
           hasBulkCheck,
           bulkCheckLocator,
           linkLocator,
@@ -94,22 +107,50 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
     }
   }
 
-  // Idox portals can list the same document in the table more than once (e.g.
-  // under both "Documents" and another category). Two rows produce the same
-  // local filename, so collapse them here — otherwise we'd download the same
-  // file twice and record duplicate entries in metadata.json.
-  const seenBaseNames = new Set<string>();
+  // Idox portals can list the same document more than once (e.g. under both
+  // "Documents" and another category), but two rows that merely render the same
+  // date/type/description are NOT necessarily the same file — each upload has its
+  // own portal document id, so genuinely different versions (a superseded
+  // revision, a .pdf and its source .docx, two letters published the same day) can
+  // look identical. Dedupe on the underlying file id (falling back to the file
+  // URL / zip member), never on the rendered name, so distinct versions are kept.
+  const seenFileIds = new Set<string>();
   const uniqueDocs = allDocs.filter((d) => {
-    if (seenBaseNames.has(d.baseName)) {
-      console.log(`Skipping duplicate row: ${d.baseName}`);
+    const fileId = d.docId || d.viewHref || d.zipFilename || d.baseName;
+    if (seenFileIds.has(fileId)) {
+      console.log(`Skipping duplicate row (same file): ${d.baseName}`);
       return false;
     }
-    seenBaseNames.add(d.baseName);
+    seenFileIds.add(fileId);
     return true;
   });
 
+  // How many distinct documents each rendered name maps to. When it is more than
+  // one, an existing file of that name can't be assumed to be any particular one.
+  const rowsPerBaseName = new Map<string, number>();
+  for (const doc of uniqueDocs) {
+    rowsPerBaseName.set(doc.baseName, (rowsPerBaseName.get(doc.baseName) ?? 0) + 1);
+  }
+
+  // Documents recorded by previous scrapes, indexed by portal id so a re-scrape
+  // reuses the exact stored filename instead of guessing from the rendered name.
+  const previousByDocId = new Map<string, DocumentMeta>();
+  for (const pd of previousDocs ?? []) {
+    if (pd.docId) previousByDocId.set(pd.docId, pd);
+  }
+
   const missingDocs = [];
-  
+  const reusedFiles = new Set<string>();
+
+  // Optional fields (docId) must be omitted rather than set to undefined under
+  // exactOptionalPropertyTypes, so build the metadata fields for a row here.
+  const docMetaFields = (doc: { datePublished: string; documentType: string; description: string; docId: string | undefined }) => ({
+    datePublished: doc.datePublished,
+    documentType: doc.documentType,
+    description: doc.description,
+    ...(doc.docId ? { docId: doc.docId } : {})
+  });
+
   const total = uniqueDocs.length;
   let done = 0;
   const report = () => onProgress?.('Downloading documents', done, total);
@@ -117,21 +158,61 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
 
   const existingFiles = fs.existsSync(outDir) ? fs.readdirSync(outDir) : [];
   for (const doc of uniqueDocs) {
-      const existing = existingFiles.find(f => f.startsWith(doc.baseName + '.'));
-      if (existing) {
-          console.log(`Skipping existing: ${existing}`);
-          docs.push({
-              localFilename: existing,
-              datePublished: doc.datePublished,
-              documentType: doc.documentType,
-              description: doc.description
-          });
-          done++;
-          report();
-      } else {
-          missingDocs.push(doc);
-      }
+    const recorded = doc.docId ? previousByDocId.get(doc.docId) : undefined;
+    const sharesName = (rowsPerBaseName.get(doc.baseName) ?? 0) > 1;
+    const fileOnDisk = existingFiles.find(f => f.startsWith(doc.baseName + '.'));
+
+    // Same document as a previous scrape and its file is still there: re-use it.
+    if (recorded && existingFiles.includes(recorded.localFilename)) {
+      console.log(`Skipping existing: ${recorded.localFilename}`);
+      docs.push({
+        localFilename: recorded.localFilename,
+        ...docMetaFields(doc)
+      });
+      reusedFiles.add(recorded.localFilename);
+      done++;
+      report();
+      continue;
+    }
+
+    // No portal id (older scrape or a portal that doesn't expose one) and this
+    // rendered name is unambiguous: a file already on disk is that document.
+    if (!recorded && !sharesName && fileOnDisk) {
+      console.log(`Skipping existing: ${fileOnDisk}`);
+      docs.push({
+        localFilename: fileOnDisk,
+        ...docMetaFields(doc)
+      });
+      reusedFiles.add(fileOnDisk);
+      done++;
+      report();
+      continue;
+    }
+
+    // Distinct documents sharing a name (or a missing recorded file) must each be
+    // downloaded; filenames are disambiguated below so nothing is overwritten.
+    missingDocs.push(doc);
   }
+
+  // Filenames are generated from the rendered name, which distinct documents can
+  // share. Allocate names that are unique across what's already on disk and what
+  // this run produces, appending " (2)", " (3)", … on collision.
+  const usedNames = new Set(existingFiles);
+  const allocateFilename = (name: string): string => {
+    const dot = name.lastIndexOf('.');
+    if (dot <= 0) {
+      let candidate = name;
+      for (let i = 2; usedNames.has(candidate); i++) candidate = `${name} (${i})`;
+      usedNames.add(candidate);
+      return candidate;
+    }
+    const stem = name.slice(0, dot);
+    const ext = name.slice(dot);
+    let candidate = name;
+    for (let i = 2; usedNames.has(candidate); i++) candidate = `${stem} (${i})${ext}`;
+    usedNames.add(candidate);
+    return candidate;
+  };
 
   const bulkDownloadable = missingDocs.filter(d => d.hasBulkCheck && d.zipFilename);
   const individualDownloadable = missingDocs.filter(d => !d.hasBulkCheck || !d.zipFilename);
@@ -173,13 +254,11 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
             if (entry) {
                 const data = entry.getData();
                 const ext = path.extname(doc.zipFilename) || '.pdf';
-                const finalName = `${doc.baseName}${ext}`;
+                const finalName = allocateFilename(`${doc.baseName}${ext}`);
                 fs.writeFileSync(path.join(outDir, finalName), data);
                 docs.push({
                     localFilename: finalName,
-                    datePublished: doc.datePublished,
-                    documentType: doc.documentType,
-                    description: doc.description
+                    ...docMetaFields(doc)
                 });
                 console.log(`Extracted: ${finalName}`);
                 done++;
@@ -213,19 +292,37 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
           30000
         );
         const suggestedExt = path.extname(filename) || '.pdf';
-        const finalName = `${doc.baseName}${suggestedExt}`;
+        const finalName = allocateFilename(`${doc.baseName}${suggestedExt}`);
         fs.copyFileSync(filePath, path.join(outDir, finalName));
         docs.push({
           localFilename: finalName,
-          datePublished: doc.datePublished,
-          documentType: doc.documentType,
-          description: doc.description
+          ...docMetaFields(doc)
         });
       } catch (e) {
         console.error(`Failed to download ${doc.baseName}:`, e);
       }
       done++;
       report();
+  }
+
+  // When distinct documents share a rendered name and this run downloaded them
+  // afresh, any pre-existing file for that name that we neither re-used nor
+  // produced is an ambiguous leftover from before portal ids were recorded (we
+  // can't tell which document it belonged to). Drop it so it doesn't linger as an
+  // unreferenced duplicate.
+  const produced = new Set(docs.map(d => d.localFilename));
+  const leftoversToRemove = new Set<string>();
+  for (const doc of uniqueDocs) {
+    if ((rowsPerBaseName.get(doc.baseName) ?? 0) <= 1) continue;
+    for (const f of existingFiles) {
+      if (f.startsWith(doc.baseName + '.') && !reusedFiles.has(f) && !produced.has(f)) {
+        leftoversToRemove.add(f);
+      }
+    }
+  }
+  for (const f of leftoversToRemove) {
+    fs.unlinkSync(path.join(outDir, f));
+    console.log(`Removed ambiguous leftover: ${f}`);
   }
 
   return docs;
@@ -549,7 +646,7 @@ export async function downloadApplication(reference: string, authorityId: string
       meta.location = location;
     }
 
-    meta.documents = await downloadDocuments(page, download, outDir, onProgress);
+    meta.documents = await downloadDocuments(page, download, outDir, onProgress, previous?.documents);
 
     // Persist the document list immediately, before anything later (like comment
     // scraping) can fail and leave freshly-downloaded documents unrecorded. Keep

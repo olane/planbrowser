@@ -3,6 +3,13 @@ export interface DocumentMeta {
   datePublished: string;
   documentType: string;
   description: string;
+  // Idox's per-document id, scraped from the row's file URL / bulk-zip member
+  // (e.g. ".../files/<hash>/pdf/<REF>-<NAME>-7414943.pdf" -> "7414943"). This is
+  // the real identity of a document: two rows with the same id are the same file,
+  // while two rows that merely render the same date/type/description may still be
+  // genuinely different documents. Recorded so re-scrapes can match by id rather
+  // than by the generated local filename.
+  docId?: string;
   starred?: boolean;
   note?: string;
 }
