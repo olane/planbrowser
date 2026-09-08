@@ -178,16 +178,12 @@ Downloaded files are stored under `downloads/<authorityId>/<reference>/`, with `
 
 ## Notes on Idox portals
 
-These tripped us up repeatedly, so writing them down:
-
-- **A reference search that returns one match does not deep-link.** After submitting a single exact reference, the browser stays on the search-results URL `advancedSearchResults.do?action=firstPage` (which renders the one application's summary inline) rather than navigating to the application page. Don't be tempted to store `page.url()` here.
-- **That results URL is session-bound.** Idox keeps the search results server-side against your `JSESSIONID`. Opening the `advancedSearchResults.do?action=firstPage` URL later — e.g. in a fresh browser via the "View on portal" link — fails with a 500 "Server Problem" page. This is not a bot-wall on deep links; the page genuinely needs a live search session.
-- **The real deep links are stable.** Every application page exposes `applicationDetails.do?…&keyVal=<token>` links (Summary/Details/Dates/etc.). The `keyVal` token is not session-bound — it stays constant across sessions and the URL loads fine from a cold browser on every portal we've tested.
-- planbrowser therefore records the canonical `applicationDetails.do` link (preferring `activeTab=summary`) as `portalUrl` — see `resolvePortalUrl` in `src/scraper.ts`.
+Idox Public Access portals have a number of traps (session-bound URLs, differing document-table layouts, gated document files, …). Everything we've hit is collected in **[docs/idox-portals.md](docs/idox-portals.md)** — read it before touching the scraper. In short: application `applicationDetails.do?keyVal=` pages deep-link reliably, but search-results URLs are session-bound and document files are gated behind bot-protection, so files are downloaded and stored locally rather than linked to.
 
 ## Project structure
 
 ```
+docs/        Notes on Idox portal quirks and how the scraper works around them
 src/         TypeScript backend (Express API, Playwright scraper, storage, queue)
   authorities.ts  Idox portal registry + authority resolution
 ui/          Vue 3 + TypeScript + Vite frontend (Tailwind CSS, Leaflet)
