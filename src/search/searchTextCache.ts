@@ -25,10 +25,7 @@ export function readSearchText(dir: string): SearchTextFile {
     if (parsed && typeof parsed === 'object' && parsed.documents && typeof parsed.documents === 'object') {
       const documents: Record<string, CachedDocumentText> = {};
       for (const [filename, raw] of Object.entries(parsed.documents as Record<string, unknown>)) {
-        if (typeof raw === 'string') {
-          // Legacy entry recorded without a stat: re-extract once.
-          documents[filename] = { text: raw, mtimeMs: -1, size: -1 };
-        } else if (raw && typeof raw === 'object') {
+        if (raw && typeof raw === 'object') {
           const entry = raw as { text?: unknown; mtimeMs?: unknown; size?: unknown };
           if (typeof entry.text === 'string') {
             documents[filename] = {
