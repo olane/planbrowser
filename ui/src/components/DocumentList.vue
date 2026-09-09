@@ -19,7 +19,7 @@
           >
             <p class="text-sm font-medium text-gray-900 truncate flex items-center gap-2" :title="entry.title">
               <span class="truncate">{{ entry.title }}</span>
-              <span class="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 shrink-0">{{ entry.parts.length }} parts</span>
+              <span class="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 shrink-0">{{ groupCountLabel(entry) }}</span>
             </p>
             <p v-if="groupDate(entry) || groupType(entry)" class="mt-1 flex text-xs text-gray-500">
               <span class="mr-2">{{ groupDate(entry) }}</span>
@@ -77,7 +77,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import type { EnhancedDocument } from '../../../src/types.js'
-import { groupDocuments, partLabel, type DocumentListEntry } from '../utils'
+import { groupDocuments, multipartUnit, partLabel, type DocumentListEntry } from '../utils'
 import DocumentRow from './DocumentRow.vue'
 import * as api from '../api'
 
@@ -133,6 +133,14 @@ const groupDate = (entry: DocumentListEntry<EnhancedDocument>): string | undefin
 
 const groupType = (entry: DocumentListEntry<EnhancedDocument>): string | undefined =>
   entry.kind === 'group' ? entry.parts[0]?.documentType : undefined
+
+// Header pill, e.g. "17 parts" or "2 sheets", matching whatever the group is.
+const groupCountLabel = (entry: DocumentListEntry<EnhancedDocument>): string => {
+  if (entry.kind !== 'group') return ''
+  const unit = multipartUnit(entry.parts[0]?.description)
+  const n = entry.parts.length
+  return `${n} ${unit}${n === 1 ? '' : 's'}`
+}
 
 // Favouriting a group applies to every part it contains. The header star shows
 // all / some / none favourited and toggles the whole group in one click.

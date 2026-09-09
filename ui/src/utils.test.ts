@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { timeAgo, statusLabel, progressText, statusBadgeClass, isKeyDocument, partNumber, partLabel, multipartBase, groupDocuments } from './utils';
+import { timeAgo, statusLabel, progressText, statusBadgeClass, isKeyDocument, partNumber, partLabel, multipartBase, multipartUnit, groupDocuments } from './utils';
 
 const NOW = new Date('2026-01-15T12:00:00.000Z');
 
@@ -114,9 +114,23 @@ describe('partNumber', () => {
     expect(partNumber('ENVIRONMENTAL STATEMENT PT 3')).toBe(3);
   });
 
+  it('parses sheet numbers with an of-total', () => {
+    expect(partNumber('BUILDING A ELEVATIONS - SHEET 1 OF 2')).toBe(1);
+    expect(partNumber('BUILDING A ELEVATIONS - SHEET 2 OF 2')).toBe(2);
+  });
+
+  it('parses a bare N of M', () => {
+    expect(partNumber('ARCHAEOLOGICAL DESK BASED ASSESSMENT 1 OF 2')).toBe(1);
+  });
+
   it('returns null without a numbered part', () => {
     expect(partNumber('PROPOSED SITE PLAN')).toBeNull();
     expect(partNumber(undefined)).toBeNull();
+  });
+
+  it('ignores bare trailing numbers that are not parts', () => {
+    expect(partNumber('PLANNING STATEMENT PAGE 61')).toBeNull();
+    expect(partNumber('TREE SURVEY 2026')).toBeNull();
   });
 });
 
@@ -126,8 +140,21 @@ describe('partLabel', () => {
     expect(partLabel('Design and Access Statement part 1')).toBe('part 1');
   });
 
+  it('returns the sheet marker verbatim', () => {
+    expect(partLabel('BUILDING A ELEVATIONS - SHEET 1 OF 2')).toBe('SHEET 1 OF 2');
+  });
+
   it('returns null without a part', () => {
     expect(partLabel('PROPOSED SITE PLAN')).toBeNull();
+  });
+});
+
+describe('multipartUnit', () => {
+  it('distinguishes sheets from parts', () => {
+    expect(multipartUnit('BUILDING A ELEVATIONS - SHEET 1 OF 2')).toBe('sheet');
+    expect(multipartUnit('DESIGN AND ACCESS STATEMENT PART 1')).toBe('part');
+    expect(multipartUnit('ARCHAEOLOGICAL DESK BASED ASSESSMENT 1 OF 2')).toBe('part');
+    expect(multipartUnit('SITE PLAN')).toBe('part');
   });
 });
 
@@ -136,9 +163,23 @@ describe('multipartBase', () => {
     expect(multipartBase('DESIGN AND ACCESS STATEMENT PART 2')).toBe('DESIGN AND ACCESS STATEMENT');
   });
 
+  it('strips a trailing sheet marker and its separator', () => {
+    expect(multipartBase('BUILDING A ELEVATIONS - SHEET 1 OF 2')).toBe('BUILDING A ELEVATIONS');
+    expect(multipartBase('PROPOSED ELEVATIONS SHEET 2 OF 3')).toBe('PROPOSED ELEVATIONS');
+  });
+
+  it('strips a bare N of M', () => {
+    expect(multipartBase('ARCHAEOLOGICAL DESK BASED ASSESSMENT 1 OF 2')).toBe('ARCHAEOLOGICAL DESK BASED ASSESSMENT');
+  });
+
   it('returns null for unnumbered descriptions', () => {
     expect(multipartBase('DESIGN AND ACCESS STATEMENT')).toBeNull();
     expect(multipartBase(undefined)).toBeNull();
+  });
+
+  it('returns null for bare trailing numbers that are not parts', () => {
+    expect(multipartBase('PLANNING STATEMENT PAGE 61')).toBeNull();
+    expect(multipartBase('TREE SURVEY 2026')).toBeNull();
   });
 });
 
@@ -202,6 +243,48 @@ describe('groupDocuments', () => {
 
   it('does not merge distinct-but-similar titles', () => {
     const docs = [doc('SECONDARY GLAZING EXISTING PART 1'), doc('SECONDARY GLAZING PROPOSED PART 2')];
+    expect(groupDocuments(docs).every((e) => e.kind === 'doc')).toBe(true);
+  });
+
+  it('groups sheets sharing a title under the base name', () => {
+    const docs = [
+      doc('BUILDING A ELEVATIONS - SHEET 1 OF 2'),
+      doc('BUILDING A ELEVATIONS - SHEET 2 OF 2'),
+    ];
+    expect(groupDocuments(docs)).toEqual([
+      { kind: 'group', title: 'BUILDING A ELEVATIONS', parts: [docs[0], docs[1]] },
+    ]);
+  });
+
+  it('orders sheets numerically across an of-total', () => {
+    const docs = [
+      doc('BUILDING D ELEVATIONS - SHEET 10 OF 10'),
+      doc('BUILDING D ELEVATIONS - SHEET 2 OF 10'),
+      doc('BUILDING D ELEVATIONS - SHEET 1 OF 10'),
+    ];
+    const entries = groupDocuments(docs);
+    expect(entries).toHaveLength(1);
+    if (entries[0].kind === 'group') {
+      expect(entries[0].parts.map((p) => p.description)).toEqual([
+        'BUILDING D ELEVATIONS - SHEET 1 OF 10',
+        'BUILDING D ELEVATIONS - SHEET 2 OF 10',
+        'BUILDING D ELEVATIONS - SHEET 10 OF 10',
+      ]);
+    }
+  });
+
+  it('groups bare N of M documents sharing a base', () => {
+    const docs = [
+      doc('ARCHAEOLOGICAL DESK BASED ASSESSMENT 1 OF 2'),
+      doc('ARCHAEOLOGICAL DESK BASED ASSESSMENT 2 OF 2'),
+    ];
+    expect(groupDocuments(docs)).toEqual([
+      { kind: 'group', title: 'ARCHAEOLOGICAL DESK BASED ASSESSMENT', parts: [docs[0], docs[1]] },
+    ]);
+  });
+
+  it('does not group documents merely ending in a number', () => {
+    const docs = [doc('SITE INVESTIGATION REPORT 1'), doc('TREE SURVEY 2026')];
     expect(groupDocuments(docs).every((e) => e.kind === 'doc')).toBe(true);
   });
 });

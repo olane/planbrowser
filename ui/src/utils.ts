@@ -48,21 +48,44 @@ export function statusBadgeClass(app: { status?: string; furtherInformation?: Re
   return 'bg-blue-50 text-blue-700 ring-blue-700/10';
 }
 
-// Documents are often uploaded in several parts, named like
-// "DESIGN AND ACCESS STATEMENT PART 2". A trailing "PART N" (or "PT N") marks a
-// document as one part of a larger parent document sharing the same base title.
-const PART_SUFFIX_RE = /\b(?:PART|PT)\s+(\d+)\s*$/i;
+// Documents are often uploaded in several numbered parts of a larger document,
+// named in a few common ways:
+//   "DESIGN AND ACCESS STATEMENT PART 2"        (PART / PT N)
+//   "BUILDING A ELEVATIONS - SHEET 1 OF 2"      (SHEET / SH / SHT N [OF M])
+//   "ARCHAEOLOGICAL DESK BASED ASSESSMENT 1 OF 2" (bare N OF M)
+// A bare trailing number with no marker (a year, "PAGE 61", …) is deliberately
+// NOT treated as a part, so unrelated documents are never grouped together.
+const PART_SUFFIX_RE = /\b((?:PART|PT|SHEET|SH|SHT)\s+)?(\d+)(?:\s+OF\s+(\d+))?\s*$/i;
 
-export function partNumber(description?: string): number | null {
-  if (!description) return null;
-  const m = PART_SUFFIX_RE.exec(description.trim());
-  return m ? parseInt(m[1], 10) : null;
+interface PartMatch {
+  label: string;
+  number: number;
 }
 
-export function partLabel(description?: string): string | null {
+function matchPart(description?: string): PartMatch | null {
   if (!description) return null;
-  const m = PART_SUFFIX_RE.exec(description.trim());
-  return m ? m[0].trim() : null;
+  const trimmed = description.trim();
+  const m = PART_SUFFIX_RE.exec(trimmed);
+  if (!m) return null;
+  if (!m[1] && !m[3]) return null;
+  return { label: m[0].trim(), number: parseInt(m[2], 10) };
+}
+
+export function partNumber(description?: string): number | null {
+  return matchPart(description)?.number ?? null;
+}
+
+// The part marker verbatim (e.g. "PART 2", "SHEET 1 OF 2", "1 OF 2") — used as
+// the short row label inside a group.
+export function partLabel(description?: string): string | null {
+  return matchPart(description)?.label ?? null;
+}
+
+// The noun describing a numbered set (used in group headers, e.g. "4 parts" vs
+// "2 sheets").
+export function multipartUnit(description?: string): string {
+  const label = partLabel(description)?.toLowerCase() ?? '';
+  return label.includes('sheet') ? 'sheet' : 'part';
 }
 
 // The parent title with the trailing part marker stripped, or null when the
@@ -71,7 +94,9 @@ export function multipartBase(description?: string): string | null {
   if (!description) return null;
   const trimmed = description.trim();
   const m = PART_SUFFIX_RE.exec(trimmed);
-  return m ? trimmed.slice(0, m.index).replace(/\s+$/, '') : null;
+  if (!m) return null;
+  if (!m[1] && !m[3]) return null;
+  return trimmed.slice(0, m.index).replace(/[\s\-–—:;,.]+$/g, '');
 }
 
 export interface DocumentGroup<T> {
@@ -88,9 +113,10 @@ export interface DocumentSolo<T> {
 export type DocumentListEntry<T> = DocumentGroup<T> | DocumentSolo<T>;
 
 // Re-orders a list of documents into entries, collapsing documents that share a
-// base title and a trailing part number (e.g. "DESIGN AND ACCESS STATEMENT
-// PART 1".."PART 4") under a single group. Only titles appearing more than once
-// become groups, so an isolated "... PART 1" with no siblings stays a plain row.
+// base title and a trailing numbered marker (e.g. "DESIGN AND ACCESS STATEMENT
+// PART 1".."PART 4", "…- SHEET 1 OF 2"/"SHEET 2 OF 2") under a single group.
+// Only titles appearing more than once become groups, so an isolated "…PART 1"
+// with no siblings stays a plain row.
 export function groupDocuments<T extends { description?: string }>(docs: T[]): DocumentListEntry<T>[] {
   const counts = new Map<string, number>();
   const baseKey = (d: T) => {
