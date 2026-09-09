@@ -130,20 +130,28 @@
 
           <div v-show="activeTab === 'documents'">
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-3 border-b pb-2">
-              <div class="relative">
-                <svg class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"></path></svg>
-                <input v-model="docSearch" type="text" placeholder="Search documents..." class="w-full sm:w-72 text-sm border-gray-300 rounded-md py-1.5 pl-8 pr-8 focus:ring-blue-500 focus:border-blue-500" />
-                <button v-if="docSearch" @click="docSearch = ''" :aria-label="'Clear document search'" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="Clear search">
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+              <div class="flex items-center gap-3 flex-wrap">
+                <div class="relative">
+                  <svg class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"></path></svg>
+                  <input v-model="docSearch" type="text" placeholder="Search documents..." class="w-full sm:w-72 text-sm border-gray-300 rounded-md py-1.5 pl-8 pr-8 focus:ring-blue-500 focus:border-blue-500" />
+                  <button v-if="docSearch" @click="docSearch = ''" :aria-label="'Clear document search'" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="Clear search">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+                <label class="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer select-none" title="Also search inside document contents (PDFs, Word files), not just names and metadata">
+                  <input v-model="searchContents" type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                  <span>Contents</span>
+                </label>
               </div>
               <select v-if="docTypesWithCounts.length > 1" v-model="selectedDocType" class="text-sm border-gray-300 rounded-md py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500">
                 <option v-for="t in docTypesWithCounts" :key="t.value" :value="t.value">{{ t.label }} ({{ t.count }})</option>
               </select>
             </div>
 
-            <DocumentList v-if="filteredDocs.length > 0" :docs="filteredDocs" :reference="app.reference" :authority-id="app.authorityId" :expand-all="docFilterActive" @changed="onDocChanged" />
-            <div v-else class="text-sm text-gray-500 py-4 text-center">No documents match your search.</div>
+            <div v-if="searchingContent" class="mb-2 text-xs text-gray-400">Searching document contents…</div>
+
+            <DocumentList v-if="filteredDocs.length > 0" :docs="filteredDocs" :reference="app.reference" :authority-id="app.authorityId" :expand-all="docFilterActive" :snippets="contentSnippets" @changed="onDocChanged" />
+            <div v-else-if="!searchingContent" class="text-sm text-gray-500 py-4 text-center">No documents match your search.</div>
           </div>
 
           <div v-show="activeTab === 'location'" v-if="app.location">
@@ -209,7 +217,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { timeAgo, progressText, isKeyDocument } from '../utils'
-import type { ApplicationMeta, Comment, EnhancedDocument } from '../../../src/types.js'
+import type { ApplicationMeta, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet } from '../../../src/types.js'
 import * as api from '../api'
 import DocumentList from '../components/DocumentList.vue'
 import { useRoute } from 'vue-router'
@@ -242,6 +250,11 @@ const activeTab = ref('documents')
 const commentsError = ref('')
 const docSearch = ref('')
 const commentSearch = ref('')
+// Matched content context per localFilename, populated by the debounced content
+// search and shown on matching document rows.
+const contentSnippets = ref<Record<string, DocumentSnippet>>({})
+const searchingContent = ref(false)
+const searchContents = ref(true)
 const getStanceClass = (stance?: string) => {
   if (!stance) return 'bg-gray-100 text-gray-600 ring-gray-500/10'
   const lower = stance.toLowerCase()
@@ -432,10 +445,43 @@ const filteredDocs = computed(() => {
   if (q) {
     docs = docs.filter((d) => {
       const haystack = `${d.description || ''} ${d.documentType || ''} ${d.localFilename || ''} ${d.datePublished || ''} ${d.note || ''}`.toLowerCase()
-      return haystack.includes(q)
+      return haystack.includes(q) || Object.prototype.hasOwnProperty.call(contentSnippets.value, d.localFilename)
     })
   }
   return docs
+})
+
+// Content search is debounced and server-side (PDFs are extracted on first
+// search), so it runs after the instant metadata filter and merges its results
+// into the same list.
+let contentSearchTimer: ReturnType<typeof setTimeout> | null = null
+const runContentSearch = async (query: string) => {
+  if (!app.value || !searchContents.value) return
+  searchingContent.value = true
+  try {
+    const hits: DocumentSearchHit[] = await api.searchDocuments(app.value.reference, query, app.value.authorityId)
+    // Ignore stale responses if the user has since changed the query or toggled
+    // content search off.
+    if (!searchContents.value || docSearch.value.trim() !== query) return
+    const snippets: Record<string, DocumentSnippet> = {}
+    for (const hit of hits) snippets[hit.localFilename] = hit.snippet
+    contentSnippets.value = snippets
+  } catch (e) {
+    console.error(e)
+  } finally {
+    searchingContent.value = false
+  }
+}
+
+watch([docSearch, searchContents], () => {
+  if (contentSearchTimer) clearTimeout(contentSearchTimer)
+  const query = docSearch.value.trim()
+  if (!query || !searchContents.value) {
+    contentSnippets.value = {}
+    searchingContent.value = false
+    return
+  }
+  contentSearchTimer = setTimeout(() => runContentSearch(query), 300)
 })
 
 const commentKey = (c: { address: string; date: string; stance: string }) =>
@@ -515,6 +561,9 @@ watch(refParam, () => {
   error.value = ''
   commentsList.value = []
   commentsError.value = ''
+  docSearch.value = ''
+  contentSnippets.value = {}
+  searchingContent.value = false
   lastWasDownloading = false
   loading.value = true
   fetchApp()

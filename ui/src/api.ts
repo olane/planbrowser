@@ -1,4 +1,4 @@
-import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags } from '../../src/types.js';
+import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags, DocumentSearchHit } from '../../src/types.js';
 import type { SyncScope } from '../../src/decision.js';
 import { DEFAULT_AUTHORITY_ID } from '../../src/authorities.js';
 import { safeReference } from '../../src/refs.js';
@@ -59,6 +59,18 @@ export async function fetchComments(reference: string, authorityId?: string): Pr
   const res = await fetch(`/api/documents/${docUrlPrefix(authorityId)}${encodeURIComponent(safeReference(reference))}/comments.json`);
   if (!res.ok) throw new Error('Failed to load comments');
   return res.json();
+}
+
+export async function searchDocuments(reference: string, query: string, authorityId?: string): Promise<DocumentSearchHit[]> {
+  const params = new URLSearchParams({ q: query });
+  if (authorityId) params.set('authority', authorityId);
+  const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/documents/search?${params.toString()}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to search documents');
+  }
+  const data = await res.json();
+  return data.hits ?? [];
 }
 
 export async function fetchQueue(): Promise<QueueItem[]> {

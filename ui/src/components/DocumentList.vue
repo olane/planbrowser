@@ -59,6 +59,7 @@
             :reference="reference"
             :authority-id="authorityId"
             :label="partLabel(part.description) || undefined"
+            :snippet="snippetFor(part.localFilename)"
             @changed="forwardChanged(part, $event)"
           />
         </ul>
@@ -68,6 +69,7 @@
         :doc="entry.doc"
         :reference="reference"
         :authority-id="authorityId"
+        :snippet="snippetFor(entry.doc.localFilename)"
         @changed="forwardChanged(entry.doc, $event)"
       />
     </template>
@@ -76,7 +78,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import type { EnhancedDocument } from '../../../src/types.js'
+import type { EnhancedDocument, DocumentSnippet } from '../../../src/types.js'
 import { groupDocuments, multipartUnit, partLabel, type DocumentListEntry } from '../utils'
 import DocumentRow from './DocumentRow.vue'
 import * as api from '../api'
@@ -88,6 +90,8 @@ const props = defineProps<{
   // Force every group open. Used when the surrounding list is filtered/searched,
   // so matching parts are visible rather than hidden behind collapsed headers.
   expandAll?: boolean
+  // Matched content context per localFilename, shown on matching rows.
+  snippets?: Record<string, DocumentSnippet>
 }>()
 
 const emit = defineEmits<{
@@ -95,6 +99,8 @@ const emit = defineEmits<{
 }>()
 
 const entries = computed<DocumentListEntry<EnhancedDocument>[]>(() => groupDocuments(props.docs))
+
+const snippetFor = (filename: string): DocumentSnippet | undefined => props.snippets?.[filename]
 
 const openTitles = reactive(new Set<string>())
 const isOpen = (title: string) => openTitles.has(title)

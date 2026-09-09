@@ -13,6 +13,9 @@
       <p v-if="doc.supersededBy" class="mt-1 text-xs text-blue-600">
         Superseded by: <a :href="doc.supersededBy.url" target="_blank" class="hover:underline">{{ doc.supersededBy.datePublished }} version</a>
       </p>
+      <p v-if="snippet" class="mt-1 text-xs text-gray-600 break-words">
+        …{{ snippet.before }}<mark class="bg-yellow-100">{{ snippet.match }}</mark>{{ snippet.after }}…
+      </p>
       <div v-if="doc.replaces && doc.replaces.length > 0" class="mt-1 text-xs text-gray-500">
         Replaces:
         <span v-for="(old, idx) in doc.replaces" :key="old.localFilename">
@@ -49,7 +52,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { EnhancedDocument } from '../../../src/types.js'
+import type { EnhancedDocument, DocumentSnippet } from '../../../src/types.js'
 import * as api from '../api'
 
 const props = defineProps<{
@@ -59,6 +62,8 @@ const props = defineProps<{
   // Short override for the main title, e.g. "PART 2" when rendered inside a
   // multi-part group whose header already shows the full parent title.
   label?: string
+  // Matched content context, shown when the document matched a content search.
+  snippet?: DocumentSnippet
 }>()
 
 const emit = defineEmits<{ (e: 'changed', payload: { starred: boolean; note: string }): void }>()
