@@ -62,17 +62,23 @@ function withDocFlags(doc: DocumentMeta, reference: string, authorityId?: string
   return { ...doc, starred: flags.starred, note: flags.note };
 }
 
-export function getApplication(reference: string, authorityId?: string): ApplicationMeta | null {
+// Locates an application's metadata.json, returning it alongside the directory
+// it lives in (needed by callers that also want the document files). Mirrors the
+// resolution order of getApplication: known authority, legacy flat layout, then
+// any namespaced directory.
+export function resolveApplicationMeta(reference: string, authorityId?: string): { meta: ApplicationMeta; dir: string } | null {
   const safeRef = safeReference(reference);
 
   if (authorityId) {
-    const meta = readMeta(path.join(getApplicationDir(reference, authorityId), 'metadata.json'));
-    if (meta) return withFlags(meta);
+    const dir = getApplicationDir(reference, authorityId);
+    const meta = readMeta(path.join(dir, 'metadata.json'));
+    if (meta) return { meta, dir };
   }
 
   // Legacy flat layout fallback
-  const legacyMeta = readMeta(path.join(getDownloadsDir(), safeRef, 'metadata.json'));
-  if (legacyMeta) return withFlags(legacyMeta);
+  const legacyDir = path.join(getDownloadsDir(), safeRef);
+  const legacyMeta = readMeta(path.join(legacyDir, 'metadata.json'));
+  if (legacyMeta) return { meta: legacyMeta, dir: legacyDir };
 
   // Search any authority namespaced directory for this reference
   if (!authorityId && fs.existsSync(getDownloadsDir())) {
@@ -80,12 +86,18 @@ export function getApplication(reference: string, authorityId?: string): Applica
       const appDir = path.join(getDownloadsDir(), dir);
       if (!fs.statSync(appDir).isDirectory()) continue;
       if (!fs.existsSync(path.join(appDir, 'metadata.json'))) {
-        const meta = readMeta(path.join(appDir, safeRef, 'metadata.json'));
-        if (meta) return withFlags(meta);
+        const refDir = path.join(appDir, safeRef);
+        const meta = readMeta(path.join(refDir, 'metadata.json'));
+        if (meta) return { meta, dir: refDir };
       }
     }
   }
   return null;
+}
+
+export function getApplication(reference: string, authorityId?: string): ApplicationMeta | null {
+  const found = resolveApplicationMeta(reference, authorityId);
+  return found ? withFlags(found.meta) : null;
 }
 
 // Metadata is rewritten progressively during a download (and read live by the

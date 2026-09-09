@@ -37,8 +37,10 @@
     "cheerio": "^1.2.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "mammoth": "^1.12.2",
     "playwright": "^1.62.1",
-    "proj4": "^2.21.0"
+    "proj4": "^2.21.0",
+    "unpdf": "^1.8.1"
   },
   "build": {
     "appId": "dev.olane.planbrowser",

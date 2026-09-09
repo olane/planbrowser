@@ -10,6 +10,7 @@ import { setFlags, readActivity, setDocFlags } from './userData.js';
 import { getDownloadsDir, getUiDistDir } from './config.js';
 import { SEARCH_FILTER_KEYS } from './types.js';
 import { selectSyncApps } from './decision.js';
+import { documentSearchRouter } from './search/routes.js';
 import type { SearchFilters, ApplicationFlags, DocumentFlags, QueueItem, ApplicationMeta } from './types.js';
 
 function enqueueApplications(apps: ApplicationMeta[]): QueueItem[] {
@@ -187,6 +188,9 @@ export function createApp(): express.Express {
       res.status(500).json({ error: err.message });
     }
   });
+
+  // Search a single application's documents by content
+  app.use(documentSearchRouter);
 
   // Serve static documents
   app.use('/api/documents', express.static(getDownloadsDir()));

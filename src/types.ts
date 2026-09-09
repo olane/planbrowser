@@ -93,6 +93,22 @@ export interface Comment {
   expanded?: boolean;
 }
 
+// The matched context returned by a document content search, split so the UI
+// can render the matching term with a highlight without resorting to v-html.
+export interface DocumentSnippet {
+  before: string;
+  match: string;
+  after: string;
+}
+
+export interface DocumentSearchHit {
+  localFilename: string;
+  documentType: string;
+  description: string;
+  datePublished: string;
+  snippet: DocumentSnippet;
+}
+
 export const SEARCH_FILTER_KEYS = [
   'search',
   'developer',
