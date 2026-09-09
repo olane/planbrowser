@@ -199,8 +199,8 @@
                             <span class="mr-2"><Highlight :text="comment.date" :query="commentSearch" /></span>
                           </p>
                         </div>
-                        <div v-show="comment.expanded || hasCommentSearch" class="mt-2">
-                          <div class="text-sm text-gray-700 whitespace-pre-wrap"><Highlight :text="comment.text" :query="commentSearch" /></div>
+                        <div v-show="comment.expanded || hasCommentSearch" class="mt-3 ml-4 pl-3 border-l-2 border-gray-200">
+                          <div class="text-sm text-gray-700 italic whitespace-pre-wrap"><Highlight :text="comment.text" :query="commentSearch" /></div>
                         </div>
                       </div>
                       <div class="flex items-center gap-2 shrink-0">
