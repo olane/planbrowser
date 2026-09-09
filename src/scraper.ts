@@ -11,6 +11,7 @@ import type { Page } from 'playwright';
 import path from 'path';
 import { getAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
 import { normalizePostcode } from './postcode.js';
+import { locationFromAddress } from './geocode.js';
 
 type DownloadFn = (trigger: () => Promise<unknown>, timeout: number) => Promise<{ filePath: string; filename: string }>;
 
@@ -404,7 +405,7 @@ export async function scrapeLocation(page: Page, reference: string, authority: A
       const coords = parseWfsCoords(xml);
       if (coords.length > 0) {
         console.log(`Found location geometry (${coords.length} points) for ${reference}`);
-        return coordsToLocation(coords);
+        return { ...coordsToLocation(coords), source: 'wfs' };
       }
     } catch (err) {
       console.error(`Failed to scrape ${layer} geometry for ${reference}:`, err);
@@ -646,6 +647,16 @@ export async function downloadApplication(reference: string, authorityId: string
     const location = await scrapeLocation(page, meta.reference, authority);
     if (location) {
       meta.location = location;
+    } else if (meta.address) {
+      // No site geometry (authority has no map config, the WFS lookup failed, or
+      // the layer has no feature for this reference). Fall back to geocoding the
+      // postcode from the scraped address so the application can still be shown
+      // on a map. Best-effort: a failure here just leaves location unset.
+      const postcodeLocation = await locationFromAddress(meta.address);
+      if (postcodeLocation) {
+        console.log(`Fell back to postcode-based location for ${meta.reference}`);
+        meta.location = postcodeLocation;
+      }
     }
 
     // Persist the application's main details immediately, before the slower

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizePostcode } from './postcode.js';
+import { normalizePostcode, extractPostcode } from './postcode.js';
 
 describe('normalizePostcode', () => {
   it('returns canonical spacing for a lowercase postcode', () => {
@@ -27,5 +27,33 @@ describe('normalizePostcode', () => {
     expect(normalizePostcode('london')).toBe('LONDON');
     expect(normalizePostcode('')).toBe('');
     expect(normalizePostcode('   ')).toBe('');
+  });
+});
+
+describe('extractPostcode', () => {
+  it('extracts the postcode from the end of a scraped address', () => {
+    expect(extractPostcode('Corpus Christi College Trumpington Street Cambridge Cambridgeshire CB2 1RH')).toBe('CB2 1RH');
+    expect(extractPostcode('12-18 Hoxton Street London N1 6NG')).toBe('N1 6NG');
+    expect(extractPostcode('Flat 4 22 Kings Road Wigan WN1 1XX')).toBe('WN1 1XX');
+  });
+
+  it('handles lowercase and missing internal spaces', () => {
+    expect(extractPostcode('corpus christi college cambridge cb2 1rh')).toBe('CB2 1RH');
+    expect(extractPostcode('land adjacent to willow farm cb43ph')).toBe('CB4 3PH');
+  });
+
+  it('finds a postcode that is not the very last token', () => {
+    expect(extractPostcode('12 High Street CB2 1RH near the church')).toBe('CB2 1RH');
+  });
+
+  it('returns null when no postcode is present', () => {
+    expect(extractPostcode('Some random address without a postcode')).toBeNull();
+    expect(extractPostcode('')).toBeNull();
+    expect(extractPostcode('   ')).toBeNull();
+  });
+
+  it('rejects strings that only resemble part of a postcode', () => {
+    expect(extractPostcode('outbuilding at plot 7')).toBeNull();
+    expect(extractPostcode('flat 1')).toBeNull();
   });
 });

@@ -35,9 +35,15 @@ export interface AuthorityConfig {
   map?: AuthorityMapConfig;
 }
 
+// Where an application's location came from. 'wfs' is exact site geometry
+// scraped from an authority's map server; 'postcode' is a centroid resolved from
+// the address postcode, so it is approximate (street/sector level at best).
+export type LocationSource = 'wfs' | 'postcode';
+
 export interface ApplicationLocation {
   center: { lat: number; lon: number };
   bbox: { minLon: number; minLat: number; maxLon: number; maxLat: number };
+  source?: LocationSource;
 }
 
 export interface ApplicationMeta {
