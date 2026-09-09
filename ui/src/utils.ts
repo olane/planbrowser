@@ -57,6 +57,13 @@ export function statusBadgeClass(app: { status?: string; furtherInformation?: Re
 // NOT treated as a part, so unrelated documents are never grouped together.
 const PART_SUFFIX_RE = /\b((?:PART|PT|SHEET|SH|SHT)\s+)?(\d+)(?:\s+OF\s+(\d+))?\s*$/i;
 
+// Idox names a withdrawn/old upload by prefixing its description with
+// "SUPERSEDED ". When grouping, treat it as the same document as the current
+// upload: strip the prefix for matching (the row itself still shows it).
+function normalizedName(description?: string): string {
+  return (description || '').trim().replace(/^SUPERSEDED\s+/i, '');
+}
+
 interface PartMatch {
   label: string;
   number: number;
@@ -81,22 +88,38 @@ export function partLabel(description?: string): string | null {
   return matchPart(description)?.label ?? null;
 }
 
-// The noun describing a numbered set (used in group headers, e.g. "4 parts" vs
-// "2 sheets").
+// The noun describing what a group contains, for its header pill: numbered sets
+// are "parts"/"sheets", repeated plain names are "documents".
 export function multipartUnit(description?: string): string {
-  const label = partLabel(description)?.toLowerCase() ?? '';
-  return label.includes('sheet') ? 'sheet' : 'part';
+  const label = partLabel(description);
+  if (!label) return 'document';
+  return /\bsheet\b/i.test(label) ? 'sheet' : 'part';
 }
 
-// The parent title with the trailing part marker stripped, or null when the
-// description isn't a numbered part.
+// The parent title with the trailing part marker stripped (and any leading
+// "SUPERSEDED " removed), or null when the description isn't a numbered part.
 export function multipartBase(description?: string): string | null {
   if (!description) return null;
-  const trimmed = description.trim();
-  const m = PART_SUFFIX_RE.exec(trimmed);
+  const name = normalizedName(description);
+  if (!name) return null;
+  const m = PART_SUFFIX_RE.exec(name);
   if (!m) return null;
   if (!m[1] && !m[3]) return null;
-  return trimmed.slice(0, m.index).replace(/[\s\-–—:;,.]+$/g, '');
+  return name.slice(0, m.index).replace(/[\s\-–—:;,.]+$/g, '');
+}
+
+// The grouping identity of a document. For numbered parts it is the shared base
+// title ("DESIGN AND ACCESS STATEMENT PART 1".."PART 4" -> "DESIGN AND ACCESS
+// STATEMENT"); for anything else it is the whole (SUPERSEDED-stripped) name, so
+// a document that appears many times under the same name (e.g. "135 OXFORD
+// ROAD") or superseded copies of a current document group together too.
+function groupName(description?: string): { title: string; key: string } | null {
+  if (!description) return null;
+  const name = normalizedName(description);
+  if (!name) return null;
+  const base = multipartBase(name);
+  if (base) return { title: base, key: base.toLowerCase() };
+  return { title: name, key: name.toLowerCase() };
 }
 
 export interface DocumentGroup<T> {
@@ -112,31 +135,30 @@ export interface DocumentSolo<T> {
 
 export type DocumentListEntry<T> = DocumentGroup<T> | DocumentSolo<T>;
 
-// Re-orders a list of documents into entries, collapsing documents that share a
-// base title and a trailing numbered marker (e.g. "DESIGN AND ACCESS STATEMENT
-// PART 1".."PART 4", "…- SHEET 1 OF 2"/"SHEET 2 OF 2") under a single group.
-// Only titles appearing more than once become groups, so an isolated "…PART 1"
-// with no siblings stays a plain row.
+// Re-orders a list of documents into entries, collapsing related documents
+// under a single group header:
+//   - numbered parts sharing a base title ("DESIGN AND ACCESS STATEMENT PART 1".."PART 4");
+//   - sheets sharing a title ("…- SHEET 1 OF 2"/"SHEET 2 OF 2");
+//   - documents sharing the same name ("135 OXFORD ROAD" appearing 6 times);
+//   - superseded copies grouped with their current version.
+// Only names appearing more than once become groups, so a lone "…PART 1" or a
+// unique "ECOLOGY" with no siblings stays a plain row.
 export function groupDocuments<T extends { description?: string }>(docs: T[]): DocumentListEntry<T>[] {
+  const names = docs.map((d) => groupName(d.description));
   const counts = new Map<string, number>();
-  const baseKey = (d: T) => {
-    const base = multipartBase(d.description);
-    return base ? base.toLowerCase() : null;
-  };
-  docs.forEach((d) => {
-    const key = baseKey(d);
-    if (key) counts.set(key, (counts.get(key) || 0) + 1);
+  names.forEach((n) => {
+    if (n) counts.set(n.key, (counts.get(n.key) || 0) + 1);
   });
 
   const entries: DocumentListEntry<T>[] = [];
   const openGroups = new Map<string, DocumentGroup<T>>();
-  docs.forEach((d) => {
-    const key = baseKey(d);
-    if (key && (counts.get(key) || 0) >= 2) {
-      let group = openGroups.get(key);
+  docs.forEach((d, i) => {
+    const n = names[i];
+    if (n && (counts.get(n.key) || 0) >= 2) {
+      let group = openGroups.get(n.key);
       if (!group) {
-        group = { kind: 'group', title: multipartBase(d.description)!, parts: [] };
-        openGroups.set(key, group);
+        group = { kind: 'group', title: n.title, parts: [] };
+        openGroups.set(n.key, group);
         entries.push(group);
       }
       group.parts.push(d);
@@ -145,8 +167,8 @@ export function groupDocuments<T extends { description?: string }>(docs: T[]): D
     }
   });
 
-  // Order parts numerically (PART 2 before PART 10) with a stable tie-break so
-  // same-numbered duplicates keep their original (date) order.
+  // Order numbered members numerically (PART 2 before PART 10) with a stable
+  // tie-break so same-numbered duplicates keep their original (date) order.
   entries.forEach((entry) => {
     if (entry.kind !== 'group') return;
     entry.parts = entry.parts

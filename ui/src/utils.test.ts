@@ -150,11 +150,11 @@ describe('partLabel', () => {
 });
 
 describe('multipartUnit', () => {
-  it('distinguishes sheets from parts', () => {
+  it('distinguishes sheets from parts from repeated names', () => {
     expect(multipartUnit('BUILDING A ELEVATIONS - SHEET 1 OF 2')).toBe('sheet');
     expect(multipartUnit('DESIGN AND ACCESS STATEMENT PART 1')).toBe('part');
     expect(multipartUnit('ARCHAEOLOGICAL DESK BASED ASSESSMENT 1 OF 2')).toBe('part');
-    expect(multipartUnit('SITE PLAN')).toBe('part');
+    expect(multipartUnit('SITE PLAN')).toBe('document');
   });
 });
 
@@ -285,6 +285,51 @@ describe('groupDocuments', () => {
 
   it('does not group documents merely ending in a number', () => {
     const docs = [doc('SITE INVESTIGATION REPORT 1'), doc('TREE SURVEY 2026')];
+    expect(groupDocuments(docs).every((e) => e.kind === 'doc')).toBe(true);
+  });
+
+  it('groups documents that repeat the same name', () => {
+    const docs = [
+      doc('135 OXFORD ROAD'),
+      doc('107 OXFORD ROAD'),
+      doc('135 OXFORD ROAD'),
+      doc('135 OXFORD ROAD'),
+    ];
+    expect(groupDocuments(docs)).toEqual([
+      { kind: 'group', title: '135 OXFORD ROAD', parts: [docs[0], docs[2], docs[3]] },
+      { kind: 'doc', doc: docs[1] },
+    ]);
+  });
+
+  it('keeps a unique plain name as a single row', () => {
+    const docs = [doc('ECOLOGY')];
+    expect(groupDocuments(docs)).toEqual([{ kind: 'doc', doc: docs[0] }]);
+  });
+
+  it('groups a SUPERSEDED copy with its current document', () => {
+    const docs = [
+      doc('SUPERSEDED TREE SURVEY'),
+      doc('TREE SURVEY'),
+    ];
+    expect(groupDocuments(docs)).toEqual([
+      { kind: 'group', title: 'TREE SURVEY', parts: [docs[0], docs[1]] },
+    ]);
+  });
+
+  it('groups a SUPERSEDED sheet copy with its current sheets', () => {
+    const docs = [
+      doc('BUILDING D ELEVATIONS - SHEET 1 OF 2'),
+      doc('SUPERSEDED BUILDING D ELEVATIONS - SHEET 2 OF 2'),
+      doc('BUILDING D ELEVATIONS - SHEET 2 OF 2'),
+    ];
+    const entries = groupDocuments(docs);
+    expect(entries).toEqual([
+      { kind: 'group', title: 'BUILDING D ELEVATIONS', parts: [docs[0], docs[1], docs[2]] },
+    ]);
+  });
+
+  it('does not merge a superseded name with an unrelated one', () => {
+    const docs = [doc('SUPERSEDED TREE SURVEY'), doc('TREE SURVEY AND AIA')];
     expect(groupDocuments(docs).every((e) => e.kind === 'doc')).toBe(true);
   });
 });
