@@ -183,16 +183,6 @@ Downloaded files are stored under `downloads/<authorityId>/<reference>/`, with `
 
 Idox Public Access portals have a number of traps (session-bound URLs, differing document-table layouts, gated document files, …). Everything we've hit is collected in **[docs/idox-portals.md](docs/idox-portals.md)** — read it before touching the scraper. In short: application `applicationDetails.do?keyVal=` pages deep-link reliably, but search-results URLs are session-bound and document files are gated behind bot-protection, so files are downloaded and stored locally rather than linked to.
 
-## Project structure
-
-```
-docs/        Notes on Idox portal quirks and how the scraper works around them
-src/         TypeScript backend (Express API, Playwright scraper, storage, queue)
-  authorities.ts  Idox portal registry + authority resolution
-ui/          Vue 3 + TypeScript + Vite frontend (Tailwind CSS, Leaflet)
-downloads/   Downloaded application documents and metadata (gitignored)
-```
-
 ## Acknowledgements
 
 This tool uses the [PlanIt API](https://www.planit.org.uk/) to search for planning applications, and scrapes document/comment data from Idox Public Access planning portals (by default the [Greater Cambridge planning portal](https://applications.greatercambridgeplanning.org/online-applications)).
