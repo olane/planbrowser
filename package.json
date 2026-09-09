@@ -68,6 +68,20 @@
       "category": "public.app-category.productivity",
       "minimumSystemVersion": "15.0.0"
     },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
     "win": {
       "target": [
         "nsis"
