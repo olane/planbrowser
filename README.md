@@ -193,15 +193,6 @@ ui/          Vue 3 + TypeScript + Vite frontend (Tailwind CSS, Leaflet)
 downloads/   Downloaded application documents and metadata (gitignored)
 ```
 
-## Dependencies
-
-- [Express](https://expressjs.com/) – API server
-- [Playwright](https://playwright.dev/) – headless browser automation
-- [Cheerio](https://cheerio.js.org/) – HTML/XML parsing (WFS geometry)
-- [proj4](https://github.com/proj4js/proj4) – coordinate conversion (OSGB36 to WGS84)
-- [AdmZip](https://github.com/cthackers/adm-zip) – handling bulk document archives
-- [Vue 3](https://vuejs.org/) / [Vite](https://vitejs.dev/) / [Tailwind CSS](https://tailwindcss.com/) / [Leaflet](https://leafletjs.com/) – frontend
-
 ## Acknowledgements
 
 This tool uses the [PlanIt API](https://www.planit.org.uk/) to search for planning applications, and scrapes document/comment data from Idox Public Access planning portals (by default the [Greater Cambridge planning portal](https://applications.greatercambridgeplanning.org/online-applications)).
