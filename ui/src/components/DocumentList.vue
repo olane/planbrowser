@@ -17,9 +17,9 @@
             @keydown.enter.prevent="toggle(entry.title)"
             @keydown.space.prevent="toggle(entry.title)"
           >
-            <p class="text-sm font-medium text-gray-900 truncate flex items-center gap-2" :title="entry.title">
-              <span class="truncate">{{ entry.title }}</span>
-              <span class="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 shrink-0">{{ groupCountLabel(entry) }}</span>
+            <p class="text-sm font-medium text-gray-900 flex items-start gap-2">
+              <span class="min-w-0">{{ entry.title }}</span>
+              <span class="mt-0.5 inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 shrink-0">{{ groupCountLabel(entry) }}</span>
             </p>
             <p v-if="groupDate(entry) || groupType(entry)" class="mt-1 flex text-xs text-gray-500">
               <span class="mr-2">{{ groupDate(entry) }}</span>
