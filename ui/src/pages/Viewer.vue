@@ -185,24 +185,32 @@
                   <option v-for="t in commentStancesWithCounts" :key="t.value" :value="t.value">{{ t.label }} ({{ t.count }})</option>
                 </select>
               </div>
-              <div v-if="filteredComments.length > 0" class="mt-2 space-y-4">
-                <div v-for="(comment, idx) in filteredComments" :key="idx" class="bg-gray-50 rounded border text-sm overflow-hidden">
-                <div class="flex flex-col p-3 cursor-pointer hover:bg-gray-50 transition-colors" @click="comment.expanded = !comment.expanded">
-                  <div class="flex justify-between items-start mb-2">
-                    <div class="font-medium text-gray-900 pr-4"><Highlight :text="comment.address" :query="commentSearch" /></div>
-                    <div class="flex items-center gap-3 shrink-0">
-                      <div class="text-xs text-gray-500 whitespace-nowrap"><Highlight :text="comment.date" :query="commentSearch" /></div>
-                      <svg :class="['w-4 h-4 text-gray-400 transition-transform', comment.expanded || hasCommentSearch ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+              <div v-if="filteredComments.length > 0" class="mt-2">
+                <ul class="divide-y divide-gray-100">
+                  <li v-for="(comment, idx) in filteredComments" :key="idx" class="py-3">
+                    <div class="flex justify-between gap-x-6">
+                      <div class="min-w-0 flex-auto">
+                        <div class="cursor-pointer" @click="comment.expanded = !comment.expanded">
+                          <p class="text-sm font-medium text-gray-900 flex items-start gap-2">
+                            <span class="min-w-0"><Highlight :text="comment.address" :query="commentSearch" /></span>
+                            <span v-if="comment.stance" :class="['mt-0.5 inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset shrink-0', getStanceClass(comment.stance)]"><Highlight :text="comment.stance" :query="commentSearch" /></span>
+                          </p>
+                          <p class="mt-1 flex text-xs text-gray-500">
+                            <span class="mr-2"><Highlight :text="comment.date" :query="commentSearch" /></span>
+                          </p>
+                        </div>
+                        <div v-show="comment.expanded || hasCommentSearch" class="mt-2">
+                          <div class="text-sm text-gray-700 whitespace-pre-wrap"><Highlight :text="comment.text" :query="commentSearch" /></div>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2 shrink-0">
+                        <button type="button" class="cursor-pointer text-gray-400 hover:text-gray-700" :aria-expanded="comment.expanded || hasCommentSearch" @click="comment.expanded = !comment.expanded">
+                          <svg :class="['w-4 h-4 transition-transform', comment.expanded || hasCommentSearch ? '' : '-rotate-90']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div v-if="comment.stance">
-                    <span :class="['inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset', getStanceClass(comment.stance)]"><Highlight :text="comment.stance" :query="commentSearch" /></span>
-                  </div>
-                </div>
-                <div v-show="comment.expanded || hasCommentSearch" class="p-3 pt-0 border-t border-gray-200">
-                  <div class="text-gray-700 whitespace-pre-wrap mt-3"><Highlight :text="comment.text" :query="commentSearch" /></div>
-                </div>
-              </div>
+                  </li>
+                </ul>
               </div>
               <div v-else class="text-sm text-gray-500 py-4 text-center">No comments match your search.</div>
             </div>
