@@ -86,6 +86,14 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
         with:
+          body: |
+            ## Download
+
+            Pick the file for your operating system:
+
+            - **macOS** (Apple Silicon) → `planbrowser-macos.dmg`
+            - **Windows** → `planbrowser-windows.exe`
+            - **Linux** → `planbrowser-linux.AppImage` (or `planbrowser-linux.deb` for Debian/Ubuntu)
           files: |
             dist/*.dmg
             dist/*.exe

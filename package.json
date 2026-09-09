@@ -64,6 +64,7 @@
       "target": [
         "dmg"
       ],
+      "artifactName": "planbrowser-macos.${ext}",
       "category": "public.app-category.productivity",
       "minimumSystemVersion": "15.0.0"
     },
@@ -84,13 +85,15 @@
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "artifactName": "planbrowser-windows.${ext}"
     },
     "linux": {
       "target": [
         "AppImage",
         "deb"
       ],
+      "artifactName": "planbrowser-linux.${ext}",
       "category": "Utility"
     }
   }
