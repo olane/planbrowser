@@ -59,7 +59,6 @@
         </div>
       </div>
 
-      <!-- Additional Metadata -->
       <div v-if="app.furtherInformation" class="mb-8 p-4 bg-gray-50 rounded border border-gray-100">
         <h3 class="text-lg font-semibold mb-3 border-b border-gray-200 pb-2 text-gray-800">Additional Details</h3>
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -40,7 +40,6 @@ describe('DownloadQueue', () => {
     const items = queue.getQueue() as QueueItem[];
     items[0]!.status = 'completed';
     items[1]!.status = 'failed';
-    // items[2] stays pending
 
     queue.clearCompleted();
     expect(queue.getQueue().map((i) => i.reference)).toEqual(['24/0003/FUL']);

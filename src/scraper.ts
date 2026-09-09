@@ -108,13 +108,8 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
     }
   }
 
-  // Idox portals can list the same document more than once (e.g. under both
-  // "Documents" and another category), but two rows that merely render the same
-  // date/type/description are NOT necessarily the same file — each upload has its
-  // own portal document id, so genuinely different versions (a superseded
-  // revision, a .pdf and its source .docx, two letters published the same day) can
-  // look identical. Dedupe on the underlying file id (falling back to the file
-  // URL / zip member), never on the rendered name, so distinct versions are kept.
+  // Dedupe on the underlying file id (falling back to file URL / zip member),
+  // never on the rendered name, which distinct uploads can share.
   const seenFileIds = new Set<string>();
   const uniqueDocs = allDocs.filter((d) => {
     const fileId = d.docId || d.viewHref || d.zipFilename || d.baseName;

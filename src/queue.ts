@@ -26,7 +26,7 @@ export class DownloadQueue {
   enqueue(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID) {
     const existing = this.queue.find(item => item.reference === reference && item.authorityId === authorityId && (item.status === 'pending' || item.status === 'in_progress'));
     if (existing) {
-      return existing; // Already in queue
+      return existing;
     }
 
     const item: QueueItem = {
@@ -38,7 +38,7 @@ export class DownloadQueue {
     };
     this.queue.push(item);
 
-    // Start processing asynchronously
+    // Defer to a later tick so the new item is returned before processing starts.
     if (this.autoStart) {
       setImmediate(() => this.process());
     }
@@ -83,7 +83,6 @@ export class DownloadQueue {
         item.completedAt = new Date().toISOString();
       }
 
-      // Delay between processing items to avoid rate limiting
       const { promise, resolve } = Promise.withResolvers<void>();
       setTimeout(resolve, this.delayMs);
       await promise;

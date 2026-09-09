@@ -59,7 +59,6 @@ const navLinkClass = (to: string) =>
 const mobileNavLinkClass = (to: string) =>
   `block px-3 py-2 rounded-md text-sm font-medium ${isActive(to) ? 'text-blue-800 bg-blue-50' : 'text-blue-600 hover:text-blue-800 hover:bg-gray-50'}`
 
-// Close the mobile menu after navigating.
 watch(() => route.fullPath, () => { menuOpen.value = false })
 
 let pollInterval: any = null
