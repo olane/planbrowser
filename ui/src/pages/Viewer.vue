@@ -119,16 +119,12 @@
 
         <div class="pt-6">
           <div v-show="activeTab === 'key-documents'" v-if="keyDocs.length > 0">
-            <ul class="divide-y divide-gray-100">
-              <DocumentRow v-for="doc in keyDocs" :key="doc.localFilename" :doc="doc" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged(doc, $event)" />
-            </ul>
+            <DocumentList :docs="keyDocs" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged" />
           </div>
 
           <div v-show="activeTab === 'favourites'">
             <div v-if="favouriteDocs.length > 0">
-              <ul class="divide-y divide-gray-100">
-                <DocumentRow v-for="doc in favouriteDocs" :key="doc.localFilename" :doc="doc" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged(doc, $event)" />
-              </ul>
+              <DocumentList :docs="favouriteDocs" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged" />
             </div>
             <div v-else class="text-sm text-gray-500 py-4 text-center">No favourite documents. Star a document to collect it here.</div>
           </div>
@@ -147,9 +143,7 @@
               </select>
             </div>
 
-            <ul v-if="filteredDocs.length > 0" class="divide-y divide-gray-100">
-              <DocumentRow v-for="doc in filteredDocs" :key="doc.localFilename" :doc="doc" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged(doc, $event)" />
-            </ul>
+            <DocumentList v-if="filteredDocs.length > 0" :docs="filteredDocs" :reference="app.reference" :authority-id="app.authorityId" :expand-all="docFilterActive" @changed="onDocChanged" />
             <div v-else class="text-sm text-gray-500 py-4 text-center">No documents match your search.</div>
           </div>
 
@@ -218,7 +212,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { timeAgo, progressText, isKeyDocument } from '../utils'
 import type { ApplicationMeta, Comment, EnhancedDocument } from '../../../src/types.js'
 import * as api from '../api'
-import DocumentRow from '../components/DocumentRow.vue'
+import DocumentList from '../components/DocumentList.vue'
 import { useRoute } from 'vue-router'
 import { queueItems } from '../queueStore'
 
@@ -258,6 +252,8 @@ const getStanceClass = (stance?: string) => {
   return 'bg-gray-100 text-gray-600 ring-gray-500/10'
 }
 const selectedDocType = ref('All')
+
+const docFilterActive = computed(() => docSearch.value.trim() !== '' || selectedDocType.value !== 'All')
 
 const osmEmbedUrl = computed(() => {
   const loc = app.value?.location

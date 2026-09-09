@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { timeAgo, statusLabel, progressText, statusBadgeClass, isKeyDocument } from './utils';
+import { timeAgo, statusLabel, progressText, statusBadgeClass, isKeyDocument, partNumber, partLabel, multipartBase, groupDocuments } from './utils';
 
 const NOW = new Date('2026-01-15T12:00:00.000Z');
 
@@ -101,5 +101,107 @@ describe('isKeyDocument', () => {
   it('rejects ordinary documents', () => {
     expect(isKeyDocument({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' })).toBe(false);
     expect(isKeyDocument({ documentType: 'Application Information', description: 'FEE CALCULATION' })).toBe(false);
+  });
+});
+
+describe('partNumber', () => {
+  it('parses a trailing part number', () => {
+    expect(partNumber('DESIGN AND ACCESS STATEMENT PART 2')).toBe(2);
+    expect(partNumber('Transport Assessment part 12')).toBe(12);
+  });
+
+  it('matches PT abbreviations', () => {
+    expect(partNumber('ENVIRONMENTAL STATEMENT PT 3')).toBe(3);
+  });
+
+  it('returns null without a numbered part', () => {
+    expect(partNumber('PROPOSED SITE PLAN')).toBeNull();
+    expect(partNumber(undefined)).toBeNull();
+  });
+});
+
+describe('partLabel', () => {
+  it('returns the trailing part marker verbatim', () => {
+    expect(partLabel('DESIGN AND ACCESS STATEMENT PART 2')).toBe('PART 2');
+    expect(partLabel('Design and Access Statement part 1')).toBe('part 1');
+  });
+
+  it('returns null without a part', () => {
+    expect(partLabel('PROPOSED SITE PLAN')).toBeNull();
+  });
+});
+
+describe('multipartBase', () => {
+  it('strips the trailing part marker', () => {
+    expect(multipartBase('DESIGN AND ACCESS STATEMENT PART 2')).toBe('DESIGN AND ACCESS STATEMENT');
+  });
+
+  it('returns null for unnumbered descriptions', () => {
+    expect(multipartBase('DESIGN AND ACCESS STATEMENT')).toBeNull();
+    expect(multipartBase(undefined)).toBeNull();
+  });
+});
+
+describe('groupDocuments', () => {
+  const doc = (description: string) => ({ description });
+
+  it('groups numbered siblings under the base title in numeric order', () => {
+    const docs = [
+      doc('SITE PLAN'),
+      doc('TRANSPORT ASSESSMENT PART 2'),
+      doc('TRANSPORT ASSESSMENT PART 10'),
+      doc('TRANSPORT ASSESSMENT PART 1'),
+    ];
+    expect(groupDocuments(docs)).toEqual([
+      { kind: 'doc', doc: docs[0] },
+      { kind: 'group', title: 'TRANSPORT ASSESSMENT', parts: [docs[3], docs[1], docs[2]] },
+    ]);
+  });
+
+  it('keeps an isolated part as a plain row', () => {
+    const docs = [doc('DESIGN AND ACCESS STATEMENT PART 1')];
+    expect(groupDocuments(docs)).toEqual([{ kind: 'doc', doc: docs[0] }]);
+  });
+
+  it('is case-insensitive when matching bases', () => {
+    const docs = [
+      doc('Design and Access Statement part 1'),
+      doc('DESIGN AND ACCESS STATEMENT PART 2'),
+    ];
+    const entries = groupDocuments(docs);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].kind).toBe('group');
+    if (entries[0].kind === 'group') {
+      expect(entries[0].title).toBe('Design and Access Statement');
+      expect(entries[0].parts).toHaveLength(2);
+    }
+  });
+
+  it('groups in the position of the first member and preserves document order elsewhere', () => {
+    const docs = [
+      doc('A'),
+      doc('HERITAGE STATEMENT PART 2'),
+      doc('B'),
+      doc('HERITAGE STATEMENT PART 1'),
+      doc('C'),
+    ];
+    const entries = groupDocuments(docs);
+    expect(entries.map((e) => (e.kind === 'group' ? `group:${e.title}` : e.doc.description))).toEqual([
+      'A',
+      'group:HERITAGE STATEMENT',
+      'B',
+      'C',
+    ]);
+    if (entries[1].kind === 'group') {
+      expect(entries[1].parts.map((p) => p.description)).toEqual([
+        'HERITAGE STATEMENT PART 1',
+        'HERITAGE STATEMENT PART 2',
+      ]);
+    }
+  });
+
+  it('does not merge distinct-but-similar titles', () => {
+    const docs = [doc('SECONDARY GLAZING EXISTING PART 1'), doc('SECONDARY GLAZING PROPOSED PART 2')];
+    expect(groupDocuments(docs).every((e) => e.kind === 'doc')).toBe(true);
   });
 });

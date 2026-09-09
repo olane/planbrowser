@@ -48,6 +48,90 @@ export function statusBadgeClass(app: { status?: string; furtherInformation?: Re
   return 'bg-blue-50 text-blue-700 ring-blue-700/10';
 }
 
+// Documents are often uploaded in several parts, named like
+// "DESIGN AND ACCESS STATEMENT PART 2". A trailing "PART N" (or "PT N") marks a
+// document as one part of a larger parent document sharing the same base title.
+const PART_SUFFIX_RE = /\b(?:PART|PT)\s+(\d+)\s*$/i;
+
+export function partNumber(description?: string): number | null {
+  if (!description) return null;
+  const m = PART_SUFFIX_RE.exec(description.trim());
+  return m ? parseInt(m[1], 10) : null;
+}
+
+export function partLabel(description?: string): string | null {
+  if (!description) return null;
+  const m = PART_SUFFIX_RE.exec(description.trim());
+  return m ? m[0].trim() : null;
+}
+
+// The parent title with the trailing part marker stripped, or null when the
+// description isn't a numbered part.
+export function multipartBase(description?: string): string | null {
+  if (!description) return null;
+  const trimmed = description.trim();
+  const m = PART_SUFFIX_RE.exec(trimmed);
+  return m ? trimmed.slice(0, m.index).replace(/\s+$/, '') : null;
+}
+
+export interface DocumentGroup<T> {
+  kind: 'group';
+  title: string;
+  parts: T[];
+}
+
+export interface DocumentSolo<T> {
+  kind: 'doc';
+  doc: T;
+}
+
+export type DocumentListEntry<T> = DocumentGroup<T> | DocumentSolo<T>;
+
+// Re-orders a list of documents into entries, collapsing documents that share a
+// base title and a trailing part number (e.g. "DESIGN AND ACCESS STATEMENT
+// PART 1".."PART 4") under a single group. Only titles appearing more than once
+// become groups, so an isolated "... PART 1" with no siblings stays a plain row.
+export function groupDocuments<T extends { description?: string }>(docs: T[]): DocumentListEntry<T>[] {
+  const counts = new Map<string, number>();
+  const baseKey = (d: T) => {
+    const base = multipartBase(d.description);
+    return base ? base.toLowerCase() : null;
+  };
+  docs.forEach((d) => {
+    const key = baseKey(d);
+    if (key) counts.set(key, (counts.get(key) || 0) + 1);
+  });
+
+  const entries: DocumentListEntry<T>[] = [];
+  const openGroups = new Map<string, DocumentGroup<T>>();
+  docs.forEach((d) => {
+    const key = baseKey(d);
+    if (key && (counts.get(key) || 0) >= 2) {
+      let group = openGroups.get(key);
+      if (!group) {
+        group = { kind: 'group', title: multipartBase(d.description)!, parts: [] };
+        openGroups.set(key, group);
+        entries.push(group);
+      }
+      group.parts.push(d);
+    } else {
+      entries.push({ kind: 'doc', doc: d });
+    }
+  });
+
+  // Order parts numerically (PART 2 before PART 10) with a stable tie-break so
+  // same-numbered duplicates keep their original (date) order.
+  entries.forEach((entry) => {
+    if (entry.kind !== 'group') return;
+    entry.parts = entry.parts
+      .map((doc, index) => ({ doc, index, n: partNumber(doc.description) ?? Infinity }))
+      .sort((a, b) => a.n - b.n || a.index - b.index)
+      .map((x) => x.doc);
+  });
+
+  return entries;
+}
+
 const KEY_DOC_KEYWORDS = [
   'design and access',
   'planning statement',
