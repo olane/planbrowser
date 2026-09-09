@@ -189,18 +189,18 @@
                 <div v-for="(comment, idx) in filteredComments" :key="idx" class="bg-gray-50 rounded border text-sm overflow-hidden">
                 <div class="flex flex-col p-3 cursor-pointer hover:bg-gray-50 transition-colors" @click="comment.expanded = !comment.expanded">
                   <div class="flex justify-between items-start mb-2">
-                    <div class="font-medium text-gray-900 pr-4">{{ comment.address }}</div>
+                    <div class="font-medium text-gray-900 pr-4"><Highlight :text="comment.address" :query="commentSearch" /></div>
                     <div class="flex items-center gap-3 shrink-0">
-                      <div class="text-xs text-gray-500 whitespace-nowrap">{{ comment.date }}</div>
-                      <svg :class="['w-4 h-4 text-gray-400 transition-transform', comment.expanded ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      <div class="text-xs text-gray-500 whitespace-nowrap"><Highlight :text="comment.date" :query="commentSearch" /></div>
+                      <svg :class="['w-4 h-4 text-gray-400 transition-transform', comment.expanded || hasCommentSearch ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                   </div>
                   <div v-if="comment.stance">
-                    <span :class="['inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset', getStanceClass(comment.stance)]">{{ comment.stance }}</span>
+                    <span :class="['inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset', getStanceClass(comment.stance)]"><Highlight :text="comment.stance" :query="commentSearch" /></span>
                   </div>
                 </div>
-                <div v-show="comment.expanded" class="p-3 pt-0 border-t border-gray-200">
-                  <div class="text-gray-700 whitespace-pre-wrap mt-3">{{ comment.text }}</div>
+                <div v-show="comment.expanded || hasCommentSearch" class="p-3 pt-0 border-t border-gray-200">
+                  <div class="text-gray-700 whitespace-pre-wrap mt-3"><Highlight :text="comment.text" :query="commentSearch" /></div>
                 </div>
               </div>
               </div>
@@ -220,6 +220,7 @@ import { timeAgo, progressText, isKeyDocument } from '../utils'
 import type { ApplicationMeta, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet } from '../../../src/types.js'
 import * as api from '../api'
 import DocumentList from '../components/DocumentList.vue'
+import Highlight from '../components/Highlight.vue'
 import { useRoute } from 'vue-router'
 import { queueItems } from '../queueStore'
 
@@ -419,6 +420,8 @@ const commentStancesWithCounts = computed(() => {
     ...stances.map(s => ({ value: s, label: s, count: counts[s] }))
   ]
 })
+
+const hasCommentSearch = computed(() => commentSearch.value.trim() !== '')
 
 const filteredComments = computed(() => {
   let list = commentsList.value

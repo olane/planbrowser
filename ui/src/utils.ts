@@ -180,6 +180,32 @@ export function groupDocuments<T extends { description?: string }>(docs: T[]): D
   return entries;
 }
 
+export interface HighlightSegment {
+  text: string;
+  match: boolean;
+}
+
+// Splits `text` into segments, marking the (case-insensitive) occurrences of
+// `query` so the caller can render them with a highlight without v-html. Returns
+// a single non-matching segment when the query is blank or absent.
+export function highlightSegments(text: string, query: string): HighlightSegment[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle || !text) return [{ text, match: false }];
+
+  const lower = text.toLowerCase();
+  const segments: HighlightSegment[] = [];
+  let pos = 0;
+  let idx = lower.indexOf(needle);
+  while (idx !== -1) {
+    if (idx > pos) segments.push({ text: text.slice(pos, idx), match: false });
+    segments.push({ text: text.slice(idx, idx + needle.length), match: true });
+    pos = idx + needle.length;
+    idx = lower.indexOf(needle, pos);
+  }
+  if (pos < text.length) segments.push({ text: text.slice(pos), match: false });
+  return segments.length ? segments : [{ text, match: false }];
+}
+
 const KEY_DOC_KEYWORDS = [
   'design and access',
   'planning statement',

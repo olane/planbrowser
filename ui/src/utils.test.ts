@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { timeAgo, statusLabel, progressText, statusBadgeClass, isKeyDocument, partNumber, partLabel, multipartBase, multipartUnit, groupDocuments } from './utils';
+import { timeAgo, statusLabel, progressText, statusBadgeClass, isKeyDocument, partNumber, partLabel, multipartBase, multipartUnit, groupDocuments, highlightSegments } from './utils';
 
 const NOW = new Date('2026-01-15T12:00:00.000Z');
 
@@ -331,5 +331,31 @@ describe('groupDocuments', () => {
   it('does not merge a superseded name with an unrelated one', () => {
     const docs = [doc('SUPERSEDED TREE SURVEY'), doc('TREE SURVEY AND AIA')];
     expect(groupDocuments(docs).every((e) => e.kind === 'doc')).toBe(true);
+  });
+});
+
+describe('highlightSegments', () => {
+  it('returns a single non-matching segment for a blank query', () => {
+    expect(highlightSegments('hello world', '  ')).toEqual([{ text: 'hello world', match: false }]);
+  });
+
+  it('returns a single non-matching segment when nothing matches', () => {
+    expect(highlightSegments('hello world', 'xyz')).toEqual([{ text: 'hello world', match: false }]);
+  });
+
+  it('marks matches case-insensitively and keeps surrounding text', () => {
+    expect(highlightSegments('The Trees are here', 'trees')).toEqual([
+      { text: 'The ', match: false },
+      { text: 'Trees', match: true },
+      { text: ' are here', match: false }
+    ]);
+  });
+
+  it('marks every occurrence', () => {
+    expect(highlightSegments('a b a', 'a')).toEqual([
+      { text: 'a', match: true },
+      { text: ' b ', match: false },
+      { text: 'a', match: true }
+    ]);
   });
 });
