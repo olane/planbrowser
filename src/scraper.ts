@@ -10,6 +10,7 @@ import { _electron as electron, chromium } from 'playwright';
 import type { Page } from 'playwright';
 import path from 'path';
 import { getAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
+import { normalizePostcode } from './postcode.js';
 
 type DownloadFn = (trigger: () => Promise<unknown>, timeout: number) => Promise<{ filePath: string; filename: string }>;
 
@@ -718,7 +719,7 @@ export async function downloadApplication(reference: string, authorityId: string
 
 export async function searchPlanIt(postcode: string, radius: string, filters: SearchFilters = {}) {
   const params = new URLSearchParams({
-    pcode: postcode,
+    pcode: normalizePostcode(postcode),
     krad: radius,
     pg_sz: '50',
     sort: '-start_date'

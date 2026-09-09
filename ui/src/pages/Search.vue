@@ -150,6 +150,7 @@ import { timeAgo, progressText } from '../utils'
 import type { ApplicationMeta, PlanItRecord, SearchFilters } from '../../../src/types.js'
 import { queueItems, refreshQueue } from '../queueStore'
 import { AUTHORITIES, DEFAULT_AUTHORITY_ID, isKnownAuthority } from '../../../src/authorities.js'
+import { normalizePostcode } from '../../../src/postcode.js'
 import * as api from '../api'
 import { useRouter } from 'vue-router'
 import MultiSelect from '../components/MultiSelect.vue'
@@ -326,7 +327,7 @@ const lookupReference = async () => {
 const searchPlanIt = async () => {
   if (!searchForm.value.postcode) return
 
-  searchForm.value.postcode = searchForm.value.postcode.toUpperCase()
+  searchForm.value.postcode = normalizePostcode(searchForm.value.postcode)
 
   isSearching.value = true
   hasSearched.value = false
