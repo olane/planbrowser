@@ -215,7 +215,7 @@
 </template>
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { timeAgo, progressText } from '../utils'
+import { timeAgo, progressText, isKeyDocument } from '../utils'
 import type { ApplicationMeta, Comment, EnhancedDocument } from '../../../src/types.js'
 import * as api from '../api'
 import DocumentRow from '../components/DocumentRow.vue'
@@ -363,23 +363,9 @@ const enhancedAppDocuments = computed<EnhancedDocument[]>(() => {
   return docs
 })
 
-const isKeyDoc = (doc: EnhancedDocument) => {
-  const text = `${doc.documentType || ''} ${doc.description || ''}`.toLowerCase()
-  return [
-    'design and access',
-    'planning statement',
-    'heritage statement',
-    'decision notice',
-    'officer report',
-    'delegated report',
-    'committee report',
-    'appeal decision'
-  ].some(keyword => text.includes(keyword))
-}
-
 const keyDocs = computed(() => {
   if (!enhancedAppDocuments.value.length) return []
-  return enhancedAppDocuments.value.filter(isKeyDoc)
+  return enhancedAppDocuments.value.filter((d) => isKeyDocument(d))
 })
 
 const favouriteDocs = computed(() => {

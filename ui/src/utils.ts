@@ -47,3 +47,28 @@ export function statusBadgeClass(app: { status?: string; furtherInformation?: Re
   if (label.includes('permit') || label.includes('grant')) return 'bg-green-50 text-green-700 ring-green-600/20';
   return 'bg-blue-50 text-blue-700 ring-blue-700/10';
 }
+
+const KEY_DOC_KEYWORDS = [
+  'design and access',
+  'planning statement',
+  'heritage statement',
+  'decision notice',
+  'officer report',
+  'delegated report',
+  'committee report',
+  'appeal decision'
+];
+
+export function isKeyDocument(doc: { documentType?: string; description?: string; localFilename?: string }): boolean {
+  // Match on the document type, its description (the name shown in the list)
+  // and the stored filename, so documents that are only recognisable from
+  // their name (e.g. "DESIGN & ACCESS STATEMENT PART 2" uploaded under a
+  // generic type) still surface in Key Documents.
+  const haystack = [doc.documentType, doc.description, doc.localFilename]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+    .replace(/&amp;/g, 'and')
+    .replace(/&/g, 'and');
+  return KEY_DOC_KEYWORDS.some((keyword) => haystack.includes(keyword));
+}

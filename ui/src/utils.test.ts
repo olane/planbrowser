@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { timeAgo, statusLabel, progressText, statusBadgeClass } from './utils';
+import { timeAgo, statusLabel, progressText, statusBadgeClass, isKeyDocument } from './utils';
 
 const NOW = new Date('2026-01-15T12:00:00.000Z');
 
@@ -77,5 +77,29 @@ describe('statusBadgeClass', () => {
 
   it('defaults to blue', () => {
     expect(statusBadgeClass({ status: 'Pending' })).toContain('blue');
+  });
+});
+
+describe('isKeyDocument', () => {
+  it('matches on the document type', () => {
+    expect(isKeyDocument({ documentType: 'Design and Access Statement', description: 'DESIGN AND ACCESS STATEMENT PART 1' })).toBe(true);
+  });
+
+  it('matches on the description/name when the type is generic', () => {
+    expect(isKeyDocument({ documentType: 'Application Information', description: 'DESIGN & ACCESS STATEMENT PART 2' })).toBe(true);
+  });
+
+  it('matches on the local filename', () => {
+    expect(isKeyDocument({ documentType: 'Drawings', description: '24032_01_...', localFilename: '18 May 2026 - Drawings - DESIGN AND ACCESS STATEMENT PART 4.pdf' })).toBe(true);
+  });
+
+  it('treats & and &amp; as "and"', () => {
+    expect(isKeyDocument({ documentType: 'Application Information', description: 'DESIGN & ACCESS STATEMENT PART 3' })).toBe(true);
+    expect(isKeyDocument({ documentType: 'Application Information', description: 'DESIGN &amp; ACCESS STATEMENT PART 4' })).toBe(true);
+  });
+
+  it('rejects ordinary documents', () => {
+    expect(isKeyDocument({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' })).toBe(false);
+    expect(isKeyDocument({ documentType: 'Application Information', description: 'FEE CALCULATION' })).toBe(false);
   });
 });
