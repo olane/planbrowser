@@ -10,6 +10,7 @@ A tool to search for and download documents for Cambridgeshire planning applicat
 - **Scrape comments** submitted by neighbours for each application
 - **Progressive downloads**: each application is fetched in order of value — main details first, then comments, then document files — and everything is committed to disk as it arrives, so an application can be opened and read in the browser before its download has finished (the page updates as more data lands)
 - **View** application metadata, key dates, documents, comments, and location on a map in the browser
+- **Search inside documents** — search a downloaded application's documents by *contents* as well as by name/metadata, with matching terms highlighted and a context snippet shown inline; a "Contents" toggle limits the search to names/metadata only. Text is extracted lazily and cached per document, so the first search on an application is the slow one and later searches are instant. Supported formats: PDF and Word `.docx`; legacy `.doc` and scanned (image-only) PDFs have no extractable text and won't match.
 - **Background queue** for processing download requests sequentially, with a 5-second delay between applications to avoid rate limiting
 - **Favourite/star** applications so they float to the top of the list, and **archive** applications so they move to a separate Archived page
 - **Favourite/star individual documents** and attach **notes** to them; starred documents are grouped under a Favourites tab on each application's page
@@ -170,6 +171,7 @@ To smoke-test the desktop build locally before tagging, run `npm run electron:di
 | PATCH  | `/api/applications/:ref` | Set `starred`/`archived` flags on an application (optional `authority` in body) |
 | PATCH  | `/api/documents`         | Set `starred`/`note` on a document (body: `reference`, `filename`, optional `authority`, `starred`, `note`) |
 | GET    | `/api/applications/:ref` | Get metadata for a single application (optional `?authority=` to disambiguate) |
+| GET    | `/api/applications/:ref/documents/search` | Search one application's documents by content (`?q=` query, optional `?authority=`). Returns matching documents with a highlighted context snippet |
 | GET    | `/api/feed`            | List the activity feed (changes detected on re-sync) |
 | POST   | `/api/sync`            | Enqueue applications for re-sync. Body: `{ starred, awaitingDecision }` (queue apps matching *every* ticked option) or `{ all: true }` (queue everything). Archived applications are never included; an empty body enqueues nothing |
 | POST   | `/api/sync-starred`    | Backwards-compatible: enqueue all starred applications (same as `POST /api/sync` with `{ starred: true }`) |
