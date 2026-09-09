@@ -1,5 +1,14 @@
 <template>
-  <div ref="mapEl" class="w-full h-96 rounded-md border border-gray-200 z-0"></div>
+  <div class="relative">
+    <div ref="mapEl" class="w-full h-96 rounded-md border border-gray-200 z-0"></div>
+    <div v-if="legendTypes.length" class="absolute right-3 top-3 z-[1000] rounded-md border border-gray-200 bg-white/90 px-2.5 py-2 text-xs shadow-sm">
+      <div class="font-medium text-gray-700 mb-1">Type</div>
+      <div v-for="t in legendTypes" :key="t" class="flex items-center gap-1.5 py-0.5">
+        <span class="inline-block h-3 w-3 rounded-full" :style="{ background: appTypeColor(t) }"></span>
+        <span class="text-gray-600">{{ t }}</span>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -24,9 +33,25 @@ const truncate = (s: string, words = 6) => {
   return parts.length > words ? cut + '…' : cut
 }
 
-const pinIcon = L.divIcon({
+const APP_TYPE_ORDER = ['Full', 'Outline', 'Amendment', 'Conditions', 'Heritage', 'Trees', 'Advertising', 'Telecoms', 'Other']
+
+const APP_TYPE_COLORS: Record<string, string> = {
+  Full: '#2563eb',
+  Outline: '#7c3aed',
+  Amendment: '#ea580c',
+  Conditions: '#0d9488',
+  Heritage: '#b45309',
+  Trees: '#16a34a',
+  Advertising: '#db2777',
+  Telecoms: '#0891b2',
+  Other: '#6b7280'
+}
+
+const appTypeColor = (t?: string) => (t ? APP_TYPE_COLORS[t] : undefined) || '#6b7280'
+
+const pinIcon = (fill: string) => L.divIcon({
   className: 'search-result-pin',
-  html: '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42"><path d="M15 1C7.3 1 1 7.3 1 15c0 9.6 14 26 14 26s14-16.4 14-26C29 7.3 22.7 1 15 1z" fill="#2563eb" stroke="#1e40af" stroke-width="1"/><circle cx="15" cy="15" r="5.5" fill="#fff"/></svg>',
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42"><path d="M15 1C7.3 1 1 7.3 1 15c0 9.6 14 26 14 26s14-16.4 14-26C29 7.3 22.7 1 15 1z" fill="${fill}" stroke="#1f2937" stroke-width="1"/><circle cx="15" cy="15" r="5.5" fill="#fff"/></svg>`,
   iconSize: [30, 42],
   iconAnchor: [15, 42],
   popupAnchor: [0, -36]
@@ -38,6 +63,20 @@ const activePinIcon = L.divIcon({
   iconSize: [30, 42],
   iconAnchor: [15, 42],
   popupAnchor: [0, -36]
+})
+
+const legendTypes = computed(() => {
+  const seen = new Set<string>()
+  for (const r of props.results) {
+    if (r.app_type && !seen.has(r.app_type)) seen.add(r.app_type)
+  }
+  const present = [...seen]
+  present.sort((a, b) => {
+    const ia = APP_TYPE_ORDER.indexOf(a)
+    const ib = APP_TYPE_ORDER.indexOf(b)
+    return (ia === -1 ? APP_TYPE_ORDER.length : ia) - (ib === -1 ? APP_TYPE_ORDER.length : ib)
+  })
+  return present
 })
 
 const points = computed(() => {
@@ -68,7 +107,7 @@ const renderMarkers = () => {
       <div class="text-gray-500 mb-1">${escapeHtml([p.rec.app_type, p.rec.app_state].filter(Boolean).join(' | '))}</div>
       <button class="jump-link text-blue-600 hover:underline">Show in results</button>
     </div>`
-    const marker = L.marker([p.lat, p.lon], { icon: p.rec.uid === activeUid ? activePinIcon : pinIcon }).addTo(markerLayer)
+    const marker = L.marker([p.lat, p.lon], { icon: p.rec.uid === activeUid ? activePinIcon : pinIcon(appTypeColor(p.rec.app_type)) }).addTo(markerLayer)
     markersByUid.set(p.rec.uid, marker)
     marker.bindPopup(popupContent)
     marker.on('popupopen', (e) => {
@@ -85,7 +124,8 @@ const focus = (uid: string) => {
   const point = points.value.find(p => p.rec.uid === uid)
   if (!marker || !point) return
   if (activeUid && activeUid !== uid) {
-    markersByUid.get(activeUid)?.setIcon(pinIcon)
+    const prev = points.value.find(p => p.rec.uid === activeUid)
+    markersByUid.get(activeUid)?.setIcon(pinIcon(appTypeColor(prev?.rec.app_type)))
   }
   activeUid = uid
   marker.setIcon(activePinIcon)
