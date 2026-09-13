@@ -1,6 +1,6 @@
 <template>
   <template v-for="(segment, index) in segments" :key="index">
-    <mark v-if="segment.match" class="bg-yellow-100">{{ segment.text }}</mark>
+    <mark v-if="segment.match" :class="$style.mark">{{ segment.text }}</mark>
     <template v-else>{{ segment.text }}</template>
   </template>
 </template>
@@ -16,3 +16,9 @@ const props = defineProps<{
 
 const segments = computed(() => highlightSegments(props.text, props.query))
 </script>
+
+<style module>
+.mark {
+  background: var(--color-yellow-100);
+}
+</style>

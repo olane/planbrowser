@@ -1,122 +1,122 @@
 <template>
   <div>
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-      <router-link to="/" class="text-sm text-blue-600 hover:underline">&larr; Back to all applications</router-link>
-      <div class="flex items-center gap-4 flex-wrap">
-        <span v-if="app" class="text-sm text-gray-500">Last Synced: {{ timeAgo(app.scrapedAt) }}</span>
-        <button v-if="app" @click="toggleStar" :disabled="savingFlags" :title="app.starred ? 'Remove from favourites' : 'Add to favourites'" class="cursor-pointer text-gray-400 hover:text-yellow-500 disabled:opacity-50">
-          <svg v-if="app.starred" class="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-          <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.563.563 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"></path></svg>
+    <div :class="$style.topBar">
+      <router-link to="/" :class="$style.backLink">&larr; Back to all applications</router-link>
+      <div :class="$style.topActions">
+        <span v-if="app" :class="$style.synced">Last Synced: {{ timeAgo(app.scrapedAt) }}</span>
+        <button v-if="app" @click="toggleStar" :disabled="savingFlags" :title="app.starred ? 'Remove from favourites' : 'Add to favourites'" :class="$style.starButton">
+          <svg v-if="app.starred" :class="[$style.starIcon, $style.starActive]" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+          <svg v-else :class="$style.starIcon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.563.563 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"></path></svg>
         </button>
-        <button v-if="app" @click="toggleArchive" :disabled="savingFlags" class="cursor-pointer text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm disabled:opacity-50">
+        <button v-if="app" @click="toggleArchive" :disabled="savingFlags" :class="[ui.btn, ui.btnOutline]">
           {{ app.archived ? 'Restore' : 'Archive' }}
         </button>
-        <button v-if="app" @click="syncApp" :disabled="syncing" class="text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm disabled:opacity-50">
+        <button v-if="app" @click="syncApp" :disabled="syncing" :class="[ui.btn, ui.btnOutline]">
           {{ syncing ? 'Syncing...' : 'Sync / Update' }}
         </button>
-        <a v-if="app?.portalUrl" :href="app.portalUrl" target="_blank" rel="noopener" class="text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-md shadow-sm">
+        <a v-if="app?.portalUrl" :href="app.portalUrl" target="_blank" rel="noopener" :class="[ui.btn, ui.btnOutline]">
           View on portal
         </a>
       </div>
     </div>
 
-    <div v-if="loading" class="text-gray-500">Loading...</div>
+    <div v-if="loading" :class="$style.muted">Loading...</div>
     <template v-else>
-      <div v-if="isDownloading" class="mb-4 flex items-center gap-3 p-4 text-sm text-blue-700 bg-blue-50 rounded-md border border-blue-200">
-        <svg class="w-4 h-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+      <div v-if="isDownloading" :class="$style.downloadBanner">
+        <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
         <span>
           Download in progress — details, comments and documents appear here as they're saved.
-          <span v-if="downloadProgress" class="font-medium">({{ progressText(downloadProgress) }})</span>
+          <span v-if="downloadProgress" :class="$style.progressStrong">({{ progressText(downloadProgress) }})</span>
         </span>
       </div>
-      <div v-if="waitingForDownload" class="mb-4 text-gray-500">Waiting for the download to start — this page will populate automatically as details are saved.</div>
-      <div v-else-if="error" class="text-red-600">{{ error }}</div>
-      <div v-if="syncError" class="mb-4 p-4 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
+      <div v-if="waitingForDownload" :class="$style.waiting">Waiting for the download to start — this page will populate automatically as details are saved.</div>
+      <div v-else-if="error" :class="$style.errorText">{{ error }}</div>
+      <div v-if="syncError" :class="$style.errorBanner">
         {{ syncError }}
       </div>
-      <div v-if="syncMessage" class="mb-4 p-4 text-sm text-green-700 bg-green-50 rounded-md border border-green-200">
+      <div v-if="syncMessage" :class="$style.successBanner">
         {{ syncMessage }}
       </div>
-      <div v-if="app" class="bg-white p-6 rounded shadow border border-gray-200">
-      <div class="grid md:grid-cols-2 gap-8 mb-8">
+      <div v-if="app" :class="$style.card">
+      <div :class="$style.summaryGrid">
         <div>
-          <h2 class="text-2xl font-bold mb-2">{{ app.reference }}</h2>
-          <p class="text-lg text-gray-700 mb-2">{{ app.address }}</p>
-          <p class="text-gray-600">{{ app.description }}</p>
-          <div class="mt-4">
-            <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">{{ app.status }}</span>
+          <h2 :class="$style.appTitle">{{ app.reference }}</h2>
+          <p :class="$style.appAddress">{{ app.address }}</p>
+          <p :class="$style.appDesc">{{ app.description }}</p>
+          <div :class="$style.statusWrap">
+            <span :class="[ui.toneBlue, $style.statusBadge]">{{ app.status }}</span>
           </div>
         </div>
 
         <div>
-          <h3 class="text-lg font-semibold mb-3 border-b pb-2">Key Dates</h3>
-          <dl class="divide-y divide-gray-100">
-            <div v-for="(value, key) in app.dates" :key="key" class="px-2 py-3 sm:grid sm:grid-cols-3 sm:gap-4">
-              <dt class="text-sm font-medium text-gray-900">{{ key }}</dt>
-              <dd class="text-sm text-gray-700 sm:col-span-2 sm:mt-0">{{ value }}</dd>
+          <h3 :class="$style.sectionTitleBorder">Key Dates</h3>
+          <dl :class="$style.datesList">
+            <div v-for="(value, key) in app.dates" :key="key" :class="$style.dateRow">
+              <dt :class="$style.dateTerm">{{ key }}</dt>
+              <dd :class="$style.dateValue">{{ value }}</dd>
             </div>
           </dl>
         </div>
       </div>
 
-      <div v-if="app.furtherInformation" class="mb-8 p-4 bg-gray-50 rounded border border-gray-100">
-        <h3 class="text-lg font-semibold mb-3 border-b border-gray-200 pb-2 text-gray-800">Additional Details</h3>
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-if="app.furtherInformation" :class="$style.furtherBox">
+        <h3 :class="$style.furtherTitle">Additional Details</h3>
+        <div :class="$style.furtherGrid">
           <div v-if="app.furtherInformation?.['Application Type']">
-            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Application Type</dt>
-            <dd class="text-sm text-gray-900 mt-1">{{ app.furtherInformation['Application Type'] }}</dd>
+            <dt :class="$style.furtherTerm">Application Type</dt>
+            <dd :class="$style.furtherValue">{{ app.furtherInformation['Application Type'] }}</dd>
           </div>
           <div v-if="app.furtherInformation?.['Case Officer']">
-            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Case Officer</dt>
-            <dd class="text-sm text-gray-900 mt-1">{{ app.furtherInformation['Case Officer'] }}</dd>
+            <dt :class="$style.furtherTerm">Case Officer</dt>
+            <dd :class="$style.furtherValue">{{ app.furtherInformation['Case Officer'] }}</dd>
           </div>
           <div v-if="app.furtherInformation?.['Ward']">
-            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Ward</dt>
-            <dd class="text-sm text-gray-900 mt-1">{{ app.furtherInformation['Ward'] }}</dd>
+            <dt :class="$style.furtherTerm">Ward</dt>
+            <dd :class="$style.furtherValue">{{ app.furtherInformation['Ward'] }}</dd>
           </div>
           <div v-if="app.importantDates?.['Determination Deadline']">
-            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Determination Deadline</dt>
-            <dd class="text-sm text-gray-900 mt-1">{{ app.importantDates['Determination Deadline'] }}</dd>
+            <dt :class="$style.furtherTerm">Determination Deadline</dt>
+            <dd :class="$style.furtherValue">{{ app.importantDates['Determination Deadline'] }}</dd>
           </div>
           <div v-if="app.importantDates?.['Actual Committee Date']">
-            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Meeting Date</dt>
-            <dd class="text-sm text-gray-900 mt-1">
+            <dt :class="$style.furtherTerm">Meeting Date</dt>
+            <dd :class="$style.furtherValue">
               {{ app.importantDates['Actual Committee Date'] }}
             </dd>
           </div>
           <div v-if="app.furtherInformation?.['Decision']">
-            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Decision</dt>
-            <dd class="text-sm text-gray-900 mt-1">{{ app.furtherInformation['Decision'] }}</dd>
+            <dt :class="$style.furtherTerm">Decision</dt>
+            <dd :class="$style.furtherValue">{{ app.furtherInformation['Decision'] }}</dd>
           </div>
           <div v-if="app.importantDates?.['Decision Issued Date']">
-            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Decision Date</dt>
-            <dd class="text-sm text-gray-900 mt-1">{{ app.importantDates['Decision Issued Date'] }}</dd>
+            <dt :class="$style.furtherTerm">Decision Date</dt>
+            <dd :class="$style.furtherValue">{{ app.importantDates['Decision Issued Date'] }}</dd>
           </div>
         </div>
       </div>
 
-      <div class="mt-8">
-        <div class="border-b border-gray-200">
-          <nav class="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
-            <button v-if="keyDocs.length > 0" @click="activeTab = 'key-documents'" :class="[activeTab === 'key-documents' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
+      <div :class="$style.tabsWrap">
+        <div :class="$style.tabBar">
+          <nav :class="$style.tabs" aria-label="Tabs">
+            <button v-if="keyDocs.length > 0" @click="activeTab = 'key-documents'" :class="[tabClass('key-documents'), $style.tab]">
               Key Documents ({{ keyDocs.length }})
             </button>
-            <button @click="activeTab = 'favourites'" :class="[activeTab === 'favourites' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
+            <button @click="activeTab = 'favourites'" :class="[tabClass('favourites'), $style.tab]">
               Favourites ({{ favouriteDocs.length }})
             </button>
-            <button @click="activeTab = 'documents'" :class="[activeTab === 'documents' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
+            <button @click="activeTab = 'documents'" :class="[tabClass('documents'), $style.tab]">
               Documents ({{ enhancedAppDocuments.length }})
             </button>
-            <button v-if="app.hasComments" @click="activeTab = 'comments'" :class="[activeTab === 'comments' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
+            <button v-if="app.hasComments" @click="activeTab = 'comments'" :class="[tabClass('comments'), $style.tab]">
               Comments ({{ commentsList.length > 0 ? commentsList.length : (commentsError ? '!' : '...') }})
             </button>
-            <button v-if="app.location" @click="activeTab = 'location'" :class="[activeTab === 'location' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
+            <button v-if="app.location" @click="activeTab = 'location'" :class="[tabClass('location'), $style.tab]">
               Location
             </button>
           </nav>
         </div>
 
-        <div class="pt-6">
+        <div :class="$style.tabContent">
           <div v-show="activeTab === 'key-documents'" v-if="keyDocs.length > 0">
             <DocumentList :docs="keyDocs" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged" />
           </div>
@@ -125,96 +125,96 @@
             <div v-if="favouriteDocs.length > 0">
               <DocumentList :docs="favouriteDocs" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged" />
             </div>
-            <div v-else class="text-sm text-gray-500 py-4 text-center">No favourite documents. Star a document to collect it here.</div>
+            <div v-else :class="$style.emptyCentre">No favourite documents. Star a document to collect it here.</div>
           </div>
 
           <div v-show="activeTab === 'documents'">
-            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-3 border-b pb-2">
-              <div class="flex items-center gap-3 flex-wrap">
-                <div class="relative">
-                  <svg class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"></path></svg>
-                  <input v-model="docSearch" type="text" placeholder="Search documents..." class="w-full sm:w-72 text-sm border-gray-300 rounded-md py-1.5 pl-8 pr-8 focus:ring-blue-500 focus:border-blue-500" />
-                  <button v-if="docSearch" @click="docSearch = ''" :aria-label="'Clear document search'" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="Clear search">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <div :class="$style.docsToolbar">
+              <div :class="$style.docsToolbarLeft">
+                <div :class="$style.searchWrap">
+                  <svg :class="$style.searchIcon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"></path></svg>
+                  <input v-model="docSearch" type="text" placeholder="Search documents..." :class="$style.docSearch" />
+                  <button v-if="docSearch" @click="docSearch = ''" :aria-label="'Clear document search'" :class="$style.clearSearch" title="Clear search">
+                    <svg :class="$style.clearIcon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
                   </button>
                 </div>
-                <label class="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer select-none" title="Also search inside document contents (PDFs, Word files), not just names and metadata">
-                  <input v-model="searchContents" type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                <label :class="$style.contentsLabel" title="Also search inside document contents (PDFs, Word files), not just names and metadata">
+                  <input v-model="searchContents" type="checkbox" :class="$style.checkbox" />
                   <span>Contents</span>
                 </label>
               </div>
-              <select v-if="docTypesWithCounts.length > 1" v-model="selectedDocType" class="text-sm border-gray-300 rounded-md py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500">
+              <select v-if="docTypesWithCounts.length > 1" v-model="selectedDocType" :class="[ui.select, $style.filterSelect]">
                 <option v-for="t in docTypesWithCounts" :key="t.value" :value="t.value">{{ t.label }} ({{ t.count }})</option>
               </select>
             </div>
 
-            <div v-if="searchingContent" class="mb-2 text-xs text-gray-400">Searching document contents…</div>
+            <div v-if="searchingContent" :class="$style.searchingNote">Searching document contents…</div>
 
             <DocumentList v-if="filteredDocs.length > 0" :docs="filteredDocs" :reference="app.reference" :authority-id="app.authorityId" :expand-all="docFilterActive" :snippets="contentSnippets" @changed="onDocChanged" />
-            <div v-else-if="!searchingContent" class="text-sm text-gray-500 py-4 text-center">No documents match your search.</div>
+            <div v-else-if="!searchingContent" :class="$style.emptyCentre">No documents match your search.</div>
           </div>
 
           <div v-show="activeTab === 'location'" v-if="app.location">
-            <div class="rounded-md overflow-hidden border border-gray-200">
+            <div :class="$style.mapFrame">
               <iframe
                 :src="osmEmbedUrl"
-                class="w-full"
+                :class="$style.iframe"
                 style="height: 480px"
                 loading="lazy"
                 referrerpolicy="no-referrer-when-downgrade"
                 title="Application location map"
               ></iframe>
             </div>
-            <p class="mt-3 text-xs text-gray-500">
+            <p :class="$style.locationNote">
               Approximate site location. Coordinates: {{ app.location.center.lat.toFixed(6) }}, {{ app.location.center.lon.toFixed(6) }}
-              &middot; <a :href="osmLinkUrl" target="_blank" rel="noopener" class="text-blue-600 hover:underline">Open in OpenStreetMap</a>
+              &middot; <a :href="osmLinkUrl" target="_blank" rel="noopener" :class="$style.link">Open in OpenStreetMap</a>
             </p>
           </div>
 
           <div v-show="activeTab === 'comments'" v-if="app.hasComments">
             <div v-if="commentsList.length > 0">
-              <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-3 border-b pb-2">
-                <div class="relative">
-                  <svg class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"></path></svg>
-                  <input v-model="commentSearch" type="text" placeholder="Search comments..." class="w-full sm:w-72 text-sm border-gray-300 rounded-md py-1.5 pl-8 pr-8 focus:ring-blue-500 focus:border-blue-500" />
-                  <button v-if="commentSearch" @click="commentSearch = ''" :aria-label="'Clear comment search'" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="Clear search">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+              <div :class="$style.docsToolbar">
+                <div :class="$style.searchWrap">
+                  <svg :class="$style.searchIcon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"></path></svg>
+                  <input v-model="commentSearch" type="text" placeholder="Search comments..." :class="$style.docSearch" />
+                  <button v-if="commentSearch" @click="commentSearch = ''" :aria-label="'Clear comment search'" :class="$style.clearSearch" title="Clear search">
+                    <svg :class="$style.clearIcon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
                   </button>
                 </div>
-                <select v-if="commentStancesWithCounts.length > 1" v-model="selectedStance" class="text-sm border-gray-300 rounded-md py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500">
+                <select v-if="commentStancesWithCounts.length > 1" v-model="selectedStance" :class="[ui.select, $style.filterSelect]">
                   <option v-for="t in commentStancesWithCounts" :key="t.value" :value="t.value">{{ t.label }} ({{ t.count }})</option>
                 </select>
               </div>
-              <div v-if="filteredComments.length > 0" class="mt-2">
-                <ul class="divide-y divide-gray-100">
-                  <li v-for="(comment, idx) in filteredComments" :key="idx" class="py-3">
-                    <div class="flex justify-between gap-x-6">
-                      <div class="min-w-0 flex-auto">
-                        <div class="cursor-pointer" @click="comment.expanded = !comment.expanded">
-                          <p class="text-sm font-medium text-gray-900 flex items-start gap-2">
-                            <span class="min-w-0"><Highlight :text="comment.address" :query="commentSearch" /></span>
-                            <span v-if="comment.stance" :class="['mt-0.5 inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset shrink-0', getStanceClass(comment.stance)]"><Highlight :text="comment.stance" :query="commentSearch" /></span>
+              <div v-if="filteredComments.length > 0" :class="$style.commentsWrap">
+                <ul :class="$style.commentsList">
+                  <li v-for="(comment, idx) in filteredComments" :key="idx" :class="$style.comment">
+                    <div :class="$style.commentHeader">
+                      <div :class="$style.commentBody">
+                        <div :class="$style.commentToggle" @click="comment.expanded = !comment.expanded">
+                          <p :class="$style.commentTitle">
+                            <span :class="$style.commentAddress"><Highlight :text="comment.address" :query="commentSearch" /></span>
+                            <span v-if="comment.stance" :class="[getStanceClass(comment.stance), $style.stanceBadge]"><Highlight :text="comment.stance" :query="commentSearch" /></span>
                           </p>
-                          <p class="mt-1 flex text-xs text-gray-500">
-                            <span class="mr-2"><Highlight :text="comment.date" :query="commentSearch" /></span>
+                          <p :class="$style.commentMeta">
+                            <span :class="$style.commentMetaItem"><Highlight :text="comment.date" :query="commentSearch" /></span>
                           </p>
                         </div>
-                        <div v-show="comment.expanded || hasCommentSearch" class="mt-3 ml-4 pl-3 border-l-2 border-gray-200">
-                          <div class="text-sm text-gray-700 italic whitespace-pre-wrap"><Highlight :text="comment.text" :query="commentSearch" /></div>
+                        <div v-show="comment.expanded || hasCommentSearch" :class="$style.commentTextWrap">
+                          <div :class="$style.commentText"><Highlight :text="comment.text" :query="commentSearch" /></div>
                         </div>
                       </div>
-                      <div class="flex items-center gap-2 shrink-0">
-                        <button type="button" class="cursor-pointer text-gray-400 hover:text-gray-700" :aria-expanded="comment.expanded || hasCommentSearch" @click="comment.expanded = !comment.expanded">
-                          <svg :class="['w-4 h-4 transition-transform', comment.expanded || hasCommentSearch ? '' : '-rotate-90']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      <div :class="$style.commentActions">
+                        <button type="button" :class="$style.commentChevronButton" :aria-expanded="comment.expanded || hasCommentSearch" @click="comment.expanded = !comment.expanded">
+                          <svg :class="[$style.commentChevron, comment.expanded || hasCommentSearch ? '' : $style.commentChevronCollapsed]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
                       </div>
                     </div>
                   </li>
                 </ul>
               </div>
-              <div v-else class="text-sm text-gray-500 py-4 text-center">No comments match your search.</div>
+              <div v-else :class="$style.emptyCentre">No comments match your search.</div>
             </div>
-            <div v-else-if="commentsError" class="text-sm text-red-600">{{ commentsError }}</div>
+            <div v-else-if="commentsError" :class="$style.commentsError">{{ commentsError }}</div>
           </div>
         </div>
       </div>
@@ -223,7 +223,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, useCssModule } from 'vue'
 import { timeAgo, progressText, isKeyDocument } from '../utils'
 import type { ApplicationMeta, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet } from '../../../src/types.js'
 import * as api from '../api'
@@ -231,8 +231,10 @@ import DocumentList from '../components/DocumentList.vue'
 import Highlight from '../components/Highlight.vue'
 import { useRoute } from 'vue-router'
 import { queueItems } from '../queueStore'
+import ui from '../styles/primitives.module.css'
 
 const route = useRoute()
+const styles = useCssModule()
 const refParam = computed(() => route.params.ref as string)
 const app = ref<ApplicationMeta | null>(null)
 const loading = ref(true)
@@ -265,16 +267,18 @@ const contentSnippets = ref<Record<string, DocumentSnippet>>({})
 const searchingContent = ref(false)
 const searchContents = ref(true)
 const getStanceClass = (stance?: string) => {
-  if (!stance) return 'bg-gray-100 text-gray-600 ring-gray-500/10'
+  if (!stance) return ui.toneGray
   const lower = stance.toLowerCase()
-  if (lower.includes('object')) return 'bg-red-50 text-red-700 ring-red-600/10'
-  if (lower.includes('support')) return 'bg-green-50 text-green-700 ring-green-600/20'
-  if (lower.includes('neutral')) return 'bg-yellow-50 text-yellow-800 ring-yellow-600/20'
-  return 'bg-gray-100 text-gray-600 ring-gray-500/10'
+  if (lower.includes('object')) return ui.toneRed
+  if (lower.includes('support')) return ui.toneGreen
+  if (lower.includes('neutral')) return ui.toneYellow
+  return ui.toneGray
 }
 const selectedDocType = ref('All')
 
 const docFilterActive = computed(() => docSearch.value.trim() !== '' || selectedDocType.value !== 'All')
+
+const tabClass = (tab: string) => (activeTab.value === tab ? styles.tabActive : styles.tabInactive)
 
 const osmEmbedUrl = computed(() => {
   const loc = app.value?.location
@@ -586,3 +590,581 @@ onMounted(async () => {
   lastWasDownloading = isDownloading.value
 })
 </script>
+
+<style module>
+.muted {
+  color: var(--color-gray-500);
+}
+
+.topBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 1rem;
+  row-gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.backLink {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-blue-600);
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.topActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.synced {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-gray-500);
+}
+
+.starButton {
+  cursor: pointer;
+  color: var(--color-gray-400);
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.starButton:hover {
+  color: var(--color-yellow-500);
+}
+
+.starButton:disabled {
+  opacity: 0.5;
+}
+
+.starIcon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.starActive {
+  color: var(--color-yellow-400);
+}
+
+.downloadBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-blue-700);
+  background: var(--color-blue-50);
+  border: 1px solid var(--color-blue-200);
+  border-radius: var(--radius-md);
+}
+
+.downloadSpinner {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  animation: spin 1s linear infinite;
+}
+
+.spinnerTrack {
+  opacity: 0.25;
+}
+
+.spinnerHead {
+  opacity: 0.75;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.progressStrong {
+  font-weight: 500;
+}
+
+.waiting {
+  margin-bottom: 1rem;
+  color: var(--color-gray-500);
+}
+
+.errorText {
+  color: var(--color-red-600);
+}
+
+.errorBanner {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-red-700);
+  background: var(--color-red-50);
+  border: 1px solid var(--color-red-200);
+  border-radius: var(--radius-md);
+}
+
+.successBanner {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-green-700);
+  background: var(--color-green-50);
+  border: 1px solid var(--color-green-200);
+  border-radius: var(--radius-md);
+}
+
+.card {
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.summaryGrid {
+  display: grid;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.appTitle {
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 700;
+}
+
+.appAddress {
+  margin-bottom: 0.5rem;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+  color: var(--color-gray-700);
+}
+
+.appDesc {
+  color: var(--color-gray-600);
+}
+
+.statusWrap {
+  margin-top: 1rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+}
+
+.sectionTitleBorder {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.datesList > div + div {
+  border-top: 1px solid var(--color-gray-100);
+}
+
+.dateRow {
+  padding: 0.75rem 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .dateRow {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+
+.dateTerm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  color: var(--color-gray-900);
+}
+
+.dateValue {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-gray-700);
+}
+
+@media (min-width: 640px) {
+  .dateValue {
+    grid-column: span 2 / span 2;
+    margin-top: 0;
+  }
+}
+
+.furtherBox {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-100);
+  border-radius: var(--radius);
+}
+
+.furtherTitle {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  color: var(--color-gray-800);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.furtherGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .furtherGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .furtherGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.furtherTerm {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: var(--color-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.furtherValue {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-gray-900);
+}
+
+.tabsWrap {
+  margin-top: 2rem;
+}
+
+.tabBar {
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.tabs {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: -1px;
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 1rem 0.25rem;
+  border-bottom: 2px solid transparent;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  background: none;
+}
+
+.tabActive {
+  border-bottom-color: var(--color-blue-500);
+  color: var(--color-blue-600);
+}
+
+.tabInactive {
+  color: var(--color-gray-500);
+}
+
+.tabInactive:hover {
+  color: var(--color-gray-700);
+  border-bottom-color: var(--color-gray-300);
+}
+
+.tabContent {
+  padding-top: 1.5rem;
+}
+
+.emptyCentre {
+  padding: 1rem 0;
+  text-align: center;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-gray-500);
+}
+
+.docsToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 1rem;
+  row-gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.docsToolbarLeft {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.searchWrap {
+  position: relative;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.625rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-gray-400);
+  pointer-events: none;
+}
+
+.docSearch {
+  width: 100%;
+  padding: 0.375rem 2rem 0.375rem 2rem;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .docSearch {
+    width: 18rem;
+  }
+}
+
+.docSearch:focus {
+  border-color: var(--color-blue-500);
+}
+
+.clearSearch {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-gray-400);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.clearSearch:hover {
+  color: var(--color-gray-600);
+}
+
+.clearIcon {
+  height: 1rem;
+  width: 1rem;
+}
+
+.contentsLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-gray-700);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox {
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius);
+  accent-color: var(--color-blue-600);
+}
+
+.filterSelect {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  padding-left: 0.5rem;
+}
+
+.searchingNote {
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-gray-400);
+}
+
+.mapFrame {
+  overflow: hidden;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+}
+
+.iframe {
+  width: 100%;
+}
+
+.locationNote {
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-gray-500);
+}
+
+.link {
+  color: var(--color-blue-600);
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.commentsWrap {
+  margin-top: 0.5rem;
+}
+
+.commentsList > li + li {
+  border-top: 1px solid var(--color-gray-100);
+}
+
+.comment {
+  padding: 0.75rem 0;
+}
+
+.commentHeader {
+  display: flex;
+  justify-content: space-between;
+  column-gap: 1.5rem;
+}
+
+.commentBody {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.commentToggle {
+  cursor: pointer;
+}
+
+.commentTitle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  color: var(--color-gray-900);
+}
+
+.commentAddress {
+  min-width: 0;
+}
+
+.stanceBadge {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+}
+
+.commentMeta {
+  display: flex;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-gray-500);
+}
+
+.commentMetaItem {
+  margin-right: 0.5rem;
+}
+
+.commentTextWrap {
+  margin-top: 0.75rem;
+  margin-left: 1rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--color-gray-200);
+}
+
+.commentText {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-gray-700);
+  font-style: italic;
+  white-space: pre-wrap;
+}
+
+.commentActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.commentChevronButton {
+  cursor: pointer;
+  color: var(--color-gray-400);
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.commentChevronButton:hover {
+  color: var(--color-gray-700);
+}
+
+.commentChevron {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 150ms;
+}
+
+.commentChevronCollapsed {
+  transform: rotate(-90deg);
+}
+
+.commentsError {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-red-600);
+}
+</style>

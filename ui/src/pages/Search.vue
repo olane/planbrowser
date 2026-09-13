@@ -1,68 +1,68 @@
 <template>
-  <div class="space-y-8">
+  <div :class="$style.page">
     <!-- Search & Download -->
     <section>
-      <h2 class="text-xl font-semibold mb-4">Search PlanIt API</h2>
-      <form @submit.prevent="searchPlanIt" class="mb-6">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-end">
-          <div class="w-full sm:flex-1">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Postcode</label>
-            <input v-model="searchForm.postcode" required type="text" placeholder="e.g. CB1 2JW" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+      <h2 :class="$style.title">Search PlanIt API</h2>
+      <form @submit.prevent="searchPlanIt" :class="$style.form">
+        <div :class="$style.row">
+          <div :class="$style.colFluid">
+            <label :class="$style.label">Postcode</label>
+            <input v-model="searchForm.postcode" required type="text" placeholder="e.g. CB1 2JW" :class="ui.input" />
           </div>
-          <div class="w-full sm:w-32">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Radius (km)</label>
-            <input v-model="searchForm.radius" required type="number" step="0.1" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+          <div :class="$style.colRadius">
+            <label :class="$style.label">Radius (km)</label>
+            <input v-model="searchForm.radius" required type="number" step="0.1" :class="ui.input" />
           </div>
-          <button type="submit" :disabled="isSearching" class="shrink-0 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
+          <button type="submit" :disabled="isSearching" :class="[ui.btn, ui.btnPrimary, $style.submit]">
             {{ isSearching ? 'Searching...' : 'Search' }}
           </button>
         </div>
 
-        <details class="mt-4">
-          <summary class="text-sm text-blue-600 cursor-pointer hover:underline select-none">Advanced filters</summary>
-          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-3 p-4 bg-gray-50 rounded-md border border-gray-200">
+        <details :class="$style.details">
+          <summary :class="$style.summary">Advanced filters</summary>
+          <div :class="$style.filters">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Keyword</label>
-              <input v-model="searchForm.search" type="text" placeholder='e.g. "solar panel" or photovoltaic' class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+              <label :class="$style.label">Keyword</label>
+              <input v-model="searchForm.search" type="text" placeholder='e.g. "solar panel" or photovoltaic' :class="ui.input" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Developer / Agent</label>
-              <input v-model="searchForm.developer" type="text" placeholder="e.g. company name" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+              <label :class="$style.label">Developer / Agent</label>
+              <input v-model="searchForm.developer" type="text" placeholder="e.g. company name" :class="ui.input" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Application type</label>
+              <label :class="$style.label">Application type</label>
               <MultiSelect v-model="searchForm.app_type" :options="APP_TYPES" placeholder="Any type" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Decision status</label>
+              <label :class="$style.label">Decision status</label>
               <MultiSelect v-model="searchForm.app_state" :options="APP_STATES" placeholder="Any status" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Development size</label>
+              <label :class="$style.label">Development size</label>
               <MultiSelect v-model="searchForm.app_size" :options="APP_SIZES" placeholder="Any size" />
             </div>
-            <div class="sm:col-span-2 lg:col-span-4 mt-2">
-              <p class="text-sm font-medium text-gray-700 mb-2">Date filters</p>
-              <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div v-for="group in timeGroups" :key="group.key" class="p-3 bg-white rounded-md border border-gray-200">
-                  <div class="flex items-center justify-between gap-2 mb-2">
-                    <label class="text-sm font-medium text-gray-700">{{ group.label }}</label>
-                    <select v-model="timeModes[group.key]" class="rounded-md border-gray-300 bg-white text-xs px-1.5 py-1 border focus:border-blue-500 focus:ring-blue-500">
+            <div :class="$style.dateSection">
+              <p :class="$style.dateHeading">Date filters</p>
+              <div :class="$style.dateGrid">
+                <div v-for="group in timeGroups" :key="group.key" :class="$style.dateCard">
+                  <div :class="$style.dateHeader">
+                    <label :class="$style.label">{{ group.label }}</label>
+                    <select v-model="timeModes[group.key]" :class="[ui.select, $style.dateMode]">
                       <option value="range">Date range</option>
                       <option value="recent">Last N days</option>
                     </select>
                   </div>
                   <div v-if="timeModes[group.key] === 'recent'">
-                    <input v-model="searchForm[group.recentKey]" type="number" min="0" placeholder="Days (0 = today)" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+                    <input v-model="searchForm[group.recentKey]" type="number" min="0" placeholder="Days (0 = today)" :class="ui.input" />
                   </div>
-                  <div v-else class="space-y-2">
+                  <div v-else :class="$style.rangeFields">
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">From</label>
-                      <input v-model="searchForm[group.fromKey]" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+                      <label :class="$style.subLabel">From</label>
+                      <input v-model="searchForm[group.fromKey]" type="date" :class="ui.input" />
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">To</label>
-                      <input v-model="searchForm[group.toKey]" type="date" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+                      <label :class="$style.subLabel">To</label>
+                      <input v-model="searchForm[group.toKey]" type="date" :class="ui.input" />
                     </div>
                   </div>
                 </div>
@@ -72,72 +72,72 @@
         </details>
       </form>
 
-      <div v-if="searchError" class="mb-6 p-4 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
+      <div v-if="searchError" :class="$style.errorBanner">
         {{ searchError }}
       </div>
 
       <div v-if="searchResults.length > 0">
-        <h3 class="font-medium text-lg mb-3">Results</h3>
+        <h3 :class="$style.resultsTitle">Results</h3>
         <div ref="mapWrapRef">
-          <SearchResultsMap v-if="resultsWithLocations.length > 0" ref="mapRef" :results="searchResults" class="mb-6" @select="scrollToResult" />
+          <SearchResultsMap v-if="resultsWithLocations.length > 0" ref="mapRef" :results="searchResults" :class="$style.resultsMap" @select="scrollToResult" />
         </div>
-        <div class="space-y-4">
-          <div v-for="res in searchResults" :key="res.uid" :ref="(el) => setResultRef(res.uid, el)" class="bg-white p-4 rounded shadow border border-gray-200 flex justify-between items-start gap-4">
-            <div class="min-w-0">
-              <div class="font-bold break-words">{{ res.uid }}<span v-if="res.app_type" class="ml-2 text-xs font-normal text-gray-500">({{ res.app_type }})</span></div>
-              <div class="text-sm text-gray-600 break-words">{{ res.description }}</div>
-              <div v-if="res.address" class="text-xs text-gray-500 mt-1">{{ res.address }}</div>
-              <div class="text-xs text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+        <div :class="$style.resultsList">
+          <div v-for="res in searchResults" :key="res.uid" :ref="(el) => setResultRef(res.uid, el)" :class="$style.resultCard">
+            <div :class="$style.resultBody">
+              <div :class="$style.resultUid">{{ res.uid }}<span v-if="res.app_type" :class="$style.resultType">({{ res.app_type }})</span></div>
+              <div :class="$style.resultDesc">{{ res.description }}</div>
+              <div v-if="res.address" :class="$style.resultAddress">{{ res.address }}</div>
+              <div :class="$style.resultStateRow">
                 <span>{{ res.app_state }}</span>
                 <span v-if="res.start_date">· {{ timeAgo(res.start_date) }}</span>
               </div>
             </div>
-            <div class="flex flex-col items-end gap-2 shrink-0">
-              <router-link v-if="isDownloaded(res.uid)" :to="`/app/${encodeURIComponent(res.uid)}`" class="whitespace-nowrap bg-blue-100 text-blue-700 px-3 py-1 rounded-md text-sm hover:bg-blue-200">
+            <div :class="$style.resultActions">
+              <router-link v-if="isDownloaded(res.uid)" :to="`/app/${encodeURIComponent(res.uid)}`" :class="$style.viewLink">
                 View
               </router-link>
-              <button v-else-if="canDownload(res)" @click="downloadApp(res.uid, res.area_name)" :disabled="['pending', 'in_progress'].includes(getQueueStatus(res.uid))" class="whitespace-nowrap bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 disabled:opacity-50">
+              <button v-else-if="canDownload(res)" @click="downloadApp(res.uid, res.area_name)" :disabled="['pending', 'in_progress'].includes(getQueueStatus(res.uid))" :class="[ui.btn, ui.btnSuccess, $style.downloadButton]">
                 {{ getQueueStatusText(res.uid) }}
               </button>
-              <span v-else class="whitespace-nowrap text-xs text-gray-400" title="This planning authority does not run an Idox Public Access portal, so planbrowser cannot download its documents.">Not on Idox portal</span>
-              <div v-if="getQueueError(res.uid)" class="text-xs text-red-600 max-w-[240px] text-right">{{ getQueueError(res.uid) }}</div>
-              <div v-else-if="downloadErrors[res.uid]" class="text-xs text-red-600 max-w-[240px] text-right">{{ downloadErrors[res.uid] }}</div>
-              <button v-if="hasLocation(res)" @click="showOnMap(res.uid)" class="text-xs text-blue-600 hover:underline">Show on map</button>
+              <span v-else :class="$style.notIdox" title="This planning authority does not run an Idox Public Access portal, so planbrowser cannot download its documents.">Not on Idox portal</span>
+              <div v-if="getQueueError(res.uid)" :class="$style.resultError">{{ getQueueError(res.uid) }}</div>
+              <div v-else-if="downloadErrors[res.uid]" :class="$style.resultError">{{ downloadErrors[res.uid] }}</div>
+              <button v-if="hasLocation(res)" @click="showOnMap(res.uid)" :class="$style.showOnMap">Show on map</button>
             </div>
           </div>
         </div>
       </div>
-      <div v-else-if="hasSearched" class="text-gray-500">
+      <div v-else-if="hasSearched" :class="$style.muted">
         No results found.
       </div>
     </section>
 
-    <hr class="border-gray-200" />
+    <hr :class="$style.rule" />
 
     <!-- Direct Lookup -->
     <section>
-      <h2 class="text-xl font-semibold mb-4">Direct Reference Lookup</h2>
-      <form @submit.prevent="lookupReference" class="flex flex-col gap-4 mb-6">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-end">
-        <div class="flex-1 max-w-sm w-full">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Application Reference</label>
-          <input v-model="directReference" required type="text" placeholder="e.g. 24/02737/FUL" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+      <h2 :class="$style.title">Direct Reference Lookup</h2>
+      <form @submit.prevent="lookupReference" :class="$style.lookupForm">
+        <div :class="$style.row">
+        <div :class="[$style.colFixed]">
+          <label :class="$style.label">Application Reference</label>
+          <input v-model="directReference" required type="text" placeholder="e.g. 24/02737/FUL" :class="ui.input" />
         </div>
-        <div class="flex-1 max-w-sm w-full">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Authority (default: cambridge)</label>
-          <input v-model="directAuthority" list="authority-list" type="text" placeholder="cambridge" class="block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" />
+        <div :class="[$style.colFixed]">
+          <label :class="$style.label">Authority (default: cambridge)</label>
+          <input v-model="directAuthority" list="authority-list" type="text" placeholder="cambridge" :class="ui.input" />
           <datalist id="authority-list">
             <option v-for="a in AUTHORITIES" :key="a.id" :value="a.id">{{ a.name }}</option>
           </datalist>
         </div>
-        <button type="submit" :disabled="isLookingUp" class="shrink-0 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
+        <button type="submit" :disabled="isLookingUp" :class="[ui.btn, ui.btnPrimary, $style.submit]">
           {{ isLookingUp ? 'Fetching...' : 'Fetch' }}
         </button>
         </div>
-        <div v-if="lookupMessage" class="p-4 text-sm text-green-700 bg-green-50 rounded-md border border-green-200">
+        <div v-if="lookupMessage" :class="$style.successBanner">
           {{ lookupMessage }}
         </div>
-        <div v-if="lookupError" class="p-4 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
+        <div v-if="lookupError" :class="$style.errorBannerPlain">
           {{ lookupError }}
         </div>
       </form>
@@ -145,7 +145,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, useCssModule } from 'vue'
 import { timeAgo, progressText } from '../utils'
 import type { ApplicationMeta, PlanItRecord, SearchFilters } from '../../../src/types.js'
 import { queueItems, refreshQueue } from '../queueStore'
@@ -155,8 +155,10 @@ import * as api from '../api'
 import { useRouter } from 'vue-router'
 import MultiSelect from '../components/MultiSelect.vue'
 import SearchResultsMap from '../components/SearchResultsMap.vue'
+import ui from '../styles/primitives.module.css'
 
 const router = useRouter()
+const styles = useCssModule()
 
 const APP_TYPES = ['Full', 'Outline', 'Amendment', 'Conditions', 'Heritage', 'Trees', 'Advertising', 'Telecoms', 'Other']
 const APP_STATES = ['Undecided', 'Permitted', 'Conditions', 'Rejected', 'Withdrawn', 'Referred', 'Unresolved', 'Other']
@@ -262,8 +264,8 @@ const scrollToResult = (uid: string) => {
   const el = resultRefs.get(uid)
   if (!el) return
   el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  el.classList.add('ring-2', 'ring-blue-500')
-  setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500'), 2000)
+  el.classList.add(styles.resultHighlight)
+  setTimeout(() => el.classList.remove(styles.resultHighlight), 2000)
 }
 
 const directReference = ref('')
@@ -384,3 +386,365 @@ onMounted(() => {
   fetchQueue()
 })
 </script>
+
+<style module>
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.title {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.form {
+  margin-bottom: 1.5rem;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .row {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+}
+
+.colFluid {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .colFluid {
+    flex: 1 1 0%;
+  }
+}
+
+.colRadius {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .colRadius {
+    width: 8rem;
+  }
+}
+
+.colFixed {
+  flex: 1 1 0%;
+  max-width: 24rem;
+  width: 100%;
+}
+
+.label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  color: var(--color-gray-700);
+}
+
+.subLabel {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-gray-500);
+}
+
+.submit {
+  flex-shrink: 0;
+}
+
+.details {
+  margin-top: 1rem;
+}
+
+.summary {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-blue-600);
+  cursor: pointer;
+  user-select: none;
+}
+
+.summary:hover {
+  text-decoration: underline;
+}
+
+.filters {
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  padding: 1rem;
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+}
+
+@media (min-width: 640px) {
+  .filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .filters {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.dateSection {
+  margin-top: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .dateSection {
+    grid-column: span 2 / span 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dateSection {
+    grid-column: span 4 / span 4;
+  }
+}
+
+.dateHeading {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  color: var(--color-gray-700);
+}
+
+.dateGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .dateGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .dateGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.dateCard {
+  padding: 0.75rem;
+  background: #fff;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+}
+
+.dateHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.dateMode {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  padding: 0.25rem 1.5rem 0.25rem 0.375rem;
+}
+
+.rangeFields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.errorBanner {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-red-700);
+  background: var(--color-red-50);
+  border: 1px solid var(--color-red-200);
+  border-radius: var(--radius-md);
+}
+
+.errorBannerPlain {
+  padding: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-red-700);
+  background: var(--color-red-50);
+  border: 1px solid var(--color-red-200);
+  border-radius: var(--radius-md);
+}
+
+.successBanner {
+  padding: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-green-700);
+  background: var(--color-green-50);
+  border: 1px solid var(--color-green-200);
+  border-radius: var(--radius-md);
+}
+
+.resultsTitle {
+  margin-bottom: 0.75rem;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+  font-weight: 500;
+}
+
+.resultsMap {
+  margin-bottom: 1.5rem;
+}
+
+.resultsList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.resultCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.resultHighlight {
+  box-shadow: 0 0 0 2px var(--color-blue-500);
+}
+
+.resultBody {
+  min-width: 0;
+}
+
+.resultUid {
+  font-weight: 700;
+  overflow-wrap: break-word;
+}
+
+.resultType {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 400;
+  color: var(--color-gray-500);
+}
+
+.resultDesc {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-gray-600);
+  overflow-wrap: break-word;
+}
+
+.resultAddress {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-gray-500);
+}
+
+.resultStateRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-gray-500);
+}
+
+.resultActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.viewLink {
+  padding: 0.25rem 0.75rem;
+  background: var(--color-blue-100);
+  color: var(--color-blue-700);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+
+.viewLink:hover {
+  background: var(--color-blue-200);
+}
+
+.downloadButton {
+  padding: 0.25rem 0.75rem;
+  white-space: nowrap;
+}
+
+.notIdox {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-gray-400);
+  white-space: nowrap;
+}
+
+.resultError {
+  max-width: 240px;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-red-600);
+  text-align: right;
+}
+
+.showOnMap {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-blue-600);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.showOnMap:hover {
+  text-decoration: underline;
+}
+
+.muted {
+  color: var(--color-gray-500);
+}
+
+.rule {
+  border-color: var(--color-gray-200);
+}
+
+.lookupForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+</style>

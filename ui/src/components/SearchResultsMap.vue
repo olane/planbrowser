@@ -1,12 +1,12 @@
 <template>
-  <div class="relative">
-    <div ref="mapEl" class="w-full h-96 rounded-md border border-gray-200 z-0"></div>
+  <div :class="$style.root">
+    <div ref="mapEl" :class="$style.map"></div>
     <MapLegend :mode="colorMode" :entries="legendEntries" @update:mode="setColorMode" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, useCssModule } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { PlanItRecord } from '../../../src/types.js'
@@ -28,6 +28,8 @@ import {
 
 const props = defineProps<{ results: PlanItRecord[] }>()
 const emit = defineEmits<{ select: [uid: string] }>()
+
+const styles = useCssModule()
 
 const mapEl = ref<HTMLDivElement | null>(null)
 let map: L.Map | null = null
@@ -94,11 +96,11 @@ const renderMarkers = () => {
   if (points.value.length === 0) return
   const bounds = L.latLngBounds(points.value.map(p => [p.lat, p.lon] as L.LatLngExpression))
   for (const p of points.value) {
-    const popupContent = `<div class="text-sm">
-      <div class="font-medium">${escapeHtml(p.rec.uid)}</div>
-      <div class="text-gray-600">${escapeHtml(truncate(p.rec.description || ''))}</div>
-      <div class="text-gray-500 mb-1">${escapeHtml([p.rec.app_type, p.rec.app_state].filter(Boolean).join(' | '))}</div>
-      <button class="jump-link text-blue-600 hover:underline">Show in results</button>
+    const popupContent = `<div class="${styles.popup}">
+      <div class="${styles.popupUid}">${escapeHtml(p.rec.uid)}</div>
+      <div class="${styles.popupDesc}">${escapeHtml(truncate(p.rec.description || ''))}</div>
+      <div class="${styles.popupMeta}">${escapeHtml([p.rec.app_type, p.rec.app_state].filter(Boolean).join(' | '))}</div>
+      <button class="jump-link ${styles.popupLink}">Show in results</button>
     </div>`
     const marker = L.marker([p.lat, p.lon], { icon: p.rec.uid === activeUid ? activePinIcon : pinIcon(markerFill(p.rec)) }).addTo(markerLayer)
     markersByUid.set(p.rec.uid, marker)
@@ -155,6 +157,50 @@ onBeforeUnmount(() => {
   markerLayer = null
 })
 </script>
+
+<style module>
+.root {
+  position: relative;
+}
+
+.map {
+  width: 100%;
+  height: 24rem;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  z-index: 0;
+}
+
+.popup {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.popupUid {
+  font-weight: 500;
+}
+
+.popupDesc {
+  color: var(--color-gray-600);
+}
+
+.popupMeta {
+  margin-bottom: 0.25rem;
+  color: var(--color-gray-500);
+}
+
+.popupLink {
+  color: var(--color-blue-600);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.popupLink:hover {
+  text-decoration: underline;
+}
+</style>
 
 <style>
 .search-result-pin {

@@ -1,35 +1,35 @@
 <template>
-  <div class="space-y-8">
+  <div :class="$style.page">
     <section>
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-semibold">Download Queue</h2>
-        <button v-if="queueItems.length > 0" @click="clearCompletedQueue" class="text-sm text-gray-500 hover:text-gray-700">Clear completed</button>
+      <div :class="$style.header">
+        <h2 :class="$style.title">Download Queue</h2>
+        <button v-if="queueItems.length > 0" @click="clearCompletedQueue" :class="$style.clear">Clear completed</button>
       </div>
-      
-      <div v-if="queueItems.length === 0" class="text-gray-500">
+
+      <div v-if="queueItems.length === 0" :class="$style.muted">
         No active or pending downloads.
       </div>
 
-      <div v-else class="space-y-3">
-        <div v-for="item in queueItems" :key="item.id" class="bg-white p-3 rounded shadow-sm border border-gray-200 flex flex-wrap justify-between items-center gap-x-4 gap-y-2">
-          <div class="min-w-0">
-            <router-link v-if="item.status === 'completed' || item.status === 'in_progress' || item.status === 'pending'" :to="`/app/${encodeURIComponent(item.reference)}`" class="font-medium text-blue-600 hover:underline">
+      <div v-else :class="$style.list">
+        <div v-for="item in queueItems" :key="item.id" :class="$style.item">
+          <div :class="$style.info">
+            <router-link v-if="item.status === 'completed' || item.status === 'in_progress' || item.status === 'pending'" :to="`/app/${encodeURIComponent(item.reference)}`" :class="$style.refLink">
               {{ item.reference }}
             </router-link>
-            <div v-else class="font-medium">{{ item.reference }}</div>
-            <div class="text-xs text-gray-500">
+            <div v-else :class="$style.ref">{{ item.reference }}</div>
+            <div :class="$style.meta">
               <span v-if="authorityName(item.authorityId)">{{ authorityName(item.authorityId) }} • </span>
               Enqueued: {{ timeAgo(item.enqueuedAt) }}
               <span v-if="item.completedAt"> • Finished: {{ timeAgo(item.completedAt) }}</span>
             </div>
           </div>
-          <div class="flex flex-col items-end">
-            <span v-if="item.status === 'pending'" class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">Pending</span>
-            <span v-else-if="item.status === 'in_progress'" class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Downloading...</span>
-            <span v-else-if="item.status === 'completed'" class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Completed</span>
-            <span v-else-if="item.status === 'failed'" class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Failed</span>
-            <div v-if="item.status === 'in_progress' && item.progress" class="text-xs text-gray-500 mt-1">{{ progressText(item.progress) }}</div>
-            <div v-if="item.error" class="text-xs text-red-600 mt-1 max-w-xs truncate" :title="item.error">{{ item.error }}</div>
+          <div :class="$style.statusCol">
+            <span v-if="item.status === 'pending'" :class="[ui.toneYellow, $style.badge]">Pending</span>
+            <span v-else-if="item.status === 'in_progress'" :class="[ui.toneBlue, $style.badge]">Downloading...</span>
+            <span v-else-if="item.status === 'completed'" :class="[ui.toneGreen, $style.badge]">Completed</span>
+            <span v-else-if="item.status === 'failed'" :class="[ui.toneRed, $style.badge]">Failed</span>
+            <div v-if="item.status === 'in_progress' && item.progress" :class="$style.progress">{{ progressText(item.progress) }}</div>
+            <div v-if="item.error" :class="$style.error" :title="item.error">{{ item.error }}</div>
           </div>
         </div>
       </div>
@@ -43,6 +43,7 @@ import { onMounted } from 'vue'
 import { timeAgo, progressText } from '../utils'
 import * as api from '../api'
 import { queueItems, refreshQueue } from '../queueStore'
+import ui from '../styles/primitives.module.css'
 
 const clearCompletedQueue = async () => {
   try {
@@ -58,3 +59,118 @@ onMounted(() => {
   refreshQueue()
 })
 </script>
+
+<style module>
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+}
+
+.clear {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-gray-500);
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.clear:hover {
+  color: var(--color-gray-700);
+}
+
+.muted {
+  color: var(--color-gray-500);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  column-gap: 1rem;
+  row-gap: 0.5rem;
+  padding: 0.75rem;
+  background: #fff;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.info {
+  min-width: 0;
+}
+
+.refLink {
+  font-weight: 500;
+  color: var(--color-blue-600);
+}
+
+.refLink:hover {
+  text-decoration: underline;
+}
+
+.ref {
+  font-weight: 500;
+}
+
+.meta {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-gray-500);
+}
+
+.statusCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+}
+
+.progress {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-gray-500);
+}
+
+.error {
+  margin-top: 0.25rem;
+  max-width: 20rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-red-600);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

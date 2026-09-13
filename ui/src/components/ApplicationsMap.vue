@@ -1,16 +1,16 @@
 <template>
-  <div class="relative">
-    <div ref="mapEl" class="w-full h-96 rounded-md border border-gray-200 z-0"></div>
+  <div :class="$style.root">
+    <div ref="mapEl" :class="$style.map"></div>
     <MapLegend :mode="colorMode" :entries="legendEntries" @update:mode="setColorMode" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, useCssModule } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { ApplicationMeta } from '../../../src/types.js'
-import { statusLabel, statusBadgeClass } from '../utils'
+import { statusLabel, statusBadgeTone } from '../utils'
 import MapLegend from './MapLegend.vue'
 import { useMapColorMode } from '../useMapColorMode'
 import {
@@ -27,9 +27,12 @@ import {
   legendFor,
   type LegendEntry
 } from '../mapColours'
+import ui from '../styles/primitives.module.css'
 
 const props = defineProps<{ apps: ApplicationMeta[] }>()
 const emit = defineEmits<{ select: [reference: string] }>()
+
+const styles = useCssModule()
 
 const mapEl = ref<HTMLDivElement | null>(null)
 let map: L.Map | null = null
@@ -73,17 +76,19 @@ const pinIcon = (color: string) => L.divIcon({
   popupAnchor: [0, -36]
 })
 
+const toneClass = { red: ui.toneRed, green: ui.toneGreen, blue: ui.toneBlue }
+
 const popupContent = (app: ApplicationMeta) => {
   const loc = app.location!
-  return `<div class="text-sm min-w-[200px]">
-    <div class="font-semibold break-words">${escapeHtml(app.reference)}</div>
-    <div class="text-gray-700">${escapeHtml(app.address || '')}</div>
-    <div class="text-gray-500">${escapeHtml(truncate(app.description))}</div>
-    <div class="mt-1.5 flex items-center justify-between gap-2">
-      <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${statusBadgeClass(app)}">${escapeHtml(statusLabel(app))}</span>
-      <button class="open-link text-blue-600 hover:underline shrink-0">View</button>
+  return `<div class="${styles.popup}">
+    <div class="${styles.popupRef}">${escapeHtml(app.reference)}</div>
+    <div class="${styles.popupAddress}">${escapeHtml(app.address || '')}</div>
+    <div class="${styles.popupDesc}">${escapeHtml(truncate(app.description))}</div>
+    <div class="${styles.popupFooter}">
+      <span class="${styles.popupBadge} ${toneClass[statusBadgeTone(app)]}">${escapeHtml(statusLabel(app))}</span>
+      <button class="open-link ${styles.popupLink}">View</button>
     </div>
-    <div class="mt-1 text-[10px] text-gray-400">${loc.center.lat.toFixed(5)}, ${loc.center.lon.toFixed(5)}</div>
+    <div class="${styles.popupCoords}">${loc.center.lat.toFixed(5)}, ${loc.center.lon.toFixed(5)}</div>
   </div>`
 }
 
@@ -135,6 +140,76 @@ onBeforeUnmount(() => {
   markerLayer = null
 })
 </script>
+
+<style module>
+.root {
+  position: relative;
+}
+
+.map {
+  width: 100%;
+  height: 24rem;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  z-index: 0;
+}
+
+.popup {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  min-width: 200px;
+}
+
+.popupRef {
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+
+.popupAddress {
+  color: var(--color-gray-700);
+}
+
+.popupDesc {
+  color: var(--color-gray-500);
+}
+
+.popupFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.375rem;
+}
+
+.popupBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+}
+
+.popupLink {
+  flex-shrink: 0;
+  color: var(--color-blue-600);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.popupLink:hover {
+  text-decoration: underline;
+}
+
+.popupCoords {
+  margin-top: 0.25rem;
+  font-size: 10px;
+  color: var(--color-gray-400);
+}
+</style>
 
 <style>
 .application-pin {

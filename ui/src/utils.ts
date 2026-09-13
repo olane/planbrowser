@@ -41,10 +41,19 @@ export function progressText(progress: { message: string; current?: number; tota
   return `${progress.message} (${progress.current ?? 0}/${progress.total})`;
 }
 
-export function statusBadgeClass(app: { status?: string; furtherInformation?: Record<string, string> }): string {
+export type StatusTone = 'red' | 'green' | 'blue';
+
+export function statusBadgeTone(app: { status?: string; furtherInformation?: Record<string, string> }): StatusTone {
   const label = statusLabel(app).toLowerCase();
-  if (label.includes('refus')) return 'bg-red-50 text-red-700 ring-red-600/10';
-  if (label.includes('permit') || label.includes('grant')) return 'bg-green-50 text-green-700 ring-green-600/20';
+  if (label.includes('refus')) return 'red';
+  if (label.includes('permit') || label.includes('grant')) return 'green';
+  return 'blue';
+}
+
+export function statusBadgeClass(app: { status?: string; furtherInformation?: Record<string, string> }): string {
+  const tone = statusBadgeTone(app);
+  if (tone === 'red') return 'bg-red-50 text-red-700 ring-red-600/10';
+  if (tone === 'green') return 'bg-green-50 text-green-700 ring-green-600/20';
   return 'bg-blue-50 text-blue-700 ring-blue-700/10';
 }
 
