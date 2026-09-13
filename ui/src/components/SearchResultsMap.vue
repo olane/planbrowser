@@ -1,13 +1,7 @@
 <template>
   <div class="relative">
     <div ref="mapEl" class="w-full h-96 rounded-md border border-gray-200 z-0"></div>
-    <div v-if="legendTypes.length" class="absolute right-3 top-3 z-[1000] rounded-md border border-gray-200 bg-white/90 px-2.5 py-2 text-xs shadow-sm">
-      <div class="font-medium text-gray-700 mb-1">Type</div>
-      <div v-for="t in legendTypes" :key="t" class="flex items-center gap-1.5 py-0.5">
-        <span class="inline-block h-3 w-3 rounded-full" :style="{ background: appTypeColor(t) }"></span>
-        <span class="text-gray-600">{{ t }}</span>
-      </div>
-    </div>
+    <MapLegend :mode="colorMode" :entries="legendEntries" @update:mode="setColorMode" />
   </div>
 </template>
 
@@ -16,6 +10,21 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { PlanItRecord } from '../../../src/types.js'
+import MapLegend from './MapLegend.vue'
+import { useMapColorMode } from '../useMapColorMode'
+import {
+  APP_TYPE_COLORS,
+  APP_TYPE_ORDER,
+  OUTCOME_COLORS,
+  OUTCOME_ORDER,
+  appTypeColor,
+  normaliseAppType,
+  normaliseOutcome,
+  outcomeColor,
+  presentBuckets,
+  legendFor,
+  type LegendEntry
+} from '../mapColours'
 
 const props = defineProps<{ results: PlanItRecord[] }>()
 const emit = defineEmits<{ select: [uid: string] }>()
@@ -33,21 +42,10 @@ const truncate = (s: string, words = 6) => {
   return parts.length > words ? cut + '…' : cut
 }
 
-const APP_TYPE_ORDER = ['Full', 'Outline', 'Amendment', 'Conditions', 'Heritage', 'Trees', 'Advertising', 'Telecoms', 'Other']
+const { colorMode, setColorMode } = useMapColorMode('planbrowser.mapColorMode.search', 'type')
 
-const APP_TYPE_COLORS: Record<string, string> = {
-  Full: '#2563eb',
-  Outline: '#7c3aed',
-  Amendment: '#ea580c',
-  Conditions: '#0d9488',
-  Heritage: '#b45309',
-  Trees: '#16a34a',
-  Advertising: '#db2777',
-  Telecoms: '#0891b2',
-  Other: '#6b7280'
-}
-
-const appTypeColor = (t?: string) => (t ? APP_TYPE_COLORS[t] : undefined) || '#6b7280'
+const markerFill = (rec: PlanItRecord) =>
+  colorMode.value === 'type' ? appTypeColor(rec.app_type) : outcomeColor(rec.app_state)
 
 const pinIcon = (fill: string) => L.divIcon({
   className: 'search-result-pin',
@@ -65,18 +63,13 @@ const activePinIcon = L.divIcon({
   popupAnchor: [0, -36]
 })
 
-const legendTypes = computed(() => {
-  const seen = new Set<string>()
-  for (const r of props.results) {
-    if (r.app_type && !seen.has(r.app_type)) seen.add(r.app_type)
+const legendEntries = computed<LegendEntry[]>(() => {
+  if (colorMode.value === 'type') {
+    const buckets = presentBuckets(props.results.map((r) => r.app_type), normaliseAppType, APP_TYPE_ORDER)
+    return legendFor(buckets, APP_TYPE_COLORS)
   }
-  const present = [...seen]
-  present.sort((a, b) => {
-    const ia = APP_TYPE_ORDER.indexOf(a)
-    const ib = APP_TYPE_ORDER.indexOf(b)
-    return (ia === -1 ? APP_TYPE_ORDER.length : ia) - (ib === -1 ? APP_TYPE_ORDER.length : ib)
-  })
-  return present
+  const buckets = presentBuckets(props.results.map((r) => r.app_state), normaliseOutcome, OUTCOME_ORDER)
+  return legendFor(buckets, OUTCOME_COLORS)
 })
 
 const points = computed(() => {
@@ -107,7 +100,7 @@ const renderMarkers = () => {
       <div class="text-gray-500 mb-1">${escapeHtml([p.rec.app_type, p.rec.app_state].filter(Boolean).join(' | '))}</div>
       <button class="jump-link text-blue-600 hover:underline">Show in results</button>
     </div>`
-    const marker = L.marker([p.lat, p.lon], { icon: p.rec.uid === activeUid ? activePinIcon : pinIcon(appTypeColor(p.rec.app_type)) }).addTo(markerLayer)
+    const marker = L.marker([p.lat, p.lon], { icon: p.rec.uid === activeUid ? activePinIcon : pinIcon(markerFill(p.rec)) }).addTo(markerLayer)
     markersByUid.set(p.rec.uid, marker)
     marker.bindPopup(popupContent)
     marker.on('popupopen', (e) => {
@@ -125,7 +118,7 @@ const focus = (uid: string) => {
   if (!marker || !point) return
   if (activeUid && activeUid !== uid) {
     const prev = points.value.find(p => p.rec.uid === activeUid)
-    markersByUid.get(activeUid)?.setIcon(pinIcon(appTypeColor(prev?.rec.app_type)))
+    markersByUid.get(activeUid)?.setIcon(pinIcon(prev ? markerFill(prev.rec) : appTypeColor()))
   }
   activeUid = uid
   marker.setIcon(activePinIcon)
@@ -147,6 +140,14 @@ onMounted(() => {
 })
 
 watch(() => props.results, () => renderMarkers())
+
+// Recolour in place so switching mode doesn't re-fit/reset the current view.
+watch(colorMode, () => {
+  for (const p of points.value) {
+    if (p.rec.uid === activeUid) continue
+    markersByUid.get(p.rec.uid)?.setIcon(pinIcon(markerFill(p.rec)))
+  }
+})
 
 onBeforeUnmount(() => {
   map?.remove()
