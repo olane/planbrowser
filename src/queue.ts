@@ -47,7 +47,17 @@ export class DownloadQueue {
   }
 
   getQueue() {
-    return this.queue;
+    const statusOrder: Record<QueueItem['status'], number> = {
+      in_progress: 0,
+      pending: 1,
+      completed: 2,
+      failed: 2
+    };
+    return [...this.queue].sort((a, b) => {
+      const byStatus = statusOrder[a.status] - statusOrder[b.status];
+      if (byStatus !== 0) return byStatus;
+      return a.enqueuedAt.localeCompare(b.enqueuedAt);
+    });
   }
 
   clearCompleted() {
