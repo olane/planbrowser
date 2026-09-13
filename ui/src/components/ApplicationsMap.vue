@@ -1,13 +1,32 @@
 <template>
-  <div ref="mapEl" class="w-full h-96 rounded-md border border-gray-200 z-0"></div>
+  <div class="relative">
+    <div ref="mapEl" class="w-full h-96 rounded-md border border-gray-200 z-0"></div>
+    <MapLegend :mode="colorMode" :entries="legendEntries" @update:mode="setColorMode" />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { ApplicationMeta } from '../../../src/types.js'
 import { statusLabel, statusBadgeClass } from '../utils'
+import MapLegend from './MapLegend.vue'
+import { useMapColorMode } from '../useMapColorMode'
+import {
+  APP_TYPE_COLORS,
+  APP_TYPE_ORDER,
+  OUTCOME_COLORS,
+  OUTCOME_ORDER,
+  appTypeColor,
+  appTypeFromReference,
+  normaliseAppType,
+  normaliseOutcome,
+  outcomeColor,
+  presentBuckets,
+  legendFor,
+  type LegendEntry
+} from '../mapColours'
 
 const props = defineProps<{ apps: ApplicationMeta[] }>()
 const emit = defineEmits<{ select: [reference: string] }>()
@@ -27,12 +46,24 @@ const truncate = (s: string | undefined, words = 8) => {
 
 const locatedApps = () => props.apps.filter((a) => a.location)
 
-const pinColor = (app: ApplicationMeta) => {
-  const label = statusLabel(app).toLowerCase()
-  if (label.includes('refus')) return '#dc2626'
-  if (label.includes('permit') || label.includes('grant')) return '#16a34a'
-  return '#2563eb'
-}
+const { colorMode, setColorMode } = useMapColorMode('planbrowser.mapColorMode.apps', 'outcome')
+
+// Prefer the scraped "Application Type"; fall back to the reference suffix
+// (e.g. "…/FUL") when the portal didn't expose it.
+const appTypeValue = (app: ApplicationMeta) =>
+  app.furtherInformation?.['Application Type'] || appTypeFromReference(app.reference)
+
+const markerFill = (app: ApplicationMeta) =>
+  colorMode.value === 'type' ? appTypeColor(appTypeValue(app)) : outcomeColor(statusLabel(app))
+
+const legendEntries = computed<LegendEntry[]>(() => {
+  if (colorMode.value === 'type') {
+    const buckets = presentBuckets(props.apps.map(appTypeValue), normaliseAppType, APP_TYPE_ORDER)
+    return legendFor(buckets, APP_TYPE_COLORS)
+  }
+  const buckets = presentBuckets(props.apps.map((a) => statusLabel(a)), normaliseOutcome, OUTCOME_ORDER)
+  return legendFor(buckets, OUTCOME_COLORS)
+})
 
 const pinIcon = (color: string) => L.divIcon({
   className: 'application-pin',
@@ -56,15 +87,19 @@ const popupContent = (app: ApplicationMeta) => {
   </div>`
 }
 
+let markersByRef = new Map<string, L.Marker>()
+
 const renderMarkers = () => {
   if (!map || !markerLayer) return
   markerLayer.clearLayers()
+  markersByRef = new Map()
   const apps = locatedApps()
   if (apps.length === 0) return
   const bounds = L.latLngBounds(apps.map((a) => [a.location!.center.lat, a.location!.center.lon] as L.LatLngExpression))
   for (const app of apps) {
     const loc = app.location!
-    const marker = L.marker([loc.center.lat, loc.center.lon], { icon: pinIcon(pinColor(app)) }).addTo(markerLayer)
+    const marker = L.marker([loc.center.lat, loc.center.lon], { icon: pinIcon(markerFill(app)) }).addTo(markerLayer)
+    markersByRef.set(app.reference, marker)
     marker.bindPopup(popupContent(app))
     marker.on('popupopen', (e) => {
       const link = e.popup.getElement()?.querySelector('.open-link') as HTMLElement | null
@@ -86,6 +121,13 @@ onMounted(() => {
 })
 
 watch(() => props.apps, () => renderMarkers(), { deep: true })
+
+// Recolour in place so switching mode doesn't re-fit/reset the current view.
+watch(colorMode, () => {
+  for (const app of locatedApps()) {
+    markersByRef.get(app.reference)?.setIcon(pinIcon(markerFill(app)))
+  }
+})
 
 onBeforeUnmount(() => {
   map?.remove()

@@ -10,6 +10,7 @@ A tool to search for and download documents for Cambridgeshire planning applicat
 - **Scrape comments** submitted by neighbours for each application
 - **Progressive downloads**: each application is fetched in order of value — main details first, then comments, then document files — and everything is committed to disk as it arrives, so an application can be opened and read in the browser before its download has finished (the page updates as more data lands)
 - **View** application metadata, key dates, documents, comments, and location on a map in the browser
+- **Colour map pins** by application type or outcome on the search, active, and archived maps, with a matching legend
 - **Search inside documents** — search a downloaded application's documents by *contents* as well as by name/metadata, with matching terms highlighted and a context snippet shown inline; a "Contents" toggle limits the search to names/metadata only. Text is extracted lazily and cached per document, so the first search on an application is the slow one and later searches are instant. Supported formats: PDF and Word `.docx`; legacy `.doc` and scanned (image-only) PDFs have no extractable text and won't match.
 - **Background queue** for processing download requests sequentially, with a 5-second delay between applications to avoid rate limiting
 - **Favourite/star** applications so they float to the top of the list, and **archive** applications so they move to a separate Archived page
