@@ -179,3 +179,16 @@ export interface QueueItem {
     total?: number;
   };
 }
+
+export interface SavedSearch {
+  id: string;
+  postcode: string;
+  radius: string;
+  filters: SearchFilters;
+  createdAt: string;
+  // When the saved search was last re-run, and the set of application
+  // references returned by that run. Used to highlight results that are new
+  // since the previous run.
+  lastRunAt?: string;
+  lastReferences?: string[];
+}

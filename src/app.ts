@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import path from 'path';
 import fs from 'fs';
 import { downloadApplication, searchPlanIt } from './scraper.js';
 import { getApplications, getApplication } from './storage.js';
@@ -11,10 +10,27 @@ import { getDownloadsDir, getUiDistDir } from './config.js';
 import { SEARCH_FILTER_KEYS } from './types.js';
 import { selectSyncApps } from './decision.js';
 import { documentSearchRouter } from './search/routes.js';
+import { listSavedSearches, getSavedSearch, saveSearch, deleteSavedSearch, recordSearchRun } from './savedSearches.js';
 import type { SearchFilters, ApplicationFlags, DocumentFlags, QueueItem, ApplicationMeta } from './types.js';
 
 function enqueueApplications(apps: ApplicationMeta[]): QueueItem[] {
   return apps.map((a) => downloadQueue.enqueue(a.reference, a.authorityId || DEFAULT_AUTHORITY_ID));
+}
+
+// Keep only known filter keys with a non-empty string value, so callers can pass
+// arbitrary query/body objects without leaking unknown or blank entries into a
+// saved search.
+function sanitizeFilters(input: unknown): SearchFilters {
+  const filters: SearchFilters = {};
+  if (input && typeof input === 'object') {
+    for (const key of SEARCH_FILTER_KEYS) {
+      const value = (input as Record<string, unknown>)[key];
+      if (typeof value === 'string' && value !== '') {
+        filters[key] = value;
+      }
+    }
+  }
+  return filters;
 }
 
 
@@ -30,13 +46,7 @@ export function createApp(): express.Express {
       if (!postcode) {
         return res.status(400).json({ error: 'Postcode is required' });
       }
-      const filters: SearchFilters = {};
-      for (const key of SEARCH_FILTER_KEYS) {
-        const value = req.query[key];
-        if (typeof value === 'string' && value !== '') {
-          filters[key] = value;
-        }
-      }
+      const filters = sanitizeFilters(req.query);
       const data = await searchPlanIt(postcode, radius, filters);
       res.json(data);
     } catch (err: any) {
@@ -166,6 +176,58 @@ export function createApp(): express.Express {
     }
   });
 
+  app.get('/api/saved-searches', (req, res) => {
+    try {
+      res.json(listSavedSearches());
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/saved-searches', (req, res) => {
+    try {
+      const body = req.body ?? {};
+      const postcode = typeof body.postcode === 'string' ? body.postcode : '';
+      if (!postcode) {
+        return res.status(400).json({ error: 'Postcode is required' });
+      }
+      const radius = typeof body.radius === 'string' && body.radius ? body.radius : '2';
+      const saved = saveSearch({ postcode, radius, filters: sanitizeFilters(body.filters) });
+      res.json(saved);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/saved-searches/:id', (req, res) => {
+    try {
+      const deleted = deleteSavedSearch(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: 'Saved search not found' });
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/saved-searches/:id/run', async (req, res) => {
+    try {
+      const search = getSavedSearch(req.params.id);
+      if (!search) {
+        return res.status(404).json({ error: 'Saved search not found' });
+      }
+      const data = await searchPlanIt(search.postcode, search.radius, search.filters);
+      const records = Array.isArray(data.records) ? data.records : [];
+      const references = records.map((r: { uid: string }) => r.uid);
+      const previousReferences = search.lastReferences ?? [];
+      recordSearchRun(search.id, references);
+      res.json({ records, previousReferences });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get('/api/applications/:ref', (req, res) => {
     try {
       const ref = req.params.ref;
@@ -203,7 +265,10 @@ export function createApp(): express.Express {
     app.use(express.static(getUiDistDir()));
     app.use((req, res, next) => {
       if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
-      res.sendFile(path.join(getUiDistDir(), 'index.html'));
+      // Use a root-relative sendFile: an absolute path through sendFile is
+      // treated as a dotfile and rejected when the app lives under a hidden
+      // directory (e.g. ~/.paseo/worktrees/...), which would 404 every route.
+      res.sendFile('index.html', { root: getUiDistDir() });
     });
   }
 
