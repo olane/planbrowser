@@ -1,4 +1,4 @@
-import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags, DocumentSearchHit, SavedSearch, PlanItRecord } from '../../src/types.js';
+import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags, DocumentSearchHit, SavedSearch, PlanItRecord, SortSpec } from '../../src/types.js';
 import type { SyncScope } from '../../src/decision.js';
 import { DEFAULT_AUTHORITY_ID } from '../../src/authorities.js';
 import { safeReference } from '../../src/refs.js';
@@ -28,12 +28,16 @@ export async function fetchApplication(reference: string): Promise<ApplicationMe
   return res.json();
 }
 
-export async function searchPlanIt(postcode: string, radius: string, filters: SearchFilters = {}): Promise<PlanItResponse> {
+export async function searchPlanIt(postcode: string, radius: string, filters: SearchFilters = {}, sort?: SortSpec): Promise<PlanItResponse> {
   const params = new URLSearchParams({ postcode, radius });
   for (const [key, value] of Object.entries(filters)) {
     if (value) {
       params.set(key, value);
     }
+  }
+  if (sort) {
+    params.set('sort', sort.field);
+    params.set('order', sort.order);
   }
   const res = await fetch(`/api/search?${params.toString()}`);
   if (!res.ok) {
@@ -137,7 +141,7 @@ export async function fetchSavedSearches(): Promise<SavedSearch[]> {
   return res.json();
 }
 
-export async function saveSavedSearch(input: { postcode: string; radius: string; filters: SearchFilters }): Promise<SavedSearch> {
+export async function saveSavedSearch(input: { postcode: string; radius: string; filters: SearchFilters; sort?: SortSpec }): Promise<SavedSearch> {
   const res = await fetch('/api/saved-searches', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -1,4 +1,4 @@
-import type { DocumentMeta, ApplicationMeta, Comment, SearchFilters, ApplicationLocation, AuthorityConfig } from './types.js';
+import type { DocumentMeta, ApplicationMeta, Comment, SearchFilters, SortSpec, ApplicationLocation, AuthorityConfig } from './types.js';
 import AdmZip from 'adm-zip';
 import fs from 'fs';
 import os from 'os';
@@ -723,12 +723,15 @@ export async function downloadApplication(reference: string, authorityId: string
   }
 }
 
-export async function searchPlanIt(postcode: string, radius: string, filters: SearchFilters = {}) {
+export async function searchPlanIt(postcode: string, radius: string, filters: SearchFilters = {}, sort?: SortSpec) {
+  const field = sort?.field ?? 'start_date';
+  const order = sort?.order ?? 'desc';
+  const sortParam = `${order === 'desc' ? '-' : ''}${field}`;
   const params = new URLSearchParams({
     pcode: normalizePostcode(postcode),
     krad: radius,
     pg_sz: '50',
-    sort: '-start_date'
+    sort: sortParam
   });
   for (const [key, value] of Object.entries(filters)) {
     if (value) {
