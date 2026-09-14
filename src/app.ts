@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
-import { downloadApplication, searchPlanIt } from './scraper.js';
+import { downloadApplication } from './scraper.js';
+import { searchPlanIt } from './planit.js';
 import { getApplications, getApplication } from './storage.js';
 import { downloadQueue } from './queue.js';
 import { resolveAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';

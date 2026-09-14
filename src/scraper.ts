@@ -1,4 +1,4 @@
-import type { DocumentMeta, ApplicationMeta, Comment, SearchFilters, SortSpec, ApplicationLocation, AuthorityConfig } from './types.js';
+import type { DocumentMeta, ApplicationMeta, Comment, ApplicationLocation, AuthorityConfig } from './types.js';
 import AdmZip from 'adm-zip';
 import fs from 'fs';
 import os from 'os';
@@ -10,7 +10,6 @@ import { _electron as electron, chromium } from 'playwright';
 import type { Page } from 'playwright';
 import path from 'path';
 import { getAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
-import { normalizePostcode } from './postcode.js';
 import { locationFromAddress } from './geocode.js';
 
 type DownloadFn = (trigger: () => Promise<unknown>, timeout: number) => Promise<{ filePath: string; filename: string }>;
@@ -721,31 +720,4 @@ export async function downloadApplication(reference: string, authorityId: string
   } finally {
     await close().catch(() => {});
   }
-}
-
-export async function searchPlanIt(postcode: string, radius: string, filters: SearchFilters = {}, sort?: SortSpec) {
-  const field = sort?.field ?? 'start_date';
-  const order = sort?.order ?? 'desc';
-  const sortParam = `${order === 'desc' ? '-' : ''}${field}`;
-  const params = new URLSearchParams({
-    pcode: normalizePostcode(postcode),
-    krad: radius,
-    pg_sz: '50',
-    sort: sortParam
-  });
-  for (const [key, value] of Object.entries(filters)) {
-    if (value) {
-      params.set(key, value);
-    }
-  }
-  const res = await fetch(`https://www.planit.org.uk/api/applics/json?${params.toString()}`, {
-    headers: {
-      'User-Agent': 'planbrowser/1.0 (https://github.com/olane/planbrowser)'
-    }
-  });
-  if (!res.ok) {
-    throw new Error(`PlanIt API returned ${res.status} ${res.statusText}`);
-  }
-  const data = await res.json();
-  return data;
 }
