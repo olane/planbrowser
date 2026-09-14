@@ -222,7 +222,7 @@ export function createApp(): express.Express {
       const references = records.map((r: { uid: string }) => r.uid);
       const previousReferences = search.lastReferences ?? [];
       recordSearchRun(search.id, references);
-      res.json({ records, previousReferences });
+      res.json({ records, previousReferences, total: data.total });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

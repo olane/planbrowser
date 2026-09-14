@@ -154,6 +154,9 @@ export interface PlanItRecord {
 
 export interface PlanItResponse {
   records: PlanItRecord[];
+  total?: number;
+  from?: number;
+  to?: number;
   [key: string]: any;
 }
 

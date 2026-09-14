@@ -155,7 +155,7 @@ export async function deleteSavedSearch(id: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete saved search');
 }
 
-export async function runSavedSearch(id: string): Promise<{ records: PlanItRecord[]; previousReferences: string[] }> {
+export async function runSavedSearch(id: string): Promise<{ records: PlanItRecord[]; previousReferences: string[]; total?: number }> {
   const res = await fetch(`/api/saved-searches/${encodeURIComponent(id)}/run`, { method: 'POST' });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

@@ -87,7 +87,14 @@
       </div>
 
       <div v-if="searchResults.length > 0">
-        <h3 :class="$style.resultsTitle">Results<span v-if="newUids.size > 0" :class="$style.newCount">{{ newUids.size }} new</span></h3>
+        <h3 :class="$style.resultsTitle">
+          Results
+          <span v-if="newUids.size > 0" :class="$style.newCount">{{ newUids.size }} new</span>
+          <span v-if="totalResults !== undefined" :class="$style.totalCount">
+            {{ totalResults.toLocaleString() }} total
+            <template v-if="totalResults > searchResults.length">· showing latest {{ searchResults.length }}</template>
+          </span>
+        </h3>
         <div ref="mapWrapRef">
           <SearchResultsMap v-if="resultsWithLocations.length > 0" ref="mapRef" :results="searchResults" :class="$style.resultsMap" @select="scrollToResult" />
         </div>
@@ -199,6 +206,7 @@ const APP_SIZES = ['Large', 'Medium', 'Small']
 
 const searchError = ref('')
 const searchResults = ref<PlanItRecord[]>([])
+const totalResults = ref<number | undefined>(undefined)
 const isSearching = ref(false)
 const hasSearched = ref(false)
 
@@ -481,11 +489,13 @@ const searchPlanIt = async () => {
     const filters = buildFilters()
     const data = await api.searchPlanIt(searchForm.value.postcode, searchForm.value.radius, filters)
     searchResults.value = data.records || []
+    totalResults.value = data.total
     hasSearched.value = true
   } catch (e: any) {
     console.error(e)
     searchError.value = e.message || 'Failed to search'
     searchResults.value = []
+    totalResults.value = undefined
   } finally {
     isSearching.value = false
   }
@@ -521,8 +531,9 @@ const runSavedSearch = async (saved: SavedSearch) => {
 
   try {
     applySearchToForm(saved)
-    const { records, previousReferences } = await api.runSavedSearch(saved.id)
+    const { records, previousReferences, total } = await api.runSavedSearch(saved.id)
     searchResults.value = records
+    totalResults.value = total
     hasSearched.value = true
     const previous = new Set(previousReferences)
     newUids.value = new Set(records.filter((r) => !previous.has(r.uid)).map((r) => r.uid))
@@ -531,6 +542,7 @@ const runSavedSearch = async (saved: SavedSearch) => {
     console.error(e)
     searchError.value = e.message || 'Failed to run saved search'
     searchResults.value = []
+    totalResults.value = undefined
     newUids.value = new Set()
   } finally {
     runningSearchId.value = null
@@ -921,6 +933,14 @@ onMounted(() => {
   line-height: 1rem;
   font-weight: 600;
   color: var(--color-green-700);
+}
+
+.totalCount {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 400;
+  color: var(--color-gray-500);
 }
 
 .newBadge {
