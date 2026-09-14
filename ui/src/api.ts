@@ -1,4 +1,4 @@
-import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags, DocumentSearchHit } from '../../src/types.js';
+import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags, DocumentSearchHit, SavedSearch, PlanItRecord } from '../../src/types.js';
 import type { SyncScope } from '../../src/decision.js';
 import { DEFAULT_AUTHORITY_ID } from '../../src/authorities.js';
 import { safeReference } from '../../src/refs.js';
@@ -129,4 +129,37 @@ export async function setDocumentFlags(reference: string, filename: string, flag
   }
   const data = await res.json();
   return data.flags;
+}
+
+export async function fetchSavedSearches(): Promise<SavedSearch[]> {
+  const res = await fetch('/api/saved-searches');
+  if (!res.ok) throw new Error('Failed to fetch saved searches');
+  return res.json();
+}
+
+export async function saveSavedSearch(input: { postcode: string; radius: string; filters: SearchFilters }): Promise<SavedSearch> {
+  const res = await fetch('/api/saved-searches', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to save search');
+  }
+  return res.json();
+}
+
+export async function deleteSavedSearch(id: string): Promise<void> {
+  const res = await fetch(`/api/saved-searches/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to delete saved search');
+}
+
+export async function runSavedSearch(id: string): Promise<{ records: PlanItRecord[]; previousReferences: string[] }> {
+  const res = await fetch(`/api/saved-searches/${encodeURIComponent(id)}/run`, { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to run saved search');
+  }
+  return res.json();
 }

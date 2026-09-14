@@ -16,6 +16,9 @@
           <button type="submit" :disabled="isSearching" :class="[ui.btn, ui.btnPrimary, $style.submit]">
             {{ isSearching ? 'Searching...' : 'Search' }}
           </button>
+          <button type="button" :disabled="!searchForm.postcode || isSaving" :class="[ui.btn, ui.btnOutline, $style.submit]" @click="saveCurrentSearch">
+            {{ isSaving ? 'Saving...' : 'Save search' }}
+          </button>
         </div>
 
         <details :class="$style.details">
@@ -72,19 +75,26 @@
         </details>
       </form>
 
+      <div v-if="saveSearchMessage" :class="$style.successBanner">
+        {{ saveSearchMessage }}
+      </div>
+      <div v-if="saveSearchError" :class="$style.errorBanner">
+        {{ saveSearchError }}
+      </div>
+
       <div v-if="searchError" :class="$style.errorBanner">
         {{ searchError }}
       </div>
 
       <div v-if="searchResults.length > 0">
-        <h3 :class="$style.resultsTitle">Results</h3>
+        <h3 :class="$style.resultsTitle">Results<span v-if="newUids.size > 0" :class="$style.newCount">{{ newUids.size }} new</span></h3>
         <div ref="mapWrapRef">
           <SearchResultsMap v-if="resultsWithLocations.length > 0" ref="mapRef" :results="searchResults" :class="$style.resultsMap" @select="scrollToResult" />
         </div>
         <div :class="$style.resultsList">
           <div v-for="res in searchResults" :key="res.uid" :ref="(el) => setResultRef(res.uid, el)" :class="$style.resultCard">
             <div :class="$style.resultBody">
-              <div :class="$style.resultUid">{{ res.uid }}<span v-if="res.app_type" :class="$style.resultType">({{ res.app_type }})</span></div>
+              <div :class="$style.resultUid">{{ res.uid }}<span v-if="res.app_type" :class="$style.resultType">({{ res.app_type }})</span><span v-if="isNewResult(res.uid)" :class="$style.newBadge">New</span></div>
               <div :class="$style.resultDesc">{{ res.description }}</div>
               <div v-if="res.address" :class="$style.resultAddress">{{ res.address }}</div>
               <div :class="$style.resultStateRow">
@@ -110,6 +120,29 @@
       <div v-else-if="hasSearched" :class="$style.muted">
         No results found.
       </div>
+    </section>
+
+    <hr :class="$style.rule" />
+
+    <!-- Saved Searches -->
+    <section>
+      <h2 :class="$style.title">Saved searches</h2>
+      <div v-if="savedSearches.length > 0" :class="$style.savedList">
+        <div v-for="saved in savedSearches" :key="saved.id" :class="$style.savedCard">
+          <div :class="$style.savedBody">
+            <div :class="$style.savedTitle">{{ saved.postcode }} · {{ saved.radius }} km</div>
+            <div v-if="summariseFilters(saved.filters)" :class="$style.savedFilters">{{ summariseFilters(saved.filters) }}</div>
+            <div :class="$style.savedMeta">{{ saved.lastRunAt ? `Last run ${timeAgo(saved.lastRunAt)}` : 'Never run' }}</div>
+          </div>
+          <div :class="$style.savedActions">
+            <button type="button" :disabled="runningSearchId === saved.id" :class="[ui.btn, ui.btnSuccess]" @click="runSavedSearch(saved)">
+              {{ runningSearchId === saved.id ? 'Running...' : 'Run' }}
+            </button>
+            <button type="button" :class="$style.savedDelete" @click="deleteSearch(saved.id)">Delete</button>
+          </div>
+        </div>
+      </div>
+      <p v-else :class="$style.muted">No saved searches yet. Run a search, then click "Save search".</p>
     </section>
 
     <hr :class="$style.rule" />
@@ -147,7 +180,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch, useCssModule } from 'vue'
 import { timeAgo, progressText } from '../utils'
-import type { ApplicationMeta, PlanItRecord, SearchFilters } from '../../../src/types.js'
+import type { ApplicationMeta, PlanItRecord, SearchFilters, SavedSearch } from '../../../src/types.js'
 import { queueItems, refreshQueue } from '../queueStore'
 import { AUTHORITIES, DEFAULT_AUTHORITY_ID, isKnownAuthority } from '../../../src/authorities.js'
 import { normalizePostcode } from '../../../src/postcode.js'
@@ -168,6 +201,25 @@ const searchError = ref('')
 const searchResults = ref<PlanItRecord[]>([])
 const isSearching = ref(false)
 const hasSearched = ref(false)
+
+// Saved searches, plus the set of references that are new since the last run
+// (used to badge freshly-appeared results when re-running a saved search).
+const savedSearches = ref<SavedSearch[]>([])
+const isSaving = ref(false)
+const saveSearchMessage = ref('')
+const saveSearchError = ref('')
+const runningSearchId = ref<string | null>(null)
+const newUids = ref<Set<string>>(new Set())
+
+const isNewResult = (uid: string) => newUids.value.has(uid)
+
+const fetchSavedSearches = async () => {
+  try {
+    savedSearches.value = await api.fetchSavedSearches()
+  } catch (e) {
+    console.error(e)
+  }
+}
 
 // Track which downloaded applications already exist so results flip between a
 // "Download" button and a "View" link.
@@ -235,6 +287,95 @@ const timeModes = ref<Record<string, 'recent' | 'range'>>({
   decided: 'recent',
   different: 'recent'
 })
+
+const simpleFilterKeys: (keyof SearchFilters)[] = ['search', 'developer', 'app_type', 'app_state', 'app_size']
+
+const buildFilters = (): SearchFilters => {
+  const filters: SearchFilters = {}
+  for (const key of simpleFilterKeys) {
+    const value = searchForm.value[key]
+    if (value) filters[key] = value
+  }
+  for (const group of timeGroups) {
+    if (timeModes.value[group.key] === 'recent') {
+      const value = searchForm.value[group.recentKey]
+      if (value) filters[group.recentKey] = value
+    } else {
+      const from = searchForm.value[group.fromKey]
+      const to = searchForm.value[group.toKey]
+      if (from) filters[group.fromKey] = from
+      if (to) filters[group.toKey] = to
+    }
+  }
+  return filters
+}
+
+const resetFilters = () => {
+  for (const key of simpleFilterKeys) {
+    searchForm.value[key] = ''
+  }
+  for (const group of timeGroups) {
+    timeModes.value[group.key] = 'recent'
+    searchForm.value[group.recentKey] = ''
+    searchForm.value[group.fromKey] = ''
+    searchForm.value[group.toKey] = ''
+  }
+}
+
+const applyFilters = (filters: SearchFilters) => {
+  resetFilters()
+  for (const key of simpleFilterKeys) {
+    searchForm.value[key] = filters[key] ?? ''
+  }
+  for (const group of timeGroups) {
+    const from = filters[group.fromKey]
+    const to = filters[group.toKey]
+    if (from || to) {
+      timeModes.value[group.key] = 'range'
+      searchForm.value[group.fromKey] = from ?? ''
+      searchForm.value[group.toKey] = to ?? ''
+    } else {
+      timeModes.value[group.key] = 'recent'
+      searchForm.value[group.recentKey] = filters[group.recentKey] ?? ''
+    }
+  }
+}
+
+const applySearchToForm = (saved: SavedSearch) => {
+  searchForm.value.postcode = saved.postcode
+  searchForm.value.radius = saved.radius
+  applyFilters(saved.filters)
+}
+
+const FILTER_LABELS: Partial<Record<keyof SearchFilters, string>> = {
+  search: 'keyword',
+  developer: 'developer',
+  app_type: 'type',
+  app_state: 'status',
+  app_size: 'size',
+  recent: 'started (days)',
+  start_date: 'started from',
+  end_date: 'started to',
+  changed: 'changed (days)',
+  changed_start: 'changed from',
+  changed_end: 'changed to',
+  decided: 'decided (days)',
+  decided_start: 'decided from',
+  decided_end: 'decided to',
+  different: 'data changed (days)',
+  different_start: 'data changed from',
+  different_end: 'data changed to'
+}
+
+const summariseFilters = (filters: SearchFilters): string => {
+  const parts: string[] = []
+  for (const [key, value] of Object.entries(filters)) {
+    if (!value) continue
+    const label = FILTER_LABELS[key as keyof SearchFilters]
+    parts.push(label ? `${label} ${value}` : value)
+  }
+  return parts.join(' · ')
+}
 
 const resultsWithLocations = computed(() => searchResults.value.filter(hasLocation))
 
@@ -334,29 +475,10 @@ const searchPlanIt = async () => {
   isSearching.value = true
   hasSearched.value = false
   searchError.value = ''
+  newUids.value = new Set()
 
   try {
-    const filterKeys: (keyof SearchFilters)[] = [
-      'search', 'developer', 'app_type', 'app_state', 'app_size'
-    ]
-    const filters: SearchFilters = {}
-    for (const key of filterKeys) {
-      const value = searchForm.value[key]
-      if (value) {
-        filters[key] = value
-      }
-    }
-    for (const group of timeGroups) {
-      if (timeModes.value[group.key] === 'recent') {
-        const value = searchForm.value[group.recentKey]
-        if (value) filters[group.recentKey] = value
-      } else {
-        const from = searchForm.value[group.fromKey]
-        const to = searchForm.value[group.toKey]
-        if (from) filters[group.fromKey] = from
-        if (to) filters[group.toKey] = to
-      }
-    }
+    const filters = buildFilters()
     const data = await api.searchPlanIt(searchForm.value.postcode, searchForm.value.radius, filters)
     searchResults.value = data.records || []
     hasSearched.value = true
@@ -366,6 +488,61 @@ const searchPlanIt = async () => {
     searchResults.value = []
   } finally {
     isSearching.value = false
+  }
+}
+
+const saveCurrentSearch = async () => {
+  if (!searchForm.value.postcode) return
+
+  isSaving.value = true
+  saveSearchMessage.value = ''
+  saveSearchError.value = ''
+
+  try {
+    const saved = await api.saveSavedSearch({
+      postcode: searchForm.value.postcode,
+      radius: searchForm.value.radius,
+      filters: buildFilters()
+    })
+    savedSearches.value = [saved, ...savedSearches.value]
+    saveSearchMessage.value = 'Search saved'
+  } catch (e: any) {
+    console.error(e)
+    saveSearchError.value = e.message || 'Failed to save search'
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const runSavedSearch = async (saved: SavedSearch) => {
+  runningSearchId.value = saved.id
+  searchError.value = ''
+  saveSearchError.value = ''
+
+  try {
+    applySearchToForm(saved)
+    const { records, previousReferences } = await api.runSavedSearch(saved.id)
+    searchResults.value = records
+    hasSearched.value = true
+    const previous = new Set(previousReferences)
+    newUids.value = new Set(records.filter((r) => !previous.has(r.uid)).map((r) => r.uid))
+    await fetchSavedSearches()
+  } catch (e: any) {
+    console.error(e)
+    searchError.value = e.message || 'Failed to run saved search'
+    searchResults.value = []
+    newUids.value = new Set()
+  } finally {
+    runningSearchId.value = null
+  }
+}
+
+const deleteSearch = async (id: string) => {
+  try {
+    await api.deleteSavedSearch(id)
+    savedSearches.value = savedSearches.value.filter((s) => s.id !== id)
+  } catch (e) {
+    console.error(e)
   }
 }
 
@@ -384,6 +561,7 @@ onMounted(() => {
   document.title = 'PlanBrowser | Search'
   fetchApps()
   fetchQueue()
+  fetchSavedSearches()
 })
 </script>
 
@@ -735,6 +913,90 @@ onMounted(() => {
 
 .muted {
   color: var(--color-gray-500);
+}
+
+.newCount {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 600;
+  color: var(--color-green-700);
+}
+
+.newBadge {
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  background: var(--color-green-100);
+  color: var(--color-green-700);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.savedList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.savedCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.savedBody {
+  min-width: 0;
+}
+
+.savedTitle {
+  font-weight: 700;
+  overflow-wrap: break-word;
+}
+
+.savedFilters {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-gray-500);
+  overflow-wrap: break-word;
+}
+
+.savedMeta {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-gray-400);
+}
+
+.savedActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.savedDelete {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-red-600);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.savedDelete:hover {
+  text-decoration: underline;
 }
 
 .rule {

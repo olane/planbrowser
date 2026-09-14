@@ -18,6 +18,7 @@ A tool to search for and download documents for Cambridgeshire planning applicat
 - **Bulk sync** from the Home header with one-click buttons: sync *everything*, *all starred*, or *all still awaiting a decision* (each shows a count; any other combination is done per application via its card icon). Archived applications are excluded from bulk sync. While the queue runs, the buttons become a live progress indicator that stays until it drains.
 - **Per-application sync** via an icon on every application card (including on the Archived page) that shows queued/syncing state and doubles as a retry on failure
 - **Activity feed** showing what changed each time a synced application was re-scraped (new documents, status changes, new comments, etc.)
+- **Saved searches** on the search page: save a postcode/radius/filter combination and re-run it later. Each saved search remembers when it was last run and which applications that run returned, so freshly-appeared results are highlighted as new.
 
 ## Requirements
 
@@ -174,6 +175,10 @@ To smoke-test the desktop build locally before tagging, run `npm run electron:di
 | GET    | `/api/applications/:ref` | Get metadata for a single application (optional `?authority=` to disambiguate) |
 | GET    | `/api/applications/:ref/documents/search` | Search one application's documents by content (`?q=` query, optional `?authority=`). Returns matching documents with a highlighted context snippet |
 | GET    | `/api/feed`            | List the activity feed (changes detected on re-sync) |
+| GET    | `/api/saved-searches`  | List saved searches |
+| POST   | `/api/saved-searches`  | Save a search (body: `postcode`, `radius`, optional `filters`) |
+| POST   | `/api/saved-searches/:id/run` | Re-run a saved search, recording its results and last-run time. Returns the records plus the previous run's references (for highlighting new results) |
+| DELETE | `/api/saved-searches/:id` | Delete a saved search |
 | POST   | `/api/sync`            | Enqueue applications for re-sync. Body: `{ starred, awaitingDecision }` (queue apps matching *every* ticked option) or `{ all: true }` (queue everything). Archived applications are never included; an empty body enqueues nothing |
 | POST   | `/api/sync-starred`    | Backwards-compatible: enqueue all starred applications (same as `POST /api/sync` with `{ starred: true }`) |
 | GET    | `/api/documents/*`     | Serve downloaded files and metadata statically |
