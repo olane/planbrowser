@@ -21,6 +21,22 @@
           </button>
         </div>
 
+        <div :class="$style.sortRow">
+          <div>
+            <label :class="$style.label">Sort by</label>
+            <select v-model="searchForm.sortField" :class="ui.select">
+              <option v-for="opt in SORT_OPTIONS" :key="opt.field" :value="opt.field">{{ opt.label }}</option>
+            </select>
+          </div>
+          <div>
+            <label :class="$style.label">Order</label>
+            <select v-model="searchForm.sortOrder" :class="ui.select">
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          </div>
+        </div>
+
         <details :class="$style.details">
           <summary :class="$style.summary">Advanced filters</summary>
           <div :class="$style.filters">
@@ -87,7 +103,14 @@
       </div>
 
       <div v-if="searchResults.length > 0">
-        <h3 :class="$style.resultsTitle">Results<span v-if="newUids.size > 0" :class="$style.newCount">{{ newUids.size }} new</span></h3>
+        <h3 :class="$style.resultsTitle">
+          Results
+          <span v-if="newUids.size > 0" :class="$style.newCount">{{ newUids.size }} new</span>
+          <span v-if="totalResults !== undefined" :class="$style.totalCount">
+            {{ totalResults.toLocaleString() }} total
+            <template v-if="totalResults > searchResults.length">· showing latest {{ searchResults.length }}</template>
+          </span>
+        </h3>
         <div ref="mapWrapRef">
           <SearchResultsMap v-if="resultsWithLocations.length > 0" ref="mapRef" :results="searchResults" :class="$style.resultsMap" @select="scrollToResult" />
         </div>
@@ -180,7 +203,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch, useCssModule } from 'vue'
 import { timeAgo, progressText } from '../utils'
-import type { ApplicationMeta, PlanItRecord, SearchFilters, SavedSearch } from '../../../src/types.js'
+import type { ApplicationMeta, PlanItRecord, SearchFilters, SavedSearch, SortField, SortOrder, SortSpec } from '../../../src/types.js'
 import { queueItems, refreshQueue } from '../queueStore'
 import { AUTHORITIES, DEFAULT_AUTHORITY_ID, isKnownAuthority } from '../../../src/authorities.js'
 import { normalizePostcode } from '../../../src/postcode.js'
@@ -197,8 +220,21 @@ const APP_TYPES = ['Full', 'Outline', 'Amendment', 'Conditions', 'Heritage', 'Tr
 const APP_STATES = ['Undecided', 'Permitted', 'Conditions', 'Rejected', 'Withdrawn', 'Referred', 'Unresolved', 'Other']
 const APP_SIZES = ['Large', 'Medium', 'Small']
 
+const SORT_OPTIONS: { field: SortField; label: string }[] = [
+  { field: 'start_date', label: 'Date submitted' },
+  { field: 'decided_date', label: 'Decision date' },
+  { field: 'last_changed', label: 'Last changed' },
+  { field: 'last_different', label: 'Data changed' },
+  { field: 'distance', label: 'Distance' },
+  { field: 'address', label: 'Address' },
+  { field: 'postcode', label: 'Postcode' },
+  { field: 'app_type', label: 'Application type' },
+  { field: 'app_state', label: 'Decision status' }
+]
+
 const searchError = ref('')
 const searchResults = ref<PlanItRecord[]>([])
+const totalResults = ref<number | undefined>(undefined)
 const isSearching = ref(false)
 const hasSearched = ref(false)
 
@@ -261,7 +297,9 @@ const searchForm = ref({
   decided_end: '',
   different: '',
   different_start: '',
-  different_end: ''
+  different_end: '',
+  sortField: 'start_date' as SortField,
+  sortOrder: 'desc' as SortOrder
 })
 
 type TimeFieldKey = 'recent' | 'start_date' | 'end_date' | 'changed' | 'changed_start' | 'changed_end' | 'decided' | 'decided_start' | 'decided_end' | 'different' | 'different_start' | 'different_end'
@@ -289,6 +327,8 @@ const timeModes = ref<Record<string, 'recent' | 'range'>>({
 })
 
 const simpleFilterKeys: (keyof SearchFilters)[] = ['search', 'developer', 'app_type', 'app_state', 'app_size']
+
+const buildSort = (): SortSpec => ({ field: searchForm.value.sortField, order: searchForm.value.sortOrder })
 
 const buildFilters = (): SearchFilters => {
   const filters: SearchFilters = {}
@@ -344,6 +384,8 @@ const applyFilters = (filters: SearchFilters) => {
 const applySearchToForm = (saved: SavedSearch) => {
   searchForm.value.postcode = saved.postcode
   searchForm.value.radius = saved.radius
+  searchForm.value.sortField = saved.sort?.field ?? 'start_date'
+  searchForm.value.sortOrder = saved.sort?.order ?? 'desc'
   applyFilters(saved.filters)
 }
 
@@ -479,13 +521,15 @@ const searchPlanIt = async () => {
 
   try {
     const filters = buildFilters()
-    const data = await api.searchPlanIt(searchForm.value.postcode, searchForm.value.radius, filters)
+    const data = await api.searchPlanIt(searchForm.value.postcode, searchForm.value.radius, filters, buildSort())
     searchResults.value = data.records || []
+    totalResults.value = data.total
     hasSearched.value = true
   } catch (e: any) {
     console.error(e)
     searchError.value = e.message || 'Failed to search'
     searchResults.value = []
+    totalResults.value = undefined
   } finally {
     isSearching.value = false
   }
@@ -502,7 +546,8 @@ const saveCurrentSearch = async () => {
     const saved = await api.saveSavedSearch({
       postcode: searchForm.value.postcode,
       radius: searchForm.value.radius,
-      filters: buildFilters()
+      filters: buildFilters(),
+      sort: buildSort()
     })
     savedSearches.value = [saved, ...savedSearches.value]
     saveSearchMessage.value = 'Search saved'
@@ -521,8 +566,9 @@ const runSavedSearch = async (saved: SavedSearch) => {
 
   try {
     applySearchToForm(saved)
-    const { records, previousReferences } = await api.runSavedSearch(saved.id)
+    const { records, previousReferences, total } = await api.runSavedSearch(saved.id)
     searchResults.value = records
+    totalResults.value = total
     hasSearched.value = true
     const previous = new Set(previousReferences)
     newUids.value = new Set(records.filter((r) => !previous.has(r.uid)).map((r) => r.uid))
@@ -531,6 +577,7 @@ const runSavedSearch = async (saved: SavedSearch) => {
     console.error(e)
     searchError.value = e.message || 'Failed to run saved search'
     searchResults.value = []
+    totalResults.value = undefined
     newUids.value = new Set()
   } finally {
     runningSearchId.value = null
@@ -641,6 +688,20 @@ onMounted(() => {
 
 .submit {
   flex-shrink: 0;
+}
+
+.sortRow {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+@media (min-width: 640px) {
+  .sortRow {
+    flex-direction: row;
+    align-items: flex-end;
+  }
 }
 
 .details {
@@ -921,6 +982,14 @@ onMounted(() => {
   line-height: 1rem;
   font-weight: 600;
   color: var(--color-green-700);
+}
+
+.totalCount {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 400;
+  color: var(--color-gray-500);
 }
 
 .newBadge {

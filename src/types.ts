@@ -139,6 +139,29 @@ export type SearchFilterKey = (typeof SEARCH_FILTER_KEYS)[number];
 
 export type SearchFilters = Partial<Record<SearchFilterKey, string>>;
 
+// Fields the PlanIt API can sort search results on. `distance` is only
+// populated for proximity searches (postcode/radius), which is the only kind
+// planbrowser runs, so it is a safe option here.
+export const SORT_FIELDS = [
+  'start_date',
+  'decided_date',
+  'last_changed',
+  'last_different',
+  'distance',
+  'address',
+  'postcode',
+  'app_type',
+  'app_state'
+] as const;
+
+export type SortField = (typeof SORT_FIELDS)[number];
+export type SortOrder = 'asc' | 'desc';
+
+export interface SortSpec {
+  field: SortField;
+  order: SortOrder;
+}
+
 export interface PlanItRecord {
   uid: string;
   name: string;
@@ -154,6 +177,9 @@ export interface PlanItRecord {
 
 export interface PlanItResponse {
   records: PlanItRecord[];
+  total?: number;
+  from?: number;
+  to?: number;
   [key: string]: any;
 }
 
@@ -185,6 +211,7 @@ export interface SavedSearch {
   postcode: string;
   radius: string;
   filters: SearchFilters;
+  sort?: SortSpec;
   createdAt: string;
   // When the saved search was last re-run, and the set of application
   // references returned by that run. Used to highlight results that are new

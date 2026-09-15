@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { SavedSearch, SearchFilters } from './types.js';
+import type { SavedSearch, SearchFilters, SortSpec } from './types.js';
 import { getDownloadsDir } from './config.js';
 
 function searchesPath(): string {
@@ -46,13 +46,14 @@ export function getSavedSearch(id: string): SavedSearch | undefined {
   return readSearches().find((s) => s.id === id);
 }
 
-export function saveSearch(input: { postcode: string; radius: string; filters: SearchFilters }): SavedSearch {
+export function saveSearch(input: { postcode: string; radius: string; filters: SearchFilters; sort: SortSpec }): SavedSearch {
   const searches = readSearches();
   const search: SavedSearch = {
     id: Math.random().toString(36).substring(2, 10),
     postcode: input.postcode,
     radius: input.radius,
     filters: input.filters,
+    sort: input.sort,
     createdAt: new Date().toISOString()
   };
   searches.unshift(search);

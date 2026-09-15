@@ -1,17 +1,18 @@
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
-import { downloadApplication, searchPlanIt } from './scraper.js';
+import { downloadApplication } from './scraper.js';
+import { searchPlanIt } from './planit.js';
 import { getApplications, getApplication } from './storage.js';
 import { downloadQueue } from './queue.js';
 import { resolveAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
 import { setFlags, readActivity, setDocFlags } from './userData.js';
 import { getDownloadsDir, getUiDistDir } from './config.js';
-import { SEARCH_FILTER_KEYS } from './types.js';
+import { SEARCH_FILTER_KEYS, SORT_FIELDS } from './types.js';
 import { selectSyncApps } from './decision.js';
 import { documentSearchRouter } from './search/routes.js';
 import { listSavedSearches, getSavedSearch, saveSearch, deleteSavedSearch, recordSearchRun } from './savedSearches.js';
-import type { SearchFilters, ApplicationFlags, DocumentFlags, QueueItem, ApplicationMeta } from './types.js';
+import type { SearchFilters, SortSpec, ApplicationFlags, DocumentFlags, QueueItem, ApplicationMeta } from './types.js';
 
 function enqueueApplications(apps: ApplicationMeta[]): QueueItem[] {
   return apps.map((a) => downloadQueue.enqueue(a.reference, a.authorityId || DEFAULT_AUTHORITY_ID));
@@ -33,6 +34,17 @@ function sanitizeFilters(input: unknown): SearchFilters {
   return filters;
 }
 
+// Validate a sort field/order pair against the whitelist, defaulting to newest
+// first by start_date when absent or invalid.
+function sanitizeSort(input: unknown): SortSpec {
+  const field = (input as Record<string, unknown> | undefined)?.field;
+  const order = (input as Record<string, unknown> | undefined)?.order;
+  if (typeof field !== 'string' || !(SORT_FIELDS as readonly string[]).includes(field)) {
+    return { field: 'start_date', order: 'desc' };
+  }
+  return { field: field as SortSpec['field'], order: order === 'asc' ? 'asc' : 'desc' };
+}
+
 
 export function createApp(): express.Express {
   const app = express();
@@ -47,7 +59,8 @@ export function createApp(): express.Express {
         return res.status(400).json({ error: 'Postcode is required' });
       }
       const filters = sanitizeFilters(req.query);
-      const data = await searchPlanIt(postcode, radius, filters);
+      const sort = sanitizeSort({ field: req.query.sort, order: req.query.order });
+      const data = await searchPlanIt(postcode, radius, filters, sort);
       res.json(data);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -192,7 +205,7 @@ export function createApp(): express.Express {
         return res.status(400).json({ error: 'Postcode is required' });
       }
       const radius = typeof body.radius === 'string' && body.radius ? body.radius : '2';
-      const saved = saveSearch({ postcode, radius, filters: sanitizeFilters(body.filters) });
+      const saved = saveSearch({ postcode, radius, filters: sanitizeFilters(body.filters), sort: sanitizeSort(body.sort) });
       res.json(saved);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -217,12 +230,12 @@ export function createApp(): express.Express {
       if (!search) {
         return res.status(404).json({ error: 'Saved search not found' });
       }
-      const data = await searchPlanIt(search.postcode, search.radius, search.filters);
+      const data = await searchPlanIt(search.postcode, search.radius, search.filters, search.sort);
       const records = Array.isArray(data.records) ? data.records : [];
       const references = records.map((r: { uid: string }) => r.uid);
       const previousReferences = search.lastReferences ?? [];
       recordSearchRun(search.id, references);
-      res.json({ records, previousReferences });
+      res.json({ records, previousReferences, total: data.total });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
