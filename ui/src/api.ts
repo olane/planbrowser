@@ -88,6 +88,14 @@ export async function clearQueue(): Promise<void> {
   if (!res.ok) throw new Error('Failed to clear queue');
 }
 
+export async function retryQueueItem(id: string): Promise<void> {
+  const res = await fetch(`/api/queue/${encodeURIComponent(id)}/retry`, { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to retry download');
+  }
+}
+
 export async function setApplicationFlags(reference: string, flags: Partial<ApplicationFlags>, authority?: string): Promise<ApplicationFlags> {
   const res = await fetch(`/api/applications/${encodeURIComponent(reference)}`, {
     method: 'PATCH',
