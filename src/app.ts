@@ -90,6 +90,14 @@ export function createApp(): express.Express {
     res.json({ success: true });
   });
 
+  app.post('/api/queue/:id/retry', (req, res) => {
+    const item = downloadQueue.retry(req.params.id);
+    if (!item) {
+      return res.status(404).json({ error: 'Failed queue item not found' });
+    }
+    res.json({ success: true, item });
+  });
+
   app.get('/api/applications', (req, res) => {
     try {
       const apps = getApplications();

@@ -60,6 +60,26 @@ export class DownloadQueue {
     });
   }
 
+  retry(id: string) {
+    const item = this.queue.find(q => q.id === id);
+    if (!item || item.status !== 'failed') {
+      return undefined;
+    }
+
+    item.status = 'pending';
+    delete item.error;
+    delete item.progress;
+    delete item.startedAt;
+    delete item.completedAt;
+    item.enqueuedAt = new Date().toISOString();
+
+    if (this.autoStart) {
+      setImmediate(() => this.process());
+    }
+
+    return item;
+  }
+
   clearCompleted() {
     this.queue = this.queue.filter(item => item.status !== 'completed' && item.status !== 'failed');
   }

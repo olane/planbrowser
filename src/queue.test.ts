@@ -55,6 +55,29 @@ describe('DownloadQueue', () => {
     ]);
   });
 
+  it('retry resets a failed item back to pending', () => {
+    const queue = new DownloadQueue({ autoStart: false });
+    const item = queue.enqueue('24/0001/FUL', 'cambridge');
+    item.status = 'failed';
+    item.error = 'boom';
+    item.startedAt = '2024-01-01T00:00:00.000Z';
+    item.completedAt = '2024-01-01T00:00:01.000Z';
+
+    const retried = queue.retry(item.id);
+    expect(retried?.status).toBe('pending');
+    expect(retried?.error).toBeUndefined();
+    expect(retried?.startedAt).toBeUndefined();
+    expect(retried?.completedAt).toBeUndefined();
+  });
+
+  it('retry ignores missing or non-failed items', () => {
+    const queue = new DownloadQueue({ autoStart: false });
+    const item = queue.enqueue('24/0001/FUL', 'cambridge');
+    expect(queue.retry('missing')).toBeUndefined();
+    expect(queue.retry(item.id)).toBeUndefined();
+    expect(item.status).toBe('pending');
+  });
+
   it('clearCompleted removes only completed and failed items', () => {
     const queue = new DownloadQueue({ autoStart: false });
     queue.enqueue('24/0001/FUL', 'cambridge');

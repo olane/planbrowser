@@ -30,6 +30,9 @@
             <span v-else-if="item.status === 'failed'" :class="[ui.toneRed, $style.badge]">Failed</span>
             <div v-if="item.status === 'in_progress' && item.progress" :class="$style.progress">{{ progressText(item.progress) }}</div>
             <div v-if="item.error" :class="$style.error" :title="item.error">{{ item.error }}</div>
+            <button v-if="item.status === 'failed'" type="button" :disabled="retryingId === item.id" :class="[ui.btn, ui.btnOutline, $style.retry]" @click="retryItem(item.id)">
+              {{ retryingId === item.id ? 'Retrying...' : 'Retry' }}
+            </button>
           </div>
         </div>
       </div>
@@ -39,11 +42,13 @@
 
 <script setup lang="ts">
 import { authorityName } from '../../../src/authorities.js'
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { timeAgo, progressText } from '../utils'
 import * as api from '../api'
 import { queueItems, refreshQueue } from '../queueStore'
 import ui from '../styles/primitives.module.css'
+
+const retryingId = ref('')
 
 const clearCompletedQueue = async () => {
   try {
@@ -51,6 +56,18 @@ const clearCompletedQueue = async () => {
     await refreshQueue()
   } catch (e) {
     console.error(e)
+  }
+}
+
+const retryItem = async (id: string) => {
+  retryingId.value = id
+  try {
+    await api.retryQueueItem(id)
+    await refreshQueue()
+  } catch (e) {
+    console.error(e)
+  } finally {
+    retryingId.value = ''
   }
 }
 
@@ -172,5 +189,9 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.retry {
+  margin-top: 0.5rem;
 }
 </style>
