@@ -219,3 +219,56 @@ export interface SavedSearch {
   lastRunAt?: string;
   lastReferences?: string[];
 }
+
+// --- Application insights -------------------------------------------------
+// Automatically-derived summary and the most relevant images/plans/renders
+// for an application. Produced by a strategy (see src/insights/) and cached
+// on disk next to metadata.json as insights.json.
+
+export type InsightImageKind =
+  | 'render'
+  | 'plan'
+  | 'elevation'
+  | 'section'
+  | 'map'
+  | 'photo'
+  | 'other';
+
+export interface InsightImage {
+  // Content hash of the stored thumbnail; also the asset's filename stem.
+  id: string;
+  kind: InsightImageKind;
+  label: string;
+  localFilename: string;
+  page: number;
+  imageFile: string;
+  width: number;
+  height: number;
+  score: number;
+}
+
+export interface InsightSummary {
+  headline: string;
+  points: string[];
+  metrics: Record<string, string>;
+}
+
+export interface InsightCommentTally {
+  support: number;
+  object: number;
+  neutral: number;
+  total: number;
+}
+
+export interface ApplicationInsights {
+  version: number;
+  // Which strategy produced this, so changing strategy/version invalidates the
+  // cached insights without touching the (reusable) rendered artifacts.
+  strategy: { id: string; version: number };
+  generatedAt: string;
+  // mtime/size of each source document at generation time, for cache validity.
+  source: { filename: string; mtimeMs: number; size: number }[];
+  summary: InsightSummary;
+  images: InsightImage[];
+  comments: InsightCommentTally;
+}

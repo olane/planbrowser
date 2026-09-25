@@ -268,15 +268,38 @@ scripts/             # contact-sheet report over sample applications (also the e
 
 1. ~~**Renderer spike** on real sample data~~ — **done** (2026-09): `unpdf` +
    `@napi-rs/canvas` renders pages and extracts embedded images; see
-   [Findings from sample data](#findings-from-sample-data-2026-09). Remaining check: Electron
-   packaging (`asarUnpack`) and Docker.
-2. **Artifact pipeline + cache** — per-page text and rendered page PNGs, with mtime/size
-   invalidation and atomic writes (reuse the `src/storage.ts` temp-file + rename approach).
-3. **Image discovery** — `ImageDiscovery` seam + `HeuristicImageDiscovery` + API + Overview tab
-   (images/plans/renders first; this is the hard part).
-4. **Summary** — `SummaryProvider` seam + `HeuristicSummaryProvider` + metrics + sentiment.
-5. **Hardening** — revision dedupe/collapse, page/DPI caps, cache invalidation, and OCR only if
-   samples demand it.
+   [Findings from sample data](#findings-from-sample-data-2026-09).
+2. ~~**Artifact pipeline + cache**~~ — **first cut done**: per-page text cached in
+   `insights/page-text.json` (mtime/size invalidation); rendered thumbnails are content-addressed
+   PNGs under `insights/`.
+3. ~~**Image discovery**~~ — **first cut done**: see implementation status below.
+4. ~~**Summary**~~ — **first cut done**: description-derived headline, keyword points, regex
+   metrics and comment tally.
+5. **Hardening (remaining)** — Electron/Docker packaging verification, revision collapse across
+   differently-named docs, tuning from the report, OCR only if scans appear.
+
+## Implementation status (first cut)
+
+- `src/insights/keywords.ts` — kind/name priors; suppresses admin files (forms, fee letters).
+- `src/insights/pixels.ts` — `analysePixels`/`analysePagePng` visual stats.
+- `src/insights/classify.ts` — per-page kind + score (renders inferred from photographic stats).
+- `src/insights/select.ts` — dedupe by content hash, per-kind/per-document/all caps.
+- `src/insights/summary.ts` — headline, proposal points, metrics, comment tally.
+- `src/insights/render.ts` — `unpdf` + `@napi-rs/canvas` page text/render.
+- `src/insights/cache.ts` — insights.json + page-text + asset storage (atomic writes).
+- `src/insights/generate.ts` — orchestrates (MAX_DOCS 40, MAX_PAGES 36, 1400 px thumbs) and
+  exposes background `startInsights`/`isGenerating`.
+- `src/insights/routes.ts` — `GET`/`POST /api/applications/:ref/insights`,
+  `GET /api/applications/:ref/insights/images/:file`.
+- `ui/src/pages/Viewer.vue` — **Overview** tab (summary + image gallery, generate/poll).
+- `scripts/insights-report.mjs` — contact-sheet report over samples (`npm run build` first).
+
+Notes / known rough edges:
+- Generation is synchronous-per-app and CPU-heavy (~2 min for a 94-doc application); it runs in
+  the background and the UI polls, but there is no cross-process queue yet.
+- `extractImages` is not used yet (operator-list/embedded-image summaries were slower than
+  rendering for vector plans); renders are caught via photographic pixel stats instead.
+- The heuristic is due a tuning pass against the contact sheet (kind scoring, caps).
 
 ## Testing & evaluation
 

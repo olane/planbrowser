@@ -11,6 +11,7 @@ import { getDownloadsDir, getUiDistDir } from './config.js';
 import { SEARCH_FILTER_KEYS, SORT_FIELDS } from './types.js';
 import { selectSyncApps } from './decision.js';
 import { documentSearchRouter } from './search/routes.js';
+import { insightsRouter } from './insights/routes.js';
 import { listSavedSearches, getSavedSearch, saveSearch, deleteSavedSearch, recordSearchRun } from './savedSearches.js';
 import type { SearchFilters, SortSpec, ApplicationFlags, DocumentFlags, QueueItem, ApplicationMeta } from './types.js';
 
@@ -274,6 +275,9 @@ export function createApp(): express.Express {
 
   // Search a single application's documents by content
   app.use(documentSearchRouter);
+
+  // Automatically-derived summary + most relevant images/plans/renders
+  app.use(insightsRouter);
 
   // Serve static documents
   app.use('/api/documents', express.static(getDownloadsDir()));

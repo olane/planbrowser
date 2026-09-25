@@ -1,4 +1,4 @@
-import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags, DocumentSearchHit, SavedSearch, PlanItRecord, SortSpec } from '../../src/types.js';
+import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags, DocumentSearchHit, SavedSearch, PlanItRecord, SortSpec, ApplicationInsights } from '../../src/types.js';
 import type { SyncScope } from '../../src/decision.js';
 import { DEFAULT_AUTHORITY_ID } from '../../src/authorities.js';
 import { safeReference } from '../../src/refs.js';
@@ -174,4 +174,41 @@ export async function runSavedSearch(id: string): Promise<{ records: PlanItRecor
     throw new Error(err.error || 'Failed to run saved search');
   }
   return res.json();
+}
+
+export type InsightsStatus = 'none' | 'running' | 'ready';
+
+export interface InsightsResponse {
+  status: InsightsStatus;
+  insights?: ApplicationInsights;
+}
+
+export async function fetchInsights(reference: string, authorityId?: string): Promise<InsightsResponse> {
+  const params = new URLSearchParams();
+  if (authorityId) params.set('authority', authorityId);
+  const qs = params.toString();
+  const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/insights${qs ? `?${qs}` : ''}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to load insights');
+  }
+  return res.json();
+}
+
+export async function startInsights(reference: string, authorityId?: string): Promise<InsightsResponse> {
+  const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/insights`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ authority: authorityId })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to generate insights');
+  }
+  return res.json();
+}
+
+export function insightImageUrl(reference: string, authorityId: string | undefined, imageFile: string): string {
+  const params = authorityId ? `?authority=${encodeURIComponent(authorityId)}` : '';
+  return `/api/applications/${encodeURIComponent(reference)}/insights/images/${encodeURIComponent(imageFile)}${params}`;
 }
