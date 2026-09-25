@@ -8,8 +8,16 @@ import { classifyPage } from './classify.js';
 import { analysePagePng } from './pixels.js';
 import { selectImages } from './select.js';
 import { buildSummary, tallyComments } from './summary.js';
-import { extractPageTexts, isPdf, openPdf, renderPageToPng } from './render.js';
-import { INSIGHTS_VERSION, readInsights, readPageText, writeAsset, writeInsights, writePageText } from './cache.js';
+import { extractPageTexts, isPdf, openPdf, renderPageToPng, closePdf } from './render.js';
+import {
+  INSIGHTS_VERSION,
+  pruneAssets,
+  readInsights,
+  readPageText,
+  writeAsset,
+  writeInsights,
+  writePageText
+} from './cache.js';
 
 export const STRATEGY = { id: 'heuristic', version: 1 };
 
@@ -24,25 +32,81 @@ export interface GenerateOptions {
   force?: boolean;
 }
 
-// Generation is CPU-heavy, so the API starts it in the background and the UI
-// polls. This tracks in-flight work per application to avoid duplicate runs.
-const inFlight = new Map<string, Promise<ApplicationInsights | null>>();
+export type InsightsStatus = 'none' | 'running' | 'ready' | 'error';
 
-function jobKey(reference: string, authorityId?: string): string {
-  return `${authorityId ?? '*'}/${reference}`;
+export interface InsightsState {
+  status: InsightsStatus;
+  insights?: ApplicationInsights;
+  error?: string;
 }
 
-export function isGenerating(reference: string, authorityId?: string): boolean {
-  return inFlight.has(jobKey(reference, authorityId));
+// Generation is CPU-heavy, so the API starts it in the background and the UI
+// polls. Track in-flight work and the last failure per application. The key is
+// the reference alone (not the authority), so an application cannot be
+// generated twice in parallel via two different authority spellings.
+const inFlight = new Map<string, Promise<ApplicationInsights | null>>();
+const lastError = new Map<string, string>();
+
+function jobKey(reference: string): string {
+  return reference;
+}
+
+export function isGenerating(reference: string): boolean {
+  return inFlight.has(jobKey(reference));
 }
 
 export function startInsights(reference: string, authorityId?: string, opts: GenerateOptions = {}): void {
-  const key = jobKey(reference, authorityId);
+  const key = jobKey(reference);
   if (inFlight.has(key)) return;
+  lastError.delete(key);
   const promise = generateInsights(reference, authorityId, opts)
-    .catch(() => null)
+    .catch((err: unknown) => {
+      lastError.set(key, err instanceof Error ? err.message : String(err));
+      return null;
+    })
     .finally(() => inFlight.delete(key));
   inFlight.set(key, promise);
+}
+
+function documentList(meta: { documents?: DocumentMeta[] }): DocumentMeta[] {
+  const seen = new Set<string>();
+  return (meta.documents ?? []).filter((d) => {
+    if (!d.localFilename || seen.has(d.localFilename)) return false;
+    seen.add(d.localFilename);
+    return true;
+  });
+}
+
+// Current state for the API: returns a ready result only when the cache is
+// fresh. A stale cache (documents changed on sync, or a strategy bump) is
+// refreshed in the background so the viewer reflects the sync without the user
+// having to regenerate manually. A missing cache is left for the user to start.
+export function getInsightsState(reference: string, authorityId?: string): InsightsState | null {
+  const resolved = resolveApplicationMeta(reference, authorityId);
+  if (!resolved) return null;
+  const { meta, dir } = resolved;
+  const source = sourceSignature(dir, documentList(meta));
+
+  const cached = readInsights(dir);
+  if (cached && sameStrategy(cached) && sameSource(cached.source, source)) {
+    return { status: 'ready', insights: cached };
+  }
+
+  const key = jobKey(reference);
+  if (inFlight.has(key)) return { status: 'running' };
+
+  const previousError = lastError.get(key);
+  if (previousError) return { status: 'error', error: previousError };
+
+  if (cached) {
+    startInsights(reference, authorityId, { force: false });
+    return { status: 'running' };
+  }
+  return { status: 'none' };
+}
+
+function sameStrategy(insights: ApplicationInsights): boolean {
+  return insights.strategy.id === STRATEGY.id && insights.strategy.version === STRATEGY.version;
 }
 
 function sourceSignature(dir: string, docs: DocumentMeta[]): ApplicationInsights['source'] {
@@ -83,23 +147,12 @@ export async function generateInsights(
   if (!resolved) return null;
   const { meta, dir } = resolved;
 
-  const seen = new Set<string>();
-  const docs = (meta.documents ?? []).filter((d) => {
-    if (!d.localFilename || seen.has(d.localFilename)) return false;
-    seen.add(d.localFilename);
-    return true;
-  });
-
+  const docs = documentList(meta);
   const source = sourceSignature(dir, docs);
 
   if (!opts.force) {
     const cached = readInsights(dir);
-    if (
-      cached &&
-      cached.strategy.id === STRATEGY.id &&
-      cached.strategy.version === STRATEGY.version &&
-      sameSource(cached.source, source)
-    ) {
+    if (cached && sameStrategy(cached) && sameSource(cached.source, source)) {
       return cached;
     }
   }
@@ -114,10 +167,10 @@ export async function generateInsights(
     .slice(0, MAX_DOCS);
 
   const candidates: InsightImage[] = [];
-  let pagesDone = 0;
+  let pagesRendered = 0;
 
   for (const { doc, prior } of ranked) {
-    if (pagesDone >= MAX_PAGES) break;
+    if (pagesRendered >= MAX_PAGES) break;
     if (!isPdf(doc.localFilename)) continue;
     const filePath = path.join(dir, doc.localFilename);
 
@@ -135,59 +188,69 @@ export async function generateInsights(
       continue;
     }
 
-    let texts: string[];
-    const cachedText = pageTextCache.documents[doc.localFilename];
-    if (cachedText && cachedText.mtimeMs === stat.mtimeMs && cachedText.size === stat.size) {
-      texts = cachedText.pages;
-    } else {
-      try {
-        texts = await extractPageTexts(pdf);
-      } catch {
-        texts = [];
+    try {
+      let texts: string[];
+      const cachedText = pageTextCache.documents[doc.localFilename];
+      if (cachedText && cachedText.mtimeMs === stat.mtimeMs && cachedText.size === stat.size) {
+        texts = cachedText.pages;
+      } else {
+        try {
+          texts = await extractPageTexts(pdf);
+        } catch {
+          texts = [];
+        }
+        pageTextCache.documents[doc.localFilename] = { mtimeMs: stat.mtimeMs, size: stat.size, pages: texts };
+        pageTextDirty = true;
       }
-      pageTextCache.documents[doc.localFilename] = { mtimeMs: stat.mtimeMs, size: stat.size, pages: texts };
-      pageTextDirty = true;
-    }
 
-    const pageCount = Math.max(texts.length, 1);
-    const budget = Math.min(MAX_PAGES_PER_DOC, MAX_PAGES - pagesDone, pageCount);
-    for (let page = 1; page <= budget; page++) {
-      let png: Buffer;
-      try {
-        png = await renderPageToPng(pdf, page, THUMB_WIDTH);
-      } catch {
-        continue;
-      }
-      let stats;
-      try {
-        stats = await analysePagePng(png);
-      } catch {
-        continue;
-      }
-      const classification = classifyPage(doc, texts[page - 1] ?? '', stats, prior);
-      if (classification.score <= 0) continue;
+      const pageCount = Math.max(texts.length, 1);
+      const budget = Math.min(MAX_PAGES_PER_DOC, MAX_PAGES - pagesRendered, pageCount);
+      for (let page = 1; page <= budget; page++) {
+        // Budget on render *attempts*, not just accepted pages, so a document
+        // full of non-visual pages cannot push us far past MAX_PAGES.
+        pagesRendered++;
+        let png: Buffer;
+        try {
+          png = await renderPageToPng(pdf, page, THUMB_WIDTH);
+        } catch {
+          continue;
+        }
+        let stats;
+        try {
+          stats = await analysePagePng(png);
+        } catch {
+          continue;
+        }
+        const classification = classifyPage(doc, texts[page - 1] ?? '', stats, prior);
+        if (classification.score <= 0) continue;
 
-      const id = crypto.createHash('sha1').update(png).digest('hex');
-      const imageFile = `${id}.png`;
-      writeAsset(dir, imageFile, png);
-      candidates.push({
-        id,
-        kind: classification.kind,
-        label: classification.label,
-        localFilename: doc.localFilename,
-        page,
-        imageFile,
-        width: stats.width,
-        height: stats.height,
-        score: Math.round(classification.score)
-      });
-      pagesDone++;
+        const id = crypto.createHash('sha1').update(png).digest('hex');
+        const imageFile = `${id}.png`;
+        writeAsset(dir, imageFile, png);
+        candidates.push({
+          id,
+          kind: classification.kind,
+          label: classification.label,
+          localFilename: doc.localFilename,
+          page,
+          imageFile,
+          width: stats.width,
+          height: stats.height,
+          score: Math.round(classification.score)
+        });
+      }
+    } finally {
+      await closePdf(pdf).catch(() => {});
     }
   }
 
   if (pageTextDirty) writePageText(dir, pageTextCache);
 
   const images = selectImages(candidates);
+  // Drop thumbnails that were rendered but not selected (and any stale ones
+  // from earlier runs), so the insights directory tracks insights.json.
+  pruneAssets(dir, new Set(images.map((image) => image.imageFile)));
+
   const insights: ApplicationInsights = {
     version: INSIGHTS_VERSION,
     strategy: STRATEGY,

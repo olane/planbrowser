@@ -1,8 +1,8 @@
 # Application insights: design plan
 
-> **Status: planned, not implemented.** This is a *living* document — expected to change as
-> real data comes in and as later slices land. It exists so a future session can resume with
-> full context. See [Resuming in a new session](#resuming-in-a-new-session) at the end.
+> **Status: implemented (first cut); later slices planned.** This is a *living* document — expected
+> to change as real data comes in and as later slices land. It exists so a future session can
+> resume with full context. See [Resuming in a new session](#resuming-in-a-new-session) at the end.
 
 The goal is to automatically surface, for a downloaded planning application:
 
@@ -256,12 +256,16 @@ zero new deps but hacky, slow and unreliable for this purpose.
 
 ```
 src/insights/
-  render/            # PageRenderer + UnpdfRenderer (unpdf + @napi-rs/canvas)
-  heuristic/         # feature.ts, score.ts, select.ts, summary.ts
-  cache.ts           # artifact + insights caches (mtime/size invalidation, atomic writes)
-  generate.ts        # compose renderer + discovery + summary, version, write
-  routes.ts          # (optional) insights endpoints
-scripts/             # contact-sheet report over sample applications (also the eval harness)
+  render.ts          # PDF open / page text / page render (unpdf + @napi-rs/canvas)
+  pixels.ts          # page visual statistics
+  keywords.ts        # kind and document priors
+  classify.ts        # per-page kind + score + label
+  select.ts          # dedupe, caps, ranking
+  summary.ts         # headline, points, metrics, comment tally
+  cache.ts           # insights.json + page-text + content-addressed assets
+  generate.ts        # orchestrate, version, background generation
+  routes.ts          # insights endpoints
+scripts/insights-report.mjs  # contact-sheet report over samples (also the eval harness)
 ```
 
 ## Build order (slices)
@@ -299,6 +303,11 @@ Notes / known rough edges:
   the background and the UI polls, but there is no cross-process queue yet.
 - `extractImages` is not used yet (operator-list/embedded-image summaries were slower than
   rendering for vector plans); renders are caught via photographic pixel stats instead.
+- A stale cache (documents changed on sync, or a strategy bump) is refreshed automatically in the
+  background on the next `GET`; a generation failure is surfaced as `status:'error'` for retry.
+- Render budget counts attempts, so a document full of non-visual pages cannot exceed `MAX_PAGES`.
+- Unreferenced thumbnails are pruned after each generation, so the `insights/` directory tracks
+  `insights.json`.
 - The heuristic is due a tuning pass against the contact sheet (kind scoring, caps).
 
 ## Testing & evaluation

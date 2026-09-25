@@ -176,11 +176,12 @@ export async function runSavedSearch(id: string): Promise<{ records: PlanItRecor
   return res.json();
 }
 
-export type InsightsStatus = 'none' | 'running' | 'ready';
+export type InsightsStatus = 'none' | 'running' | 'ready' | 'error';
 
 export interface InsightsResponse {
   status: InsightsStatus;
   insights?: ApplicationInsights;
+  error?: string;
 }
 
 export async function fetchInsights(reference: string, authorityId?: string): Promise<InsightsResponse> {

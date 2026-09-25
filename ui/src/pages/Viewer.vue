@@ -122,7 +122,10 @@
         <div :class="$style.tabContent">
           <div v-show="activeTab === 'overview'">
             <div v-if="insightsStatus === 'loading'" :class="$style.muted">Loading insights…</div>
-            <div v-else-if="insightsError" :class="$style.errorText">{{ insightsError }}</div>
+            <div v-else-if="insightsStatus === 'error'">
+              <p :class="$style.errorText">{{ insightsError }}</p>
+              <button @click="generateInsights" :class="[ui.btn, ui.btnOutline]">Retry</button>
+            </div>
             <div v-else-if="insightsStatus === 'running'" :class="$style.insightsRunning">
               <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
               Generating insights — this can take a minute for large applications.
@@ -291,7 +294,7 @@ const syncError = ref('')
 
 // Automatically-derived summary and the most relevant images/plans/renders.
 const insights = ref<ApplicationInsights | null>(null)
-const insightsStatus = ref<'loading' | 'none' | 'running' | 'ready'>('loading')
+const insightsStatus = ref<'loading' | 'none' | 'running' | 'ready' | 'error'>('loading')
 const insightsError = ref('')
 let insightsPoll: ReturnType<typeof setTimeout> | null = null
 const syncMessage = ref('')
@@ -607,6 +610,9 @@ const loadInsights = async () => {
     } else if (res.status === 'running') {
       insightsStatus.value = 'running'
       scheduleInsightsPoll()
+    } else if (res.status === 'error') {
+      insightsStatus.value = 'error'
+      insightsError.value = res.error || 'Failed to generate insights'
     } else {
       insightsStatus.value = 'none'
       insightsError.value = ''
@@ -625,6 +631,7 @@ const generateInsights = async () => {
   insightsStatus.value = 'running'
   try {
     const res = await api.startInsights(reference, app.value.authorityId)
+    if (refParam.value !== reference) return
     if (res.status === 'ready' && res.insights) {
       insights.value = res.insights
       insightsStatus.value = 'ready'
@@ -632,8 +639,9 @@ const generateInsights = async () => {
     }
     scheduleInsightsPoll()
   } catch (e: any) {
+    if (refParam.value !== reference) return
     insightsError.value = e.message || 'Failed to generate insights'
-    insightsStatus.value = 'none'
+    insightsStatus.value = 'error'
   }
 }
 
@@ -650,7 +658,12 @@ const fetchApp = async () => {
     await loadComments()
     await loadInsights()
     if (firstLoad) {
-      activeTab.value = 'overview'
+      activeTab.value =
+        insightsStatus.value === 'ready'
+          ? 'overview'
+          : keyDocs.value.length > 0
+            ? 'key-documents'
+            : 'documents'
     }
   } catch (e: any) {
     console.error(e)

@@ -30,3 +30,10 @@ export async function renderPageToPng(pdf: PdfDocument, page: number, width: num
   });
   return Buffer.from(buffer);
 }
+
+// Release a document's resources. Generation opens many large PDFs in a
+// long-lived server process, so callers should close each one when done.
+export async function closePdf(pdf: PdfDocument): Promise<void> {
+  const destroy = (pdf as unknown as { destroy?: () => Promise<void> }).destroy;
+  if (typeof destroy === 'function') await destroy.call(pdf);
+}

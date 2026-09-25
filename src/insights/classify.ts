@@ -20,6 +20,23 @@ const KIND_BASE: Record<InsightImageKind, number> = {
 
 export type InsightDocument = Pick<DocumentMeta, 'documentType' | 'description' | 'localFilename'>;
 
+// Pull a readable title out of a page's (often title-block) text, so pages of a
+// mixed document don't all share the document's generic description.
+export function titleFromText(text: string): string | undefined {
+  if (!text) return undefined;
+  const lines = text
+    .split(/\r?\n|[ ]{3,}/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const keyword = /(site plan|location plan|block plan|floor plan|roof plan|basement plan|elevation|section|layout|master ?plan|render|visual|photomontage|parameter plan)/i;
+  const candidates = lines.filter((line) => line.length >= 4 && line.length <= 90 && keyword.test(line));
+  if (candidates.length === 0) return undefined;
+  candidates.sort(
+    (a, b) => Number(/(proposed|drawing)/i.test(b)) - Number(/(proposed|drawing)/i.test(a))
+  );
+  return candidates[0];
+}
+
 // A photographic page fills the frame with broad tones; a line drawing is mostly
 // white with thin strokes. Coloured flat-fill plans sit in between, so this is
 // only used to infer a kind when no explicit keyword exists.
@@ -57,6 +74,7 @@ export function classifyPage(
     // site plan is still a plan.
   }
 
+  const docLabel = (doc.description || doc.documentType || 'Drawing').trim();
   const existing = /\bexisting\b/.test(docHay) || /\bexisting\b/.test(textHay);
   const proposed = /\bproposed\b/.test(docHay) || /\bproposed\b/.test(textHay);
 
@@ -64,16 +82,16 @@ export function classifyPage(
   // than padding the gallery with "other". Ambiguous drawing pages and
   // photographic pages are kept.
   if (kind === 'other' && !drawingDoc && !isPhotographic(stats)) {
-    return { kind, score: 0, label: (doc.description || doc.documentType || 'Drawing').trim() };
+    return { kind, score: 0, label: docLabel };
   }
 
   let score = KIND_BASE[kind];
   score += stats.edgeDensity * 25;
   score += Math.min(stats.inkRatio, 0.9) * 8;
   if (proposed) score += 6;
-  if (existing && !proposed) score -= 30;
+  if (existing && !proposed) score -= 45;
   if (isSuperseded(doc)) score -= 50;
 
-  const label = (doc.description || doc.documentType || 'Drawing').trim();
-  return { kind, score, label };
+  const label = textKind ? (titleFromText(text) ?? docLabel) : docLabel;
+  return { kind, score, label: label || docLabel };
 }

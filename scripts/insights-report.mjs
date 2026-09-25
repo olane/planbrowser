@@ -9,6 +9,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { generateInsights } from '../dist/insights/generate.js';
 
 const root = process.env.DOWNLOADS_DIR
@@ -110,7 +111,7 @@ figcaption{font-size:.72rem;padding:.4rem;color:#444}
 .score{color:#888}
 </style></head><body><h1>Application insights report</h1>${rows}</body></html>`;
 
-const out = path.join('/tmp/pb', 'insights-report.html');
+const out = path.join(os.tmpdir(), 'planbrowser-insights-report.html');
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, html);
 console.log(`\nReport written to ${out}`);

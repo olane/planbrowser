@@ -48,7 +48,13 @@ function atomicWrite(filePath: string, data: string | Buffer): void {
 export function readInsights(appDir: string): ApplicationInsights | null {
   try {
     const parsed = JSON.parse(fs.readFileSync(insightsFile(appDir), 'utf-8')) as ApplicationInsights;
-    if (parsed && typeof parsed === 'object' && parsed.strategy && Array.isArray(parsed.images)) {
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      parsed.version === INSIGHTS_VERSION &&
+      parsed.strategy &&
+      Array.isArray(parsed.images)
+    ) {
       return parsed;
     }
   } catch {
@@ -67,11 +73,32 @@ export function writeAsset(appDir: string, imageFile: string, data: Buffer): voi
   atomicWrite(target, data);
 }
 
+// Remove content-addressed thumbnails that the current insights.json no longer
+// references, so the directory does not grow across regenerations/syncs.
+export function pruneAssets(appDir: string, keep: Set<string>): void {
+  const dir = insightsDir(appDir);
+  if (!fs.existsSync(dir)) return;
+  for (const name of fs.readdirSync(dir)) {
+    if (!isValidAssetFile(name) || keep.has(name)) continue;
+    try {
+      fs.unlinkSync(path.join(dir, name));
+    } catch {
+      // Best-effort cleanup.
+    }
+  }
+}
+
 export function readPageText(appDir: string): PageTextCache {
   try {
     const parsed = JSON.parse(fs.readFileSync(path.join(insightsDir(appDir), 'page-text.json'), 'utf-8'));
-    if (parsed && typeof parsed === 'object' && parsed.documents && typeof parsed.documents === 'object') {
-      return { version: parsed.version ?? PAGE_TEXT_VERSION, documents: parsed.documents as Record<string, PageTextEntry> };
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      parsed.version === PAGE_TEXT_VERSION &&
+      parsed.documents &&
+      typeof parsed.documents === 'object'
+    ) {
+      return { version: parsed.version, documents: parsed.documents as Record<string, PageTextEntry> };
     }
   } catch {
     // Missing or unreadable cache.

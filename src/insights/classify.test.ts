@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classifyPage, isPhotographic } from './classify.js';
+import { classifyPage, isPhotographic, titleFromText } from './classify.js';
 import type { PagePixelStats } from './pixels.js';
 
 function stats(overrides: Partial<PagePixelStats>): PagePixelStats {
@@ -24,6 +24,20 @@ describe('isPhotographic', () => {
   it('detects photographic pages', () => {
     expect(isPhotographic(photographic)).toBe(true);
     expect(isPhotographic(lineArt)).toBe(false);
+  });
+});
+
+describe('titleFromText', () => {
+  it('picks a title-block line containing a drawing keyword', () => {
+    expect(titleFromText('REV\nPROPOSED ELEVATIONS\nSCALE 1:100')).toBe('PROPOSED ELEVATIONS');
+  });
+
+  it('prefers a line mentioning proposed or drawing', () => {
+    expect(titleFromText('SITE PLAN\nPROPOSED SITE PLAN')).toBe('PROPOSED SITE PLAN');
+  });
+
+  it('returns undefined when no drawing keyword is present', () => {
+    expect(titleFromText('This is a planning statement about the site.')).toBeUndefined();
   });
 });
 

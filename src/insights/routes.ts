@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { resolveAuthority } from '../authorities.js';
 import { resolveApplicationMeta } from '../storage.js';
-import { isGenerating, startInsights } from './generate.js';
-import { insightsDir, isValidAssetFile, readInsights } from './cache.js';
+import { getInsightsState, startInsights } from './generate.js';
+import { insightsDir, isValidAssetFile } from './cache.js';
 
 export const insightsRouter = Router();
 
@@ -19,21 +19,20 @@ function resolveAuthorityId(raw: unknown): string | undefined {
 
 insightsRouter.get('/api/applications/:ref/insights', (req, res) => {
   const authorityId = resolveAuthorityId(req.query.authority);
-  const found = resolveApplicationMeta(req.params.ref, authorityId);
-  if (!found) {
+  const state = getInsightsState(req.params.ref, authorityId);
+  if (!state) {
     res.status(404).json({ error: 'Application not found' });
     return;
   }
-  const insights = readInsights(found.dir);
-  if (insights) {
-    res.json({ status: 'ready', insights });
+  if (state.status === 'ready' && state.insights) {
+    res.json({ status: 'ready', insights: state.insights });
     return;
   }
-  if (isGenerating(req.params.ref, authorityId)) {
-    res.json({ status: 'running' });
+  if (state.status === 'error') {
+    res.json({ status: 'error', error: state.error });
     return;
   }
-  res.json({ status: 'none' });
+  res.json({ status: state.status });
 });
 
 // Generation is CPU-heavy (it may render dozens of pages), so this kicks it off
