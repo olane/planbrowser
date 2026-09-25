@@ -200,14 +200,54 @@ Added to `src/app.ts` (or a small router under `src/insights/`, mirroring
 - (Later) a curation loop: mark an image as hero / not relevant, stored like the existing
   starred-document flags, to improve ranking from real use.
 
-## Renderer choice (to validate by spike)
+## Findings from sample data (2026-09)
 
-Recommended first implementation: **`mupdf`** (official WASM build). Single dependency, outputs
-PNG directly (`pixmap.asPNG()`), works in Node, Electron and the Debian-based Docker image with
-no native build or external binary.
+Grounded on real Greater Cambridge applications (mixed-use FUL/OUT, plus householder, tree,
+advertisement, LBC, amendment and conditions examples). See
+[Grounding](#grounding-sample-applications) for the workflow.
 
-Fallbacks to spike if needed: **`@hyzyla/pdfium`** (WASM PDFium) or the
-`pdfjs-dist` + `@napi-rs/canvas` combination (native prebuilt binaries).
+- **`unpdf` already does the heavy lifting.** It exposes per-page `extractText` (`mergePages:
+  false`), `extractImages` (embedded rasters with real pixel dimensions), and
+  `renderPageAsImage` (page rasterisation). The latter needs `@napi-rs/canvas` as an explicit
+  `canvasImport` in Node; `@napi-rs/canvas` is a prebuilt N-API package, so no separate PDF
+  engine is required. **This supersedes the earlier `mupdf` recommendation** (kept only as a
+  fallback).
+- **`extractImages` catches renders reliably.** A photoreal "North West Elevation" whose page
+  text is empty (drawing text converted to curves) is found as a single huge embedded raster
+  (e.g. 9933×7017), and photomontages as wide panoramas (e.g. 4843×1536). This is the strongest
+  signal for render/photograph pages.
+- **Vector plans contain hundreds of tiny image XObjects** (symbols, hatches, textures — e.g.
+  many 85×85 images). So ranking embedded images by area alone is noisy for plans; the page
+  must be rasterised instead, and embedded images filtered/deduped by size.
+- **Renders often live *inside* multi-page appendices**, not as standalone files (e.g. an
+  "APPENDIX 03 — PHOTOSHEETS AND AVRS" drawing PDF, or a Design & Access Statement page with a
+  full-bleed visual). Page-level analysis is therefore essential; document classification alone
+  would miss them.
+- **Title blocks are gold *when text is extractable*.** Vector plans yield clean titles in the
+  text layer ("PROPOSED (Site Plan)", "PROPOSED (Elevations)", "Proposed Application Boundary
+  Plan"). But some drawings have no extractable text at all (curves), so the kind/label must fall
+  back to the document `description`.
+- **Colour is not a render/plan discriminator.** A site plan can be fully colour-filled, an
+  elevation can be pure black-and-white line art, and a render is photo-like. Use
+  embedded-raster coverage + photographic statistics for "render-likeness", and vector/line
+  structure for "plan-likeness".
+- **`documentType` is inconsistent in practice.** A Design & Access Statement was tagged
+  `Drawings`; outline "PARAMETER PLANS" sit under `Drawings`; a follow-on `Conditions` app is
+  thin. Confirms that tags/names are priors, not gates.
+- **Revision handling matters**: superseded copies appear as `SUPERSEDED …` rows and must be
+  deprioritised/excluded (the UI already groups them).
+- **Scale**: individual applications run to 100–350 documents and multiple GB; drawing PDFs are
+  20–30 MB and page renders take ~0.2–7 s each at scale 1. Rendering *every* page is not viable —
+  only candidate pages, downscaled, cached.
+
+## Renderer choice
+
+**First implementation: `unpdf` + `@napi-rs/canvas`.** Reuses the existing dependency, renders
+pages (`renderPageAsImage`) and extracts embedded images (`extractImages`), and works in Node,
+Electron and the Debian-based Docker image. `@napi-rs/canvas` is a native prebuilt module, so
+the Electron build must unpack it (`asarUnpack`) and the Docker image must keep glibc (it does).
+
+Fallbacks if needed: **`mupdf`** (WASM, no native module) or **`@hyzyla/pdfium`** (WASM PDFium).
 
 Explicitly rejected: reusing the bundled Chromium/Playwright to screenshot the PDF viewer —
 zero new deps but hacky, slow and unreliable for this purpose.
@@ -216,7 +256,7 @@ zero new deps but hacky, slow and unreliable for this purpose.
 
 ```
 src/insights/
-  render/            # PageRenderer + MupdfRenderer
+  render/            # PageRenderer + UnpdfRenderer (unpdf + @napi-rs/canvas)
   heuristic/         # feature.ts, score.ts, select.ts, summary.ts
   cache.ts           # artifact + insights caches (mtime/size invalidation, atomic writes)
   generate.ts        # compose renderer + discovery + summary, version, write
@@ -226,8 +266,10 @@ scripts/             # contact-sheet report over sample applications (also the e
 
 ## Build order (slices)
 
-1. **Renderer spike** on real sample data — confirm `mupdf` renders and bundles cleanly in
-   Node/Electron/Docker; measure speed and bundle size.
+1. ~~**Renderer spike** on real sample data~~ — **done** (2026-09): `unpdf` +
+   `@napi-rs/canvas` renders pages and extracts embedded images; see
+   [Findings from sample data](#findings-from-sample-data-2026-09). Remaining check: Electron
+   packaging (`asarUnpack`) and Docker.
 2. **Artifact pipeline + cache** — per-page text and rendered page PNGs, with mtime/size
    invalidation and atomic writes (reuse the `src/storage.ts` temp-file + rename approach).
 3. **Image discovery** — `ImageDiscovery` seam + `HeuristicImageDiscovery` + API + Overview tab
@@ -249,6 +291,42 @@ Because this is a ranking problem, do not tune it blind.
   `ImageDiscovery` seam means two strategies can be compared side by side through the same
   harness.
 
+## Slice 1 heuristic (finalised against samples)
+
+Two passes, all deterministic and cacheable. Signals are combined into scores; no single missing
+tag or cryptic name breaks the result.
+
+**Pass A — artifacts (expensive, cached, strategy-independent).** For every PDF document:
+per-page text (`extractText`, `mergePages: false`) and per-page embedded-image summaries
+(`extractImages` → count, largest width/height/area). Keyed by document `mtimeMs`/`size`.
+
+**Pass B — interpretation (cheap, versioned).** Score each *page* using:
+
+1. **Document priors** (weak): `documentType` / `description` / filename keywords — drawings,
+   plans, elevations, sections, site/block/location plan, parameter plan, render/visual/CGI,
+   photomontage, photographs, design and access, appendix, superseded (negative).
+2. **Embedded-image signal**: a single image covering most of the page with photographic
+   dimensions ⇒ render/photograph (this catches image-based drawings whose text is curves).
+3. **Title-block text** (when extractable): `PROPOSED`, `SITE PLAN`, `ELEVATIONS`, `SECTIONS`,
+   `FLOOR PLAN`, `ROOF PLAN`, `LOCATION PLAN`, `PARAMETER PLAN`, `BLOCK PLAN`, drawing-number
+   patterns ⇒ kind + label.
+4. **Vector/drawing signal**: drawing-keyword doc and low text length but non-trivial content
+   ⇒ path/elevation/section.
+
+Then: pick candidate pages to rasterise (drawing-like docs, plus pages with large embedded
+images), **capped per application** (start ~40 pages) and prioritised by score; render
+thumbnails (target ~1600 px wide) and/or save the largest embedded image as the asset; classify
+`kind` + `label`; dedupe by content hash; rank and select top-N per kind.
+
+**Hard cases confirmed by the samples:**
+- Cryptic drawing names with no keyword (e.g. tree applications: `S20064-ETS…`) — rely on
+  embedded-image/title-block/vector signals, and always keep the drawing doc's `description`
+  as a last-resort label.
+- Render content buried in appendices / DAS (AVRS photosheets, full-bleed figures) — page-level
+  scanning of multi-page docs is required.
+- Follow-on apps with no visuals (`CONDF`) — return a summary but no image gallery rather than
+  inventing one (parent resolution is a later slice).
+
 ## Known gaps / future slices
 
 - **Paired / follow-on applications** (out of scope now). Plan for later: detect follow-on types
@@ -265,22 +343,42 @@ Because this is a ranking problem, do not tune it blind.
 
 ## Open questions / risks
 
-- Prevalence of **scanned** drawing sets (drives how much OCR/vision is needed). Main quality
-  risk for a deterministic approach.
-- **Vector-text-as-curves** plans: visual detection still finds the drawing, but the label falls
-  back to the document description because there is no extractable title-block text.
-- **Renderer portability and bundle size** in the Electron and Docker builds.
+- **Scanned** drawing sets were *not* observed in the sample (drawings are vector or embedded
+  rasters with a text layer), so OCR is deprioritised; revisit if real scans appear.
+- **Vector-text-as-curves** plans: visual/embedded-image detection still finds the drawing, but
+  the label falls back to the document description.
+- **Renderer portability**: `@napi-rs/canvas` is a native prebuilt module — confirm Electron
+  `asarUnpack` and Docker packaging in slice 2.
 - **Performance**: number of pages rendered and DPI; mitigated with caps, downscaling and the
   artifact cache.
+- **Cryptic names** (e.g. tree-application drawing `S20064-ETS…`) have no keyword to work from;
+  they rely on embedded-image/vector signals and the document description as fallback.
 
 ## Grounding: sample applications
 
-There is no downloaded data in the repo (`downloads/` is gitignored). The plan is to ground the
-heuristics in real data by running the existing scraper over a set of interesting references
-supplied by the maintainer (Greater Cambridge unless stated otherwise), then inspecting the real
-document names, title blocks and layouts.
+There is no downloaded data in the repo (`downloads/` is gitignored). The heuristics were
+grounded by running the existing scraper over a spread of real Greater Cambridge references.
+Downloaded and inspected (2026-09), covering large mixed-use, outline, older hybrid, and small
+householder / tree / advertisement / amendment / LBC / conditions cases:
 
-Workflow (once references are provided):
+| Reference | Shape |
+| --- | --- |
+| `25/04484/FUL` | Large student accommodation (94 docs) |
+| `24/04575/FUL` | Very large mixed-use redevelopment (353 docs, 3.5 GB) |
+| `26/01872/OUT` | Outline, all matters reserved — parameter plans (180 docs) |
+| `26/01902/OUT` | Outline mixed-use (242 docs) |
+| `26/03300/FUL` | Sports pavilion (46 docs) |
+| `26/00067/HFUL` | Householder roof/rear extension (29 docs) |
+| `S/4629/18/FL` | Older (2018) South Cambs hybrid (210 docs) |
+| `26/03623/HFUL` | Single-storey front extension (9 docs) |
+| `26/0937/TTPO` | Tree works (6 docs) |
+| `26/1078/TTCA` | Tree works + tree photo (6 docs) |
+| `26/03455/ADV` | Advertisement (12 docs) |
+| `24/04593/NMA1` | Non-material amendment (11 docs) |
+| `26/01599/CONDF` | Discharge of condition — thin, no visuals (10 docs) |
+| `26/03475/LBC` | Listed building consent, air source heat pumps (21 docs) |
+
+Workflow:
 
 ```bash
 npm ci && npm ci --prefix ui
@@ -292,8 +390,15 @@ curl -X POST localhost:3000/api/download -H 'content-type: application/json' \
 curl localhost:3000/api/queue           # downloads run sequentially, 5s apart
 ```
 
-A spread across shapes is ideal: householder, minor/major full, outline → reserved matters,
-discharge of conditions, LBC, tree, advertisement, amendment — especially the hard cases.
+**This sandbox note:** the Playwright browser needs an extracted dependency tree and a
+fontconfig file, or Chromium crashes on navigation (`libglib-2.0.so.0` missing, then a Skia
+`SkFontMgr_FontConfigInterface` FATAL). The working environment was:
+
+```bash
+export LD_LIBRARY_PATH="/tmp/pw-deps/lib/x86_64-linux-gnu:/tmp/pw-deps/usr/lib/x86_64-linux-gnu:/tmp/pw-deps/usr/lib/x86_64-linux-gnu/dri:/tmp/pw-deps/usr/lib/x86_64-linux-gnu/gio/modules"
+# /tmp/pb/fonts.conf contains <dir>/tmp/pw-deps/usr/share/fonts</dir> + a writable cachedir
+export FONTCONFIG_FILE=/tmp/pb/fonts.conf
+```
 
 ## Resuming in a new session
 
@@ -302,8 +407,8 @@ discharge of conditions, LBC, tree, advertisement, amendment — especially the 
    `git branch --show-current` / `git log`.
 3. Confirm the **locked decisions** above are still intended; this plan is malleable — update
    this doc before diverging.
-4. Ground in real data: obtain references, run the [sample workflow](#grounding-sample-applications),
-   and inspect the actual PDFs (title blocks, vector vs raster, scans) before finalising scoring
-   heuristics.
-5. Start at **Build order** step 1 (renderer spike), unless a later slice is already in progress.
+4. Samples are already downloaded in `downloads/cambridge/` (gitignored) — see
+   [Grounding](#grounding-sample-applications) for the list. Re-download with the scraper if the
+   directory is gone.
+5. Build order step 1 (renderer spike) is **done**; continue at **Build order** step 2.
 6. Where this doc and the code disagree, update the doc — it should not silently rot.
