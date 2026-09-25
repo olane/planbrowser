@@ -19,6 +19,7 @@ A tool to search for and download documents for Cambridgeshire planning applicat
 - **Per-application sync** via an icon on every application card (including on the Archived page) that shows queued/syncing state and doubles as a retry on failure
 - **Activity feed** showing what changed each time a synced application was re-scraped (new documents, status changes, new comments, etc.)
 - **Saved searches** on the search page: save a postcode/radius/filter combination and re-run it later. Each saved search remembers when it was last run and which applications that run returned, so freshly-appeared results are highlighted as new.
+- **Application insights** (Overview tab): a deterministic, on-demand summary of what's proposed — key points, extracted metrics (dwellings, storeys, floorspace, …) and neighbour comment sentiment — alongside a gallery of the most relevant images, plans, elevations, sections and renders found inside the application's documents. Generation is cached per application; see [docs/insights.md](docs/insights.md).
 
 ## Requirements
 
@@ -174,6 +175,9 @@ To smoke-test the desktop build locally before tagging, run `npm run electron:di
 | PATCH  | `/api/documents`         | Set `starred`/`note` on a document (body: `reference`, `filename`, optional `authority`, `starred`, `note`) |
 | GET    | `/api/applications/:ref` | Get metadata for a single application (optional `?authority=` to disambiguate) |
 | GET    | `/api/applications/:ref/documents/search` | Search one application's documents by content (`?q=` query, optional `?authority=`). Returns matching documents with a highlighted context snippet |
+| GET    | `/api/applications/:ref/insights` | Get cached insights (summary + most relevant images/plans/renders), or `{ status: 'none' \| 'running' }` |
+| POST   | `/api/applications/:ref/insights` | Start generating insights in the background; poll the GET above until `status: 'ready'` (optional `authority` in body) |
+| GET    | `/api/applications/:ref/insights/images/:file` | Serve a generated insight thumbnail |
 | GET    | `/api/feed`            | List the activity feed (changes detected on re-sync) |
 | GET    | `/api/saved-searches`  | List saved searches |
 | POST   | `/api/saved-searches`  | Save a search (body: `postcode`, `radius`, optional `filters`) |

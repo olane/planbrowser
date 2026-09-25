@@ -98,6 +98,9 @@
       <div :class="$style.tabsWrap">
         <div :class="$style.tabBar">
           <nav :class="$style.tabs" aria-label="Tabs">
+            <button @click="activeTab = 'overview'" :class="[tabClass('overview'), $style.tab]">
+              Overview
+            </button>
             <button v-if="keyDocs.length > 0" @click="activeTab = 'key-documents'" :class="[tabClass('key-documents'), $style.tab]">
               Key Documents ({{ keyDocs.length }})
             </button>
@@ -117,6 +120,55 @@
         </div>
 
         <div :class="$style.tabContent">
+          <div v-show="activeTab === 'overview'">
+            <div v-if="insightsStatus === 'loading'" :class="$style.muted">Loading insights…</div>
+            <div v-else-if="insightsStatus === 'error'">
+              <p :class="$style.errorText">{{ insightsError }}</p>
+              <button @click="generateInsights" :class="[ui.btn, ui.btnOutline]">Retry</button>
+            </div>
+            <div v-else-if="insightsStatus === 'running'" :class="$style.insightsRunning">
+              <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+              Generating insights — this can take a minute for large applications.
+            </div>
+            <div v-else-if="insightsStatus === 'none'">
+              <p :class="$style.muted">No insights have been generated for this application yet.</p>
+              <button @click="generateInsights" :class="[ui.btn, ui.btnOutline]">Generate insights</button>
+            </div>
+            <template v-else-if="insights">
+              <div :class="$style.insightsSummary">
+                <p :class="$style.insightsHeadline">{{ insights.summary.headline }}</p>
+                <div v-if="Object.keys(insights.summary.metrics).length" :class="$style.metricChips">
+                  <span v-for="(value, key) in insights.summary.metrics" :key="key" :class="$style.metricChip">
+                    <span :class="$style.metricKey">{{ key }}</span> {{ value }}
+                  </span>
+                </div>
+                <ul v-if="insights.summary.points.length" :class="$style.insightPoints">
+                  <li v-for="point in insights.summary.points" :key="point">{{ point }}</li>
+                </ul>
+                <p v-if="insights.comments.total > 0" :class="$style.commentTally">
+                  Comments: {{ insights.comments.support }} support ·
+                  {{ insights.comments.object }} object ·
+                  {{ insights.comments.neutral }} neutral
+                  ({{ insights.comments.total }} total)
+                </p>
+                <button @click="generateInsights" :class="[$style.regenerateButton, ui.btn, ui.btnOutline]">Regenerate</button>
+              </div>
+
+              <div v-if="insights.images.length" :class="$style.insightsGrid">
+                <figure v-for="image in insights.images" :key="image.id" :class="$style.insightFigure">
+                  <a :href="api.documentUrl(app.reference, app.authorityId, image.localFilename)" target="_blank" rel="noopener" :class="$style.insightLink">
+                    <img :src="api.insightImageUrl(app.reference, app.authorityId, image.imageFile)" :alt="image.label" loading="lazy" :class="$style.insightImage" />
+                  </a>
+                  <figcaption :class="$style.insightCaption">
+                    <span :class="$style.insightKind">{{ image.kind }}</span>
+                    <span :class="$style.insightLabel">{{ image.label }}</span>
+                  </figcaption>
+                </figure>
+              </div>
+              <p v-else :class="$style.muted">No relevant images, plans or renders were found.</p>
+            </template>
+          </div>
+
           <div v-show="activeTab === 'key-documents'" v-if="keyDocs.length > 0">
             <DocumentList :docs="keyDocs" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged" />
           </div>
@@ -223,9 +275,9 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, useCssModule } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, useCssModule } from 'vue'
 import { timeAgo, progressText, isKeyDocument } from '../utils'
-import type { ApplicationMeta, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet } from '../../../src/types.js'
+import type { ApplicationMeta, ApplicationInsights, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet } from '../../../src/types.js'
 import * as api from '../api'
 import DocumentList from '../components/DocumentList.vue'
 import Highlight from '../components/Highlight.vue'
@@ -239,6 +291,12 @@ const refParam = computed(() => route.params.ref as string)
 const app = ref<ApplicationMeta | null>(null)
 const loading = ref(true)
 const syncError = ref('')
+
+// Automatically-derived summary and the most relevant images/plans/renders.
+const insights = ref<ApplicationInsights | null>(null)
+const insightsStatus = ref<'loading' | 'none' | 'running' | 'ready' | 'error'>('loading')
+const insightsError = ref('')
+let insightsPoll: ReturnType<typeof setTimeout> | null = null
 const syncMessage = ref('')
 const error = ref('')
 const syncing = ref(false)
@@ -527,6 +585,66 @@ const loadComments = async () => {
 }
 
 let fetchInFlight = false
+const stopInsightsPoll = () => {
+  if (insightsPoll) {
+    clearTimeout(insightsPoll)
+    insightsPoll = null
+  }
+}
+
+const scheduleInsightsPoll = () => {
+  stopInsightsPoll()
+  insightsPoll = setTimeout(() => { void loadInsights() }, 3000)
+}
+
+const loadInsights = async () => {
+  if (!app.value) return
+  const reference = app.value.reference
+  try {
+    const res = await api.fetchInsights(reference, app.value.authorityId)
+    if (refParam.value !== reference) return
+    if (res.status === 'ready' && res.insights) {
+      insights.value = res.insights
+      insightsStatus.value = 'ready'
+      insightsError.value = ''
+    } else if (res.status === 'running') {
+      insightsStatus.value = 'running'
+      scheduleInsightsPoll()
+    } else if (res.status === 'error') {
+      insightsStatus.value = 'error'
+      insightsError.value = res.error || 'Failed to generate insights'
+    } else {
+      insightsStatus.value = 'none'
+      insightsError.value = ''
+    }
+  } catch (e: any) {
+    if (refParam.value !== reference) return
+    insightsError.value = e.message || 'Failed to load insights'
+    insightsStatus.value = 'none'
+  }
+}
+
+const generateInsights = async () => {
+  if (!app.value) return
+  const reference = app.value.reference
+  insightsError.value = ''
+  insightsStatus.value = 'running'
+  try {
+    const res = await api.startInsights(reference, app.value.authorityId)
+    if (refParam.value !== reference) return
+    if (res.status === 'ready' && res.insights) {
+      insights.value = res.insights
+      insightsStatus.value = 'ready'
+      return
+    }
+    scheduleInsightsPoll()
+  } catch (e: any) {
+    if (refParam.value !== reference) return
+    insightsError.value = e.message || 'Failed to generate insights'
+    insightsStatus.value = 'error'
+  }
+}
+
 const fetchApp = async () => {
   const refNow = refParam.value
   if (fetchInFlight || !refNow) return
@@ -538,8 +656,14 @@ const fetchApp = async () => {
     error.value = ''
     document.title = `PlanBrowser | ${fresh.reference}`
     await loadComments()
-    if (firstLoad && keyDocs.value.length > 0 && activeTab.value === 'documents') {
-      activeTab.value = 'key-documents'
+    await loadInsights()
+    if (firstLoad) {
+      activeTab.value =
+        insightsStatus.value === 'ready'
+          ? 'overview'
+          : keyDocs.value.length > 0
+            ? 'key-documents'
+            : 'documents'
     }
   } catch (e: any) {
     console.error(e)
@@ -572,7 +696,11 @@ watch(queueItems, async () => {
 // viewer, reset and load the new reference rather than showing stale content.
 watch(refParam, () => {
   if (!refParam.value) return
+  stopInsightsPoll()
   app.value = null
+  insights.value = null
+  insightsStatus.value = 'loading'
+  insightsError.value = ''
   error.value = ''
   commentsList.value = []
   commentsError.value = ''
@@ -582,6 +710,10 @@ watch(refParam, () => {
   lastWasDownloading = false
   loading.value = true
   fetchApp()
+})
+
+onUnmounted(() => {
+  stopInsightsPoll()
 })
 
 onMounted(async () => {
@@ -1166,5 +1298,125 @@ onMounted(async () => {
   font-size: 0.875rem;
   line-height: 1.25rem;
   color: var(--color-red-600);
+}
+
+.insightsRunning {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-gray-600);
+  font-size: 0.875rem;
+}
+
+.insightsSummary {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.insightsHeadline {
+  max-width: 70ch;
+  color: var(--color-gray-800);
+}
+
+.metricChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.75rem;
+}
+
+.metricChip {
+  display: inline-flex;
+  gap: 0.3rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-md);
+  background: var(--color-blue-50);
+  border: 1px solid var(--color-blue-200);
+  color: var(--color-blue-700);
+  font-size: 0.75rem;
+}
+
+.metricKey {
+  color: var(--color-blue-500);
+}
+
+.insightPoints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.75rem;
+  list-style: none;
+  padding: 0;
+}
+
+.insightPoints li {
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-md);
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
+  font-size: 0.75rem;
+}
+
+.commentTally {
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-gray-600);
+}
+
+.regenerateButton {
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.insightsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.insightFigure {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.insightLink {
+  display: block;
+}
+
+.insightImage {
+  width: 100%;
+  height: 180px;
+  object-fit: contain;
+  background: var(--color-gray-50);
+}
+
+.insightCaption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.insightKind {
+  align-self: flex-start;
+  padding: 0.0625rem 0.375rem;
+  border-radius: var(--radius-md);
+  background: var(--color-gray-100);
+  color: var(--color-gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.625rem;
+}
+
+.insightLabel {
+  color: var(--color-gray-800);
+  line-height: 1.2;
 }
 </style>
