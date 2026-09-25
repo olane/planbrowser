@@ -4,7 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import { saveApplicationMeta, saveComments, getApplicationDir, getApplication } from './storage.js';
 import { recordActivity } from './userData.js';
-import { parseWfsCoords, coordsToLocation, escapeXml } from './geometry.js';
+import { parseWfsGeometry, geometryToLocation, escapeXml } from './geometry.js';
 import { diffMeta } from './diff.js';
 import { _electron as electron, chromium } from 'playwright';
 import type { Page } from 'playwright';
@@ -394,6 +394,10 @@ export async function scrapeLocation(page: Page, reference: string, authority: A
   const filterXml = `<Filter xmlns="http://www.opengis.net/ogc"><PropertyIsEqualTo><PropertyName>${authority.map.refField}</PropertyName><Literal>${escapeXml(reference)}</Literal></PropertyIsEqualTo></Filter>`;
   const filterEnc = encodeURIComponent(filterXml);
 
+  // Layers are configured points-first (the cheap, near-universal geometry), so
+  // keep scanning after a point hit until a polygon layer answers. A point-only
+  // result is only returned if no layer yields an area.
+  let pointFallback: ApplicationLocation | null = null;
   for (const layer of authority.map.layers) {
     try {
       const url = `${authority.map.wfsUrl}?map=pa&service=WFS&version=2.0.0&accessType=PA&request=GetFeature&typename=${layer}&filter=${filterEnc}`;
@@ -401,14 +405,23 @@ export async function scrapeLocation(page: Page, reference: string, authority: A
         const res = await fetch(u, { credentials: 'include' });
         return await res.text();
       }, url);
-      const coords = parseWfsCoords(xml);
-      if (coords.length > 0) {
-        console.log(`Found location geometry (${coords.length} points) for ${reference}`);
-        return { ...coordsToLocation(coords), source: 'wfs' };
+      const location = geometryToLocation(parseWfsGeometry(xml));
+      if (!location) continue;
+      if (location.polygons && location.polygons.length > 0) {
+        const points = location.polygons.reduce((n, poly) => n + poly.reduce((m, ring) => m + ring.length, 0), 0);
+        console.log(`Found site boundary (${location.polygons.length} polygon(s), ${points} points) for ${reference}`);
+        return { ...location, source: 'wfs' };
+      }
+      if (!pointFallback) {
+        console.log(`Found location point for ${reference} (layer ${layer}); still looking for a boundary`);
+        pointFallback = location;
       }
     } catch (err) {
       console.error(`Failed to scrape ${layer} geometry for ${reference}:`, err);
     }
+  }
+  if (pointFallback) {
+    return { ...pointFallback, source: 'wfs' };
   }
   console.log(`No location geometry found for ${reference}`);
   return null;
