@@ -9,7 +9,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch, useCssModule } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { ApplicationMeta } from '../../../src/types.js'
+import type { ApplicationMeta, ApplicationLocation } from '../../../src/types.js'
 import { statusLabel, statusBadgeTone } from '../utils'
 import MapLegend from './MapLegend.vue'
 import { useMapColorMode } from '../useMapColorMode'
@@ -37,6 +37,11 @@ const styles = useCssModule()
 const mapEl = ref<HTMLDivElement | null>(null)
 let map: L.Map | null = null
 let markerLayer: L.LayerGroup | null = null
+let polygonLayer: L.LayerGroup | null = null
+
+// Convert stored [lon, lat] rings into Leaflet's [lat, lon] nested arrays.
+const locationPolygons = (loc: ApplicationLocation): L.LatLngExpression[][][] =>
+  (loc.polygons ?? []).map((poly) => poly.map((ring) => ring.map(([lon, lat]) => [lat, lon] as [number, number])))
 
 const escapeHtml = (s: string) => s.replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;' }[c] as string))
 
@@ -93,23 +98,51 @@ const popupContent = (app: ApplicationMeta) => {
 }
 
 let markersByRef = new Map<string, L.Marker>()
+let polygonsByRef = new Map<string, L.Polygon[]>()
+
+const polygonStyle = (app: ApplicationMeta): L.PathOptions => {
+  const color = markerFill(app)
+  return { color, weight: 2, fillColor: color, fillOpacity: 0.2 }
+}
+
+const bindInteractions = (layer: L.Layer, app: ApplicationMeta) => {
+  layer.bindPopup(popupContent(app))
+  layer.on('popupopen', (e: L.PopupEvent) => {
+    const link = e.popup.getElement()?.querySelector('.open-link') as HTMLElement | null
+    if (link) link.onclick = () => emit('select', app.reference)
+  })
+}
 
 const renderMarkers = () => {
-  if (!map || !markerLayer) return
+  if (!map || !markerLayer || !polygonLayer) return
   markerLayer.clearLayers()
+  polygonLayer.clearLayers()
   markersByRef = new Map()
+  polygonsByRef = new Map()
   const apps = locatedApps()
   if (apps.length === 0) return
-  const bounds = L.latLngBounds(apps.map((a) => [a.location!.center.lat, a.location!.center.lon] as L.LatLngExpression))
+  const bounds = L.latLngBounds([])
   for (const app of apps) {
     const loc = app.location!
+    bounds.extend([loc.center.lat, loc.center.lon] as L.LatLngExpression)
+    const polygons = locationPolygons(loc)
+    if (polygons.length > 0) {
+      for (const rings of polygons) {
+        const polygon = L.polygon(rings, polygonStyle(app)).addTo(polygonLayer)
+        bindInteractions(polygon, app)
+        for (const ring of rings) {
+          for (const latlng of ring) bounds.extend(latlng)
+        }
+        const list = polygonsByRef.get(app.reference) ?? []
+        list.push(polygon)
+        polygonsByRef.set(app.reference, list)
+      }
+      // The boundary supersedes the centroid pin; the polygon carries the popup.
+      continue
+    }
     const marker = L.marker([loc.center.lat, loc.center.lon], { icon: pinIcon(markerFill(app)) }).addTo(markerLayer)
     markersByRef.set(app.reference, marker)
-    marker.bindPopup(popupContent(app))
-    marker.on('popupopen', (e) => {
-      const link = e.popup.getElement()?.querySelector('.open-link') as HTMLElement | null
-      if (link) link.onclick = () => emit('select', app.reference)
-    })
+    bindInteractions(marker, app)
   }
   map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 })
 }
@@ -121,6 +154,7 @@ onMounted(() => {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map)
+  polygonLayer = L.layerGroup().addTo(map)
   markerLayer = L.layerGroup().addTo(map)
   renderMarkers()
 })
@@ -131,6 +165,10 @@ watch(() => props.apps, () => renderMarkers(), { deep: true })
 watch(colorMode, () => {
   for (const app of locatedApps()) {
     markersByRef.get(app.reference)?.setIcon(pinIcon(markerFill(app)))
+    const color = markerFill(app)
+    for (const polygon of polygonsByRef.get(app.reference) ?? []) {
+      polygon.setStyle({ color, fillColor: color })
+    }
   }
 })
 
@@ -138,6 +176,7 @@ onBeforeUnmount(() => {
   map?.remove()
   map = null
   markerLayer = null
+  polygonLayer = null
 })
 </script>
 
