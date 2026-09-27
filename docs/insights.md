@@ -1,8 +1,9 @@
 # Application insights: design plan
 
-> **Status: implemented (first cut); later slices planned.** This is a *living* document — expected
-> to change as real data comes in and as later slices land. It exists so a future session can
-> resume with full context. See [Resuming in a new session](#resuming-in-a-new-session) at the end.
+> **Status: implemented and iterated on real samples.** The sections below are the original design;
+> the three **Feedback round** sections record what changed in practice after first use (detection
+> fixes, coverage + deep scan, Design & Access Statement handling). Current strategy is **v10**.
+> Start with [Resuming in a new session](#resuming-in-a-new-session) at the end.
 
 The goal is to automatically surface, for a downloaded planning application:
 
@@ -408,12 +409,13 @@ scripts/insights-eval.mjs     # recall/leak check against the expectations
    `insights/page-text.json` (mtime/size invalidation); rendered thumbnails are content-addressed
    PNGs under `insights/`.
 3. ~~**Image discovery**~~ — **first cut done**: see implementation status below.
-4. ~~**Summary**~~ — **first cut done**: description-derived headline, keyword points, regex
-   metrics and comment tally.
+4. ~~**Summary**~~ — **done**: description headline (hidden when it repeats the viewer's
+   description), an "Included" document inventory, regex metrics and comment tally.
 5. **Hardening (remaining)** — Electron/Docker packaging verification, revision collapse across
-   differently-named docs, tuning from the report, OCR only if scans appear.
+   differently-named docs, mining a proposal paragraph from the DAS/planning statement, OCR only
+   if scans appear. The evaluation harness (`npm run insights:eval`) is now in place for tuning.
 
-## Implementation status (first cut)
+## Implementation status
 
 - `src/insights/keywords.ts` — kind/name priors; suppresses admin files (forms, fee letters).
 - `src/insights/pixels.ts` — `analysePixels`/`analysePagePng` visual stats, dominant-colour
@@ -595,13 +597,24 @@ export FONTCONFIG_FILE=/tmp/pb/fonts.conf
 
 ## Resuming in a new session
 
-1. Read this document first; it is the source of truth for the plan and decisions.
-2. The work lives on the `docs/insights-plan` branch (this doc was added there). Check
-   `git branch --show-current` / `git log`.
-3. Confirm the **locked decisions** above are still intended; this plan is malleable — update
-   this doc before diverging.
-4. Samples are not in the repo (`downloads/` is gitignored). Run `npm run samples` to fetch
-   (cache-first) whatever is missing — see
-   [Grounding](#grounding-sample-applications) for the list and manifest.
-5. Build order step 1 (renderer spike) is **done**; continue at **Build order** step 2.
-6. Where this doc and the code disagree, update the doc — it should not silently rot.
+1. Read this document first; it is the source of truth for the plan and decisions. The
+   **Feedback round 1/2/3** sections near the top supersede the original design where they differ.
+2. The work lives on the `docs/insights-plan` branch, in **PR #8**
+   (`https://github.com/olane/planbrowser/pull/8`). Check `git branch --show-current` / `git log`.
+3. **Current state (2026-09):** heuristic strategy **v10**; `INSIGHTS_VERSION` 2. The pipeline
+   renders selected pages, persists curated `images` plus the full `found` set and `coverage`, and
+   supports a user-triggered `deep` scan. The UI offers Highlights/All-found, page deep links and
+   generation progress. The DAS is prioritised and its mixed-layout figures are picked up.
+4. Samples are not in the repo (`downloads/` is gitignored). `npm run samples` fetches what is
+   missing (cache-first) from `scripts/samples.json`.
+5. **Evaluate, don't guess:** `npm run insights:eval` runs the heuristic over the curated
+   `scripts/samples.expected.json` and reports recall/leaks (non-zero on a miss). The contact sheet
+   `npm run insights:report` is still useful for eyeballing new samples.
+6. **Strategy changes:** bump `STRATEGY.version` in `generate.ts` (old caches auto-refresh in the
+   background). Bump `INSIGHTS_VERSION` only for a schema change (it makes old caches read as
+   absent, i.e. a manual regenerate).
+7. **Likely next work:** hardening (Electron/Docker packaging, revision collapse across
+   differently-named docs), mining a proposal paragraph from the DAS/planning statement for the
+   Overview summary (still just metrics + document inventory), OCR only if scans appear, and
+   extending `samples.expected.json` as more samples are inspected.
+8. Where this doc and the code disagree, update the doc — it should not silently rot.
