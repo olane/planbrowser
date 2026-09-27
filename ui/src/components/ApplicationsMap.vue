@@ -105,12 +105,21 @@ const polygonStyle = (app: ApplicationMeta): L.PathOptions => {
   return { color, weight: 2, fillColor: color, fillOpacity: 0.2 }
 }
 
+const setPolygonHighlight = (app: ApplicationMeta, highlighted: boolean) => {
+  for (const polygon of polygonsByRef.get(app.reference) ?? []) {
+    polygon.setStyle(highlighted ? { ...polygonStyle(app), weight: 5, fillOpacity: 0.35 } : polygonStyle(app))
+    if (highlighted) polygon.bringToFront()
+  }
+}
+
 const bindInteractions = (layer: L.Layer, app: ApplicationMeta) => {
   layer.bindPopup(popupContent(app))
   layer.on('popupopen', (e: L.PopupEvent) => {
     const link = e.popup.getElement()?.querySelector('.open-link') as HTMLElement | null
     if (link) link.onclick = () => emit('select', app.reference)
+    setPolygonHighlight(app, true)
   })
+  layer.on('popupclose', () => setPolygonHighlight(app, false))
 }
 
 const renderMarkers = () => {
