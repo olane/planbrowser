@@ -125,21 +125,17 @@ const renderMarkers = () => {
   for (const app of apps) {
     const loc = app.location!
     bounds.extend([loc.center.lat, loc.center.lon] as L.LatLngExpression)
-    const polygons = locationPolygons(loc)
-    if (polygons.length > 0) {
-      for (const rings of polygons) {
-        const polygon = L.polygon(rings, polygonStyle(app)).addTo(polygonLayer)
-        bindInteractions(polygon, app)
-        for (const ring of rings) {
-          for (const latlng of ring) bounds.extend(latlng)
-        }
-        const list = polygonsByRef.get(app.reference) ?? []
-        list.push(polygon)
-        polygonsByRef.set(app.reference, list)
+    for (const rings of locationPolygons(loc)) {
+      const polygon = L.polygon(rings, polygonStyle(app)).addTo(polygonLayer)
+      bindInteractions(polygon, app)
+      for (const ring of rings) {
+        for (const latlng of ring) bounds.extend(latlng)
       }
-      // The boundary supersedes the centroid pin; the polygon carries the popup.
-      continue
+      const list = polygonsByRef.get(app.reference) ?? []
+      list.push(polygon)
+      polygonsByRef.set(app.reference, list)
     }
+    // Always keep the pin too: it carries the status/type colour coding.
     const marker = L.marker([loc.center.lat, loc.center.lon], { icon: pinIcon(markerFill(app)) }).addTo(markerLayer)
     markersByRef.set(app.reference, marker)
     bindInteractions(marker, app)
