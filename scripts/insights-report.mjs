@@ -65,6 +65,13 @@ for (const { meta, dir } of apps) {
   const byKind = {};
   for (const img of insights.images) byKind[img.kind] = (byKind[img.kind] ?? 0) + 1;
   console.log(`  ${insights.images.length} images in ${(ms / 1000).toFixed(0)}s  ${JSON.stringify(byKind)}`);
+  if (insights.coverage) {
+    const cov = insights.coverage;
+    console.log(
+      `  coverage: partial=${cov.partial} docs=${cov.documentsAnalysed}/${cov.documentsTotal} ` +
+        cov.images.map((c) => `${c.kind} ${c.selected}/${c.available}`).join('  ')
+    );
+  }
   console.log(`  metrics: ${JSON.stringify(insights.summary.metrics)}`);
   console.log(`  comments: ${JSON.stringify(insights.comments)}`);
   for (const img of insights.images) {

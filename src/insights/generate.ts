@@ -6,7 +6,7 @@ import { resolveApplicationMeta } from '../storage.js';
 import { documentPrior, type DocumentPrior } from './keywords.js';
 import { classifyPage } from './classify.js';
 import { analysePagePng } from './pixels.js';
-import { selectImages } from './select.js';
+import { selectImages, KIND_ORDER } from './select.js';
 import { buildSummary, tallyComments } from './summary.js';
 import { extractPageTexts, isPdf, openPdf, renderPageToPng, closePdf } from './render.js';
 import {
@@ -19,7 +19,7 @@ import {
   writePageText
 } from './cache.js';
 
-export const STRATEGY = { id: 'heuristic', version: 2 };
+export const STRATEGY = { id: 'heuristic', version: 3 };
 
 // Cost caps: rendering is the expensive step. We rank documents by prior and
 // only render up to these limits, then cache everything.
@@ -160,14 +160,15 @@ export async function generateInsights(
   const pageTextCache = readPageText(dir);
   let pageTextDirty = false;
 
-  const ranked = docs
+  const rankedAll = docs
     .map((doc) => ({ doc, prior: documentPrior(doc) }))
     .filter((x) => x.prior.score > 0)
-    .sort((a, b) => b.prior.score - a.prior.score)
-    .slice(0, MAX_DOCS);
+    .sort((a, b) => b.prior.score - a.prior.score);
+  const ranked = rankedAll.slice(0, MAX_DOCS);
 
   const candidates: InsightImage[] = [];
   let pagesRendered = 0;
+  let documentsAnalysed = 0;
 
   for (const { doc, prior } of ranked) {
     if (pagesRendered >= MAX_PAGES) break;
@@ -187,6 +188,7 @@ export async function generateInsights(
     } catch {
       continue;
     }
+    documentsAnalysed++;
 
     try {
       let texts: string[];
@@ -247,7 +249,8 @@ export async function generateInsights(
 
   if (pageTextDirty) writePageText(dir, pageTextCache);
 
-  const images = selectImages(candidates);
+  const selection = selectImages(candidates);
+  const images = selection.images;
   // Drop thumbnails that were rendered but not selected (and any stale ones
   // from earlier runs), so the insights directory tracks insights.json.
   pruneAssets(dir, new Set(images.map((image) => image.imageFile)));
@@ -259,7 +262,19 @@ export async function generateInsights(
     source,
     summary: buildSummary(meta, docs),
     images,
-    comments: tallyComments(readComments(dir))
+    comments: tallyComments(readComments(dir)),
+    coverage: {
+      images: KIND_ORDER.map((kind) => ({
+        kind,
+        selected: images.filter((image) => image.kind === kind).length,
+        available: selection.available[kind]
+      })).filter((entry) => entry.available > 0),
+      // The render/document budget cuts candidates off the top, so "available"
+      // is only a lower bound when either cap was reached.
+      partial: pagesRendered >= MAX_PAGES || rankedAll.length > MAX_DOCS,
+      documentsAnalysed,
+      documentsTotal: docs.length
+    }
   };
   writeInsights(dir, insights);
   return insights;

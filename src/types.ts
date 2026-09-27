@@ -262,6 +262,25 @@ export interface InsightCommentTally {
   total: number;
 }
 
+export interface InsightKindSummary {
+  kind: InsightImageKind;
+  // How many images of this kind were kept in `images`.
+  selected: number;
+  // Distinct candidates of this kind after dedupe but before the selection caps,
+  // i.e. how many were "found" in the analysed pages.
+  available: number;
+}
+
+export interface InsightsCoverage {
+  // Per-kind selected vs available, so the UI can say "showing 6 of 11".
+  images: InsightKindSummary[];
+  // True when analysis itself was capped (document/page render budget), so even
+  // `available` is a lower bound and not every document was scanned.
+  partial: boolean;
+  documentsAnalysed: number;
+  documentsTotal: number;
+}
+
 export interface ApplicationInsights {
   version: number;
   // Which strategy produced this, so changing strategy/version invalidates the
@@ -273,4 +292,6 @@ export interface ApplicationInsights {
   summary: InsightSummary;
   images: InsightImage[];
   comments: InsightCommentTally;
+  // Optional for caches written before coverage tracking.
+  coverage?: InsightsCoverage;
 }

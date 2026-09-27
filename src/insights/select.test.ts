@@ -19,7 +19,7 @@ function image(overrides: Partial<InsightImage>): InsightImage {
 
 describe('selectImages', () => {
   it('dedupes by content id, keeping the highest score', () => {
-    const out = selectImages([image({ score: 10 }), image({ score: 90 })]);
+    const out = selectImages([image({ score: 10 }), image({ score: 90 })]).images;
     expect(out).toHaveLength(1);
     expect(out[0]?.score).toBe(90);
   });
@@ -29,7 +29,9 @@ describe('selectImages', () => {
       image({ id: i.toString(16).padStart(40, '0'), kind: 'plan', localFilename: `plan-${i}.pdf`, score: 100 - i })
     );
     const out = selectImages(candidates, { caps: { plan: 3 } });
-    expect(out.filter((i) => i.kind === 'plan')).toHaveLength(3);
+    expect(out.images.filter((i) => i.kind === 'plan')).toHaveLength(3);
+    expect(out.available.plan).toBe(20);
+    expect(out.truncated).toBe(true);
   });
 
   it('collapses near-duplicate pages by perceptual hash', () => {
@@ -37,7 +39,7 @@ describe('selectImages', () => {
       image({ id: '1'.repeat(40), kind: 'photo', score: 90, phash: 'aaaaaaaaaaaaaaaa' }),
       image({ id: '2'.repeat(40), kind: 'photo', score: 80, phash: 'aaaaaaaaaaaaaaab' }),
       image({ id: '3'.repeat(40), kind: 'photo', score: 70, phash: '0123456789abcdef' })
-    ]);
+    ]).images;
     expect(out).toHaveLength(2);
     expect(out.map((i) => i.id)).toContain('1'.repeat(40));
   });
@@ -47,7 +49,9 @@ describe('selectImages', () => {
       image({ id: i.toString(16).padStart(40, '0'), kind: 'render', localFilename: `render-${i}.pdf`, score: 100 - i })
     );
     const out = selectImages(candidates, { total: 5 });
-    expect(out).toHaveLength(5);
+    expect(out.images).toHaveLength(5);
+    expect(out.available.render).toBe(20);
+    expect(out.truncated).toBe(true);
   });
 
   it('limits images from a single document', () => {
@@ -55,7 +59,8 @@ describe('selectImages', () => {
       image({ id: i.toString(16).padStart(40, '0'), kind: 'plan', localFilename: 'one.pdf', score: 100 - i })
     );
     const out = selectImages(candidates, { maxPerDocument: 2 });
-    expect(out).toHaveLength(2);
+    expect(out.images).toHaveLength(2);
+    expect(out.available.plan).toBe(6);
   });
 
   it('orders renders before plans before other', () => {
@@ -63,7 +68,13 @@ describe('selectImages', () => {
       image({ id: '1'.repeat(40), kind: 'other', score: 200 }),
       image({ id: '2'.repeat(40), kind: 'render', score: 10 }),
       image({ id: '3'.repeat(40), kind: 'plan', score: 10 })
-    ]);
+    ]).images;
     expect(out.map((i) => i.kind)).toEqual(['render', 'plan', 'other']);
+  });
+
+  it('reports nothing truncated when every candidate fits', () => {
+    const out = selectImages([image({ id: '1'.repeat(40), kind: 'plan', score: 10 })]);
+    expect(out.available.plan).toBe(1);
+    expect(out.truncated).toBe(false);
   });
 });

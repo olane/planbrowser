@@ -157,10 +157,21 @@
                 <button @click="generateInsights" :class="[$style.regenerateButton, ui.btn, ui.btnOutline]">Regenerate</button>
               </div>
 
+              <p v-if="insights.coverage?.partial" :class="$style.insightsPartial">
+                Analysis was capped after {{ insights.coverage.documentsAnalysed }} of
+                {{ insights.coverage.documentsTotal }} documents, so some documents weren't
+                scanned.
+                <button @click="activeTab = 'documents'" :class="$style.insightLinkButton">Browse all documents</button>
+              </p>
+
               <div v-if="insights.images.length" :class="$style.insightGroups">
                 <section v-for="group in insightGroups" :key="group.kind" :class="$style.insightGroup">
                   <h3 :class="$style.insightGroupTitle">
                     {{ group.label }} <span :class="$style.insightGroupCount">{{ group.images.length }}</span>
+                    <span v-if="group.truncated" :class="$style.insightGroupNote">
+                      showing {{ group.selected }} of {{ group.available }} found ·
+                      <button @click="activeTab = 'documents'" :class="$style.insightLinkButton">view documents</button>
+                    </span>
                   </h3>
                   <div :class="$style.insightsGrid">
                     <figure v-for="image in group.images" :key="image.id" :class="$style.insightFigure">
@@ -373,9 +384,12 @@ const KIND_LABELS: Record<string, string> = {
 const kindLabel = (kind: string) => KIND_LABELS[kind] ?? kind
 
 // Group the flat insights image list by kind for a clearer gallery, in a stable
-// order rather than by score.
+// order rather than by score. `available` is how many of that kind were found
+// before the selection caps, so we can flag when the group is truncated.
 const insightGroups = computed(() => {
   if (!insights.value) return []
+  const availableByKind: Record<string, number> = {}
+  for (const entry of insights.value.coverage?.images ?? []) availableByKind[entry.kind] = entry.available
   const groups = new Map<string, ApplicationInsights['images']>()
   for (const image of insights.value.images) {
     const list = groups.get(image.kind) ?? []
@@ -383,7 +397,17 @@ const insightGroups = computed(() => {
     groups.set(image.kind, list)
   }
   return [...groups.entries()]
-    .map(([kind, images]) => ({ kind, label: KIND_GROUP_LABELS[kind] ?? kind, images }))
+    .map(([kind, images]) => {
+      const available = availableByKind[kind] ?? images.length
+      return {
+        kind,
+        label: KIND_GROUP_LABELS[kind] ?? kind,
+        images,
+        selected: images.length,
+        available,
+        truncated: images.length < available
+      }
+    })
     .sort((a, b) => KIND_GROUP_ORDER.indexOf(a.kind) - KIND_GROUP_ORDER.indexOf(b.kind))
 })
 
@@ -1461,6 +1485,32 @@ onMounted(async () => {
   color: var(--color-gray-600);
   font-size: 0.75rem;
   font-weight: 400;
+}
+
+.insightGroupNote {
+  color: var(--color-gray-500);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.insightsPartial {
+  margin: 0 0 1.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-amber-200, #fde68a);
+  border-radius: var(--radius-md);
+  background: var(--color-amber-50, #fffbeb);
+  color: var(--color-gray-700);
+  font-size: 0.8125rem;
+}
+
+.insightLinkButton {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-blue-600);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .insightsGrid {

@@ -268,7 +268,7 @@ advertisement, LBC, amendment and conditions examples). See
 ## Feedback round 1 (2026-09) — changes
 
 First real use of the first cut surfaced concrete failures. Fixes landed against the same
-heuristic (strategy version bumped to **2**, insights cache to **2**):
+heuristic (strategy now at **3**, insights cache format at **2**):
 
 - **Text/prose pages were being promoted to drawings.** A document whose *name* mentions
   "masterplan" (e.g. a Design & Access appendix) forced every one of its pages to `plan`,
@@ -289,10 +289,30 @@ heuristic (strategy version bumped to **2**, insights cache to **2**):
 - **Page links and thumbnail size** — the gallery caption shows the source page and links with
   `#page=N` so the browser PDF viewer opens at that page; thumbnails are larger and grouped by
   kind with friendly labels.
+- **The gallery looked exhaustive but wasn't.** It is a ranked top-K: only a render budget of
+  documents/pages is analysed, then caps and dedupe apply. `selectImages` now returns per-kind
+  `selected` vs `available` counts and a `truncated` flag, persisted as
+  `ApplicationInsights.coverage`. The UI shows "showing 6 of 13 found" per group and a banner when
+  the analysis itself was capped, with a link into the Documents tab — see
+  [Coverage and truncation](#coverage-and-truncation).
 
 Verified on `25/04484/FUL` (cover/prose noise gone; 14 relevant drawings) and `26/01872/OUT`
 (4 duplicate covers collapsed to none; 8 parameter/site plans + 1 location plan + 6 AVR views
 instead of 17 mixed images).
+
+### Coverage and truncation
+
+Because the pipeline is capped, "found" means *found in the analysed pages*. `coverage` records:
+
+- `images[]`: per kind, `selected` (in the gallery) and `available` (distinct candidates after
+  dedupe, before caps).
+- `partial`: true when the render/document budget was reached (`MAX_PAGES`/`MAX_DOCS`), so even
+  `available` is a lower bound and some documents were never scanned.
+- `documentsAnalysed` / `documentsTotal`.
+
+The UI surfaces this rather than implying completeness: a per-group "showing N of M found" note
+when caps cut a kind, and an application-level banner when `partial`. Both link to the Documents
+tab, which is the unfiltered ground truth.
 
 ## Renderer choice
 
