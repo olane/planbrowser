@@ -16,7 +16,9 @@ const root = process.env.DOWNLOADS_DIR
   ? path.resolve(process.env.DOWNLOADS_DIR)
   : path.join(process.cwd(), 'downloads');
 
-const filters = process.argv.slice(2);
+const args = process.argv.slice(2);
+const deep = args.includes('--deep');
+const filters = args.filter((a) => a !== '--deep');
 
 function findApplications() {
   const apps = [];
@@ -51,7 +53,7 @@ for (const { meta, dir } of apps) {
   process.stdout.write(`\n=== ${meta.reference} (${meta.documents?.length ?? 0} docs) ...\n`);
   let insights;
   try {
-    insights = await generateInsights(meta.reference, meta.authorityId, { force: true });
+    insights = await generateInsights(meta.reference, meta.authorityId, { force: true, deep });
   } catch (err) {
     console.log(`  ERROR: ${err.message}`);
     continue;
@@ -64,7 +66,11 @@ for (const { meta, dir } of apps) {
 
   const byKind = {};
   for (const img of insights.images) byKind[img.kind] = (byKind[img.kind] ?? 0) + 1;
-  console.log(`  ${insights.images.length} images in ${(ms / 1000).toFixed(0)}s  ${JSON.stringify(byKind)}`);
+  const foundCount = insights.found?.length ?? insights.images.length;
+  console.log(
+    `  ${insights.images.length} highlights / ${foundCount} found in ${(ms / 1000).toFixed(0)}s  ` +
+      `[${insights.depth ?? 'quick'}]  ${JSON.stringify(byKind)}`
+  );
   if (insights.coverage) {
     const cov = insights.coverage;
     console.log(

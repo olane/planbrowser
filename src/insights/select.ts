@@ -29,6 +29,9 @@ export interface SelectOptions {
 
 export interface SelectionResult {
   images: InsightImage[];
+  // Every distinct candidate after dedupe but before the selection caps, ordered
+  // for display. Lets callers offer a "show all found" view.
+  deduped: InsightImage[];
   // Distinct candidates per kind after dedupe but before the selection caps, so
   // callers can report "showing N of M" rather than implying the list is complete.
   available: Record<InsightImageKind, number>;
@@ -91,5 +94,13 @@ export function selectImages(candidates: InsightImage[], opts: SelectOptions = {
   chosen.sort(
     (a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || b.score - a.score
   );
-  return { images: chosen, available, truncated: chosen.length < deduped.length };
+  const dedupedSorted = [...deduped].sort(
+    (a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || b.score - a.score
+  );
+  return {
+    images: chosen,
+    deduped: dedupedSorted,
+    available,
+    truncated: chosen.length < deduped.length
+  };
 }

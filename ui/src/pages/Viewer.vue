@@ -124,7 +124,7 @@
             <div v-if="insightsStatus === 'loading'" :class="$style.muted">Loading insights…</div>
             <div v-else-if="insightsStatus === 'error'">
               <p :class="$style.errorText">{{ insightsError }}</p>
-              <button @click="generateInsights" :class="[ui.btn, ui.btnOutline]">Retry</button>
+              <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Retry</button>
             </div>
             <div v-else-if="insightsStatus === 'running'" :class="$style.insightsRunning">
               <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
@@ -132,7 +132,7 @@
             </div>
             <div v-else-if="insightsStatus === 'none'">
               <p :class="$style.muted">No insights have been generated for this application yet.</p>
-              <button @click="generateInsights" :class="[ui.btn, ui.btnOutline]">Generate insights</button>
+              <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Generate insights</button>
             </div>
             <template v-else-if="insights">
               <div :class="$style.insightsSummary">
@@ -154,17 +154,47 @@
                   {{ insights.comments.neutral }} neutral
                   ({{ insights.comments.total }} total)
                 </p>
-                <button @click="generateInsights" :class="[$style.regenerateButton, ui.btn, ui.btnOutline]">Regenerate</button>
+                <div :class="$style.insightsActions">
+                  <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Regenerate</button>
+                  <button
+                    v-if="insights.depth !== 'deep'"
+                    @click="scanMoreInsights()"
+                    :class="[ui.btn, ui.btnOutline]"
+                    title="Scan more documents and pages — slower, but finds more visuals"
+                  >
+                    Scan more documents
+                  </button>
+                </div>
               </div>
 
               <p v-if="insights.coverage?.partial" :class="$style.insightsPartial">
                 Analysis was capped after {{ insights.coverage.documentsAnalysed }} of
                 {{ insights.coverage.documentsTotal }} documents, so some documents weren't
                 scanned.
+                <button v-if="insights.depth !== 'deep'" @click="scanMoreInsights()" :class="$style.insightLinkButton">Scan more</button>
                 <button @click="activeTab = 'documents'" :class="$style.insightLinkButton">Browse all documents</button>
               </p>
 
-              <div v-if="insights.images.length" :class="$style.insightGroups">
+              <div v-if="insights.found?.length" :class="$style.insightToolbar">
+                <div :class="$style.insightViewToggle">
+                  <button
+                    :class="[insightView === 'highlights' ? $style.viewActive : $style.viewInactive]"
+                    @click="insightView = 'highlights'"
+                  >
+                    Highlights ({{ insights.images.length }})
+                  </button>
+                  <button
+                    v-if="hasAllFound"
+                    :class="[insightView === 'all' ? $style.viewActive : $style.viewInactive]"
+                    @click="insightView = 'all'"
+                  >
+                    All found ({{ insights.found.length }})
+                  </button>
+                </div>
+                <span v-if="insights.depth === 'deep'" :class="$style.insightDepth">Deep scan</span>
+              </div>
+
+              <div v-if="insightSourceImages.length" :class="$style.insightGroups">
                 <section v-for="group in insightGroups" :key="group.kind" :class="$style.insightGroup">
                   <h3 :class="$style.insightGroupTitle">
                     {{ group.label }} <span :class="$style.insightGroupCount">{{ group.images.length }}</span>
@@ -320,6 +350,8 @@ const syncError = ref('')
 const insights = ref<ApplicationInsights | null>(null)
 const insightsStatus = ref<'loading' | 'none' | 'running' | 'ready' | 'error'>('loading')
 const insightsError = ref('')
+// 'highlights' = the curated, capped set; 'all' = every distinct candidate found.
+const insightView = ref<'highlights' | 'all'>('highlights')
 let insightsPoll: ReturnType<typeof setTimeout> | null = null
 const syncMessage = ref('')
 const error = ref('')
@@ -383,6 +415,14 @@ const KIND_LABELS: Record<string, string> = {
 }
 const kindLabel = (kind: string) => KIND_LABELS[kind] ?? kind
 
+// The image list currently on show: the curated highlights, or every distinct
+// candidate found before the selection caps.
+const insightSourceImages = computed<ApplicationInsights['images']>(() => {
+  if (!insights.value) return []
+  if (insightView.value === 'all') return insights.value.found ?? insights.value.images
+  return insights.value.images
+})
+
 // Group the flat insights image list by kind for a clearer gallery, in a stable
 // order rather than by score. `available` is how many of that kind were found
 // before the selection caps, so we can flag when the group is truncated.
@@ -391,7 +431,7 @@ const insightGroups = computed(() => {
   const availableByKind: Record<string, number> = {}
   for (const entry of insights.value.coverage?.images ?? []) availableByKind[entry.kind] = entry.available
   const groups = new Map<string, ApplicationInsights['images']>()
-  for (const image of insights.value.images) {
+  for (const image of insightSourceImages.value) {
     const list = groups.get(image.kind) ?? []
     list.push(image)
     groups.set(image.kind, list)
@@ -410,6 +450,8 @@ const insightGroups = computed(() => {
     })
     .sort((a, b) => KIND_GROUP_ORDER.indexOf(a.kind) - KIND_GROUP_ORDER.indexOf(b.kind))
 })
+
+const hasAllFound = computed(() => (insights.value?.found?.length ?? 0) > (insights.value?.images.length ?? 0))
 
 // "13 Jan 2026 - Drawings - PROPOSED SITE PLAN.pdf" -> "PROPOSED SITE PLAN"
 const shortDocumentName = (name: string) =>
@@ -701,13 +743,13 @@ const loadInsights = async () => {
   }
 }
 
-const generateInsights = async () => {
+const generateInsights = async (deep = false) => {
   if (!app.value) return
   const reference = app.value.reference
   insightsError.value = ''
   insightsStatus.value = 'running'
   try {
-    const res = await api.startInsights(reference, app.value.authorityId)
+    const res = await api.startInsights(reference, app.value.authorityId, deep)
     if (refParam.value !== reference) return
     if (res.status === 'ready' && res.insights) {
       insights.value = res.insights
@@ -720,6 +762,11 @@ const generateInsights = async () => {
     insightsError.value = e.message || 'Failed to generate insights'
     insightsStatus.value = 'error'
   }
+}
+
+const scanMoreInsights = () => {
+  insightView.value = 'highlights'
+  return generateInsights(true)
 }
 
 const fetchApp = async () => {
@@ -778,6 +825,7 @@ watch(refParam, () => {
   insights.value = null
   insightsStatus.value = 'loading'
   insightsError.value = ''
+  insightView.value = 'highlights'
   error.value = ''
   commentsList.value = []
   commentsError.value = ''
@@ -1461,6 +1509,59 @@ onMounted(async () => {
   font-size: 0.75rem;
   padding-top: 0.25rem;
   padding-bottom: 0.25rem;
+}
+
+.insightsActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.insightsActions button {
+  font-size: 0.75rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.insightToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.insightViewToggle {
+  display: inline-flex;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.insightViewToggle button {
+  padding: 0.25rem 0.75rem;
+  border: none;
+  background: #fff;
+  color: var(--color-gray-600);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.viewActive {
+  background: var(--color-blue-600) !important;
+  color: #fff !important;
+}
+
+.viewInactive:hover {
+  background: var(--color-gray-100);
+}
+
+.insightDepth {
+  color: var(--color-gray-500);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .insightGroups {

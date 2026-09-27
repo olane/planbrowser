@@ -290,7 +290,13 @@ export interface ApplicationInsights {
   // mtime/size of each source document at generation time, for cache validity.
   source: { filename: string; mtimeMs: number; size: number }[];
   summary: InsightSummary;
+  // Curated highlights (capped, diverse) shown by default.
   images: InsightImage[];
+  // Every distinct candidate found in the analysed pages, before the selection
+  // caps. Lets the UI offer "show all found". Optional for older caches.
+  found?: InsightImage[];
+  // Which budget the generation used. `deep` scans more documents/pages.
+  depth?: 'quick' | 'deep';
   comments: InsightCommentTally;
   // Optional for caches written before coverage tracking.
   coverage?: InsightsCoverage;

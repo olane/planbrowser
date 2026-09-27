@@ -201,11 +201,11 @@ export async function fetchInsights(reference: string, authorityId?: string): Pr
   return res.json();
 }
 
-export async function startInsights(reference: string, authorityId?: string): Promise<InsightsResponse> {
+export async function startInsights(reference: string, authorityId?: string, deep = false): Promise<InsightsResponse> {
   const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/insights`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ authority: authorityId })
+    body: JSON.stringify({ authority: authorityId, deep })
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

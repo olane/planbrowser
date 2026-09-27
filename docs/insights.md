@@ -306,9 +306,11 @@ Because the pipeline is capped, "found" means *found in the analysed pages*. `co
 
 - `images[]`: per kind, `selected` (in the gallery) and `available` (distinct candidates after
   dedupe, before caps).
+- `found`: the full ranked candidate list that `images` is a subset of; the Overview's "All found"
+  view shows it.
 - `partial`: true when the render/document budget was reached (`MAX_PAGES`/`MAX_DOCS`), so even
   `available` is a lower bound and some documents were never scanned.
-- `documentsAnalysed` / `documentsTotal`.
+- `documentsAnalysed` / `documentsTotal`, and `depth` (`quick` or `deep`).
 
 The UI surfaces this rather than implying completeness: a per-group "showing N of M found" note
 when caps cut a kind, and an application-level banner when `partial`. Both link to the Documents
@@ -319,7 +321,7 @@ tab, which is the unfiltered ground truth.
 `26/01872/OUT` surfaced a structural miss: the best renders (Design & Access Statement CGIs) were
 never even reached. The render budget was consumed by photo appendices (`MAX_PAGES_PER_DOC = 8`
 each) and pages were sampled **sequentially**, so a render on page 12 of a 29-page statement was
-missed even when the document was opened. Strategy now at **8**.
+missed even when the document was opened. Strategy now at **9**.
 
 - **Budget rebalance.** `MAX_PAGES_PER_DOC` dropped 8 → 4, and `photo` documents are capped by a
   global `PHOTO_PAGE_QUOTA` (8) so visual-impact appendices cannot monopolise the budget. Visual
@@ -336,9 +338,16 @@ missed even when the document was opened. Strategy now at **8**.
   render/photo pages, so a render that mentions existing trees is not buried.
 - **Progress logging.** `[insights]` logs each document's chosen pages and accepted image count,
   plus a final summary (`log.ts`), silenced under tests.
+- **Show all found, and scan deeper (user-triggered).** The pipeline now persists `found` — every
+  distinct candidate after dedupe, before the selection caps — and keeps its thumbnails. The
+  Overview has a **Highlights / All found** toggle, so the caps are visible rather than implied.
+  A **Scan more documents** button re-runs generation with a deep budget
+  (`DEEP_MAX_DOCS`/`DEEP_MAX_PAGES` 120, 6–10 pages/doc, 1500 pre-scan pages) and persists
+  `depth: 'deep'`. Automatic refreshes preserve the depth of the cached result.
 
 Result on `26/01872/OUT`: the gallery went from 0 to 5 renders, including the hero "Opening the
-Park to the City" CGI (DAS p12), alongside 8 plans, 1 location plan and the AVR views.
+Park to the City" CGI (DAS p12), alongside 8 plans, 1 location plan and the AVR views. A deep scan
+of the same app finds 38 candidates (vs 26) across 22 documents (vs 15).
 
 ## Renderer choice
 

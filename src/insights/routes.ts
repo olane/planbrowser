@@ -44,7 +44,7 @@ insightsRouter.post('/api/applications/:ref/insights', (req, res) => {
     res.status(404).json({ error: 'Application not found' });
     return;
   }
-  startInsights(req.params.ref, authorityId, { force: true });
+  startInsights(req.params.ref, authorityId, { force: true, deep: req.body?.deep === true });
   res.json({ status: 'running' });
 });
 

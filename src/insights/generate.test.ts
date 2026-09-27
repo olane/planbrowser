@@ -50,6 +50,15 @@ describe('generateInsights caching', () => {
     const second = await generateInsights(REFERENCE);
     expect(second?.generatedAt).not.toBe(first?.generatedAt);
   });
+
+  it('records the depth and the found candidate set', async () => {
+    const quick = await generateInsights(REFERENCE);
+    expect(quick?.depth).toBe('quick');
+    expect(Array.isArray(quick?.found)).toBe(true);
+
+    const deep = await generateInsights(REFERENCE, undefined, { force: true, deep: true });
+    expect(deep?.depth).toBe('deep');
+  });
 });
 
 describe('getInsightsState', () => {

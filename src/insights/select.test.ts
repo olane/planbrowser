@@ -77,4 +77,13 @@ describe('selectImages', () => {
     expect(out.available.plan).toBe(1);
     expect(out.truncated).toBe(false);
   });
+
+  it('returns every deduped candidate in `deduped`, not just the chosen ones', () => {
+    const candidates = Array.from({ length: 5 }, (_, i) =>
+      image({ id: i.toString(16).padStart(40, '0'), kind: 'plan', localFilename: `plan-${i}.pdf`, score: 100 - i })
+    );
+    const out = selectImages(candidates, { caps: { plan: 2 }, maxPerDocument: 5 });
+    expect(out.images).toHaveLength(2);
+    expect(out.deduped).toHaveLength(5);
+  });
 });

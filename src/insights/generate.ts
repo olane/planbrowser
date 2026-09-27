@@ -21,7 +21,7 @@ import {
   writePageText
 } from './cache.js';
 
-export const STRATEGY = { id: 'heuristic', version: 8 };
+export const STRATEGY = { id: 'heuristic', version: 9 };
 
 // Cost caps: analysis is expensive. Documents are ranked by prior, then pages
 // are chosen per document (a cheap embedded-image pre-scan finds renders that
@@ -47,8 +47,44 @@ const VISUAL_DOC_RE =
   /design and access|\bfigures?\b|visual|landscape|render|photomontage|montage|illustrat|master ?plan|image|photo|cgi\b|3d |exhibition|street scene|palette|aerial/i;
 const THUMB_WIDTH = 1400;
 
+// Deep scan: user-triggered, much more expensive, scans more documents and pages.
+const DEEP_MAX_DOCS = 120;
+const DEEP_MAX_PAGES = 120;
+
+interface Budget {
+  maxDocs: number;
+  maxPages: number;
+  pagesPerDoc: number;
+  visualDocPages: number;
+  photoPageQuota: number;
+  prescanPagesPerDoc: number;
+  prescanPagesTotal: number;
+}
+
+const QUICK_BUDGET: Budget = {
+  maxDocs: MAX_DOCS,
+  maxPages: MAX_PAGES,
+  pagesPerDoc: MAX_PAGES_PER_DOC,
+  visualDocPages: VISUAL_DOC_PAGES,
+  photoPageQuota: PHOTO_PAGE_QUOTA,
+  prescanPagesPerDoc: PRESCAN_PAGES_PER_DOC,
+  prescanPagesTotal: PRESCAN_PAGES_TOTAL
+};
+
+const DEEP_BUDGET: Budget = {
+  maxDocs: DEEP_MAX_DOCS,
+  maxPages: DEEP_MAX_PAGES,
+  pagesPerDoc: 6,
+  visualDocPages: 10,
+  photoPageQuota: 16,
+  prescanPagesPerDoc: 80,
+  prescanPagesTotal: 1500
+};
+
 export interface GenerateOptions {
   force?: boolean;
+  // Scan more documents and pages. Slower, but finds visuals a quick run misses.
+  deep?: boolean;
 }
 
 export type InsightsStatus = 'none' | 'running' | 'ready' | 'error';
@@ -118,7 +154,8 @@ export function getInsightsState(reference: string, authorityId?: string): Insig
   if (previousError) return { status: 'error', error: previousError };
 
   if (cached) {
-    startInsights(reference, authorityId, { force: false });
+    // Preserve the depth of the cached result on an automatic refresh.
+    startInsights(reference, authorityId, { force: false, deep: cached.depth === 'deep' });
     return { status: 'running' };
   }
   return { status: 'none' };
@@ -163,10 +200,11 @@ function readComments(dir: string): Comment[] {
 async function scanDocumentPages(
   pdf: PdfDocument,
   texts: string[],
+  maxPages: number,
   takeBudget: () => boolean
 ): Promise<ScannedPage[]> {
   const pageCount = Math.max(texts.length, 1);
-  const limit = Math.min(pageCount, PRESCAN_PAGES_PER_DOC);
+  const limit = Math.min(pageCount, maxPages);
   const scanned: ScannedPage[] = [];
   for (let page = 1; page <= limit; page++) {
     const text = texts[page - 1] ?? '';
@@ -193,10 +231,12 @@ export async function generateInsights(
 
   const docs = documentList(meta);
   const source = sourceSignature(dir, docs);
+  const depth: 'quick' | 'deep' = opts.deep ? 'deep' : 'quick';
+  const budget = opts.deep ? DEEP_BUDGET : QUICK_BUDGET;
 
   if (!opts.force) {
     const cached = readInsights(dir);
-    if (cached && sameStrategy(cached) && sameSource(cached.source, source)) {
+    if (cached && sameStrategy(cached) && sameSource(cached.source, source) && (cached.depth ?? 'quick') === depth) {
       return cached;
     }
   }
@@ -208,7 +248,7 @@ export async function generateInsights(
     .map((doc) => ({ doc, prior: documentPrior(doc) }))
     .filter((x) => x.prior.score > 0)
     .sort((a, b) => b.prior.score - a.prior.score);
-  const ranked = rankedAll.slice(0, MAX_DOCS);
+  const ranked = rankedAll.slice(0, budget.maxDocs);
 
   const candidates: InsightImage[] = [];
   let pagesRendered = 0;
@@ -217,21 +257,21 @@ export async function generateInsights(
   let prescanPages = 0;
   const startedAt = Date.now();
   const takePrescanBudget = (): boolean => {
-    if (prescanPages >= PRESCAN_PAGES_TOTAL) return false;
+    if (prescanPages >= budget.prescanPagesTotal) return false;
     prescanPages++;
     return true;
   };
 
-  insightsLog(`${reference}: ${docs.length} documents, analysing up to ${ranked.length}`);
+  insightsLog(`${reference}: ${docs.length} documents, ${depth} scan of up to ${ranked.length}`);
 
   for (const { doc, prior } of ranked) {
-    if (pagesRendered >= MAX_PAGES) break;
+    if (pagesRendered >= budget.maxPages) break;
     if (!isPdf(doc.localFilename)) continue;
 
     const isPhotoDoc = prior.kind === 'photo';
     // Visual-impact photo appendices add little once the photo budget is spent,
     // and would otherwise crowd out plans and renders.
-    if (isPhotoDoc && photoPagesRendered >= PHOTO_PAGE_QUOTA) continue;
+    if (isPhotoDoc && photoPagesRendered >= budget.photoPageQuota) continue;
 
     // Documents without a name keyword are only worth scanning if they look
     // visual at all; otherwise (transport/geo/environmental reports) they would
@@ -275,20 +315,22 @@ export async function generateInsights(
       // Known drawing/photo documents put their visual on the first page(s);
       // everything else is scanned for large embedded images so a render buried
       // in a statement is still found.
-      const scanned = prior.kind ? [] : await scanDocumentPages(pdf, texts, takePrescanBudget);
+      const scanned = prior.kind
+        ? []
+        : await scanDocumentPages(pdf, texts, budget.prescanPagesPerDoc, takePrescanBudget);
       const pages = selectDocumentPages(
         prior.kind,
         texts.length,
         scanned,
-        prior.kind ? MAX_PAGES_PER_DOC : VISUAL_DOC_PAGES
+        prior.kind ? budget.pagesPerDoc : budget.visualDocPages
       );
       if (pages.length === 0) continue;
 
       const renderedPages: number[] = [];
       let docImages = 0;
       for (const page of pages) {
-        if (pagesRendered >= MAX_PAGES) break;
-        if (isPhotoDoc && photoPagesRendered >= PHOTO_PAGE_QUOTA) break;
+        if (pagesRendered >= budget.maxPages) break;
+        if (isPhotoDoc && photoPagesRendered >= budget.photoPageQuota) break;
         // Budget on render *attempts*, not just accepted pages, so a document
         // full of non-visual pages cannot push us far past MAX_PAGES.
         pagesRendered++;
@@ -339,9 +381,10 @@ export async function generateInsights(
 
   const selection = selectImages(candidates);
   const images = selection.images;
-  // Drop thumbnails that were rendered but not selected (and any stale ones
-  // from earlier runs), so the insights directory tracks insights.json.
-  pruneAssets(dir, new Set(images.map((image) => image.imageFile)));
+  const found = selection.deduped;
+  // Keep every distinct candidate's thumbnail (not just the curated highlights)
+  // so the UI can offer "show all found"; stale/unreferenced assets are pruned.
+  pruneAssets(dir, new Set(found.map((image) => image.imageFile)));
 
   const insights: ApplicationInsights = {
     version: INSIGHTS_VERSION,
@@ -350,6 +393,8 @@ export async function generateInsights(
     source,
     summary: buildSummary(meta, docs),
     images,
+    found,
+    depth,
     comments: tallyComments(readComments(dir)),
     coverage: {
       images: KIND_ORDER.map((kind) => ({
@@ -360,16 +405,16 @@ export async function generateInsights(
       // The render/document/photo budget cuts candidates off, so "available" is
       // only a lower bound when any cap was reached.
       partial:
-        pagesRendered >= MAX_PAGES ||
-        rankedAll.length > MAX_DOCS ||
-        photoPagesRendered >= PHOTO_PAGE_QUOTA,
+        pagesRendered >= budget.maxPages ||
+        rankedAll.length > budget.maxDocs ||
+        photoPagesRendered >= budget.photoPageQuota,
       documentsAnalysed,
       documentsTotal: docs.length
     }
   };
   writeInsights(dir, insights);
   insightsLog(
-    `${reference}: done — ${images.length} images from ${documentsAnalysed} documents in ${((Date.now() - startedAt) / 1000).toFixed(0)}s`
+    `${reference}: done — ${images.length} highlights (${found.length} found) from ${documentsAnalysed} documents in ${((Date.now() - startedAt) / 1000).toFixed(0)}s`
   );
   return insights;
 }
