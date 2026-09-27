@@ -40,9 +40,17 @@ export interface AuthorityConfig {
 // the address postcode, so it is approximate (street/sector level at best).
 export type LocationSource = 'wfs' | 'postcode';
 
+// A polygon ring in WGS84 as [lon, lat] pairs. The first ring of a polygon is its
+// exterior boundary; any following rings are holes.
+export type LocationRing = Array<[number, number]>;
+export type LocationPolygon = LocationRing[];
+
 export interface ApplicationLocation {
   center: { lat: number; lon: number };
   bbox: { minLon: number; minLat: number; maxLon: number; maxLat: number };
+  // Real site boundaries, present only when the authority's WFS returned polygon
+  // geometry. Point-only locations (and postcode centroids) omit this.
+  polygons?: LocationPolygon[];
   source?: LocationSource;
 }
 
