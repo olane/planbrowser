@@ -24,7 +24,7 @@ export function extractDocId(urlOrName: string): string | undefined {
   return m?.[1];
 }
 
-export async function downloadDocuments(page: Page, download: DownloadFn, outDir: string, onProgress?: (message: string, current?: number, total?: number) => void, previousDocs?: DocumentMeta[], onCommitted?: (docs: DocumentMeta[]) => void): Promise<DocumentMeta[]> {
+export async function downloadDocuments(page: Page, download: DownloadFn, outDir: string, onProgress?: (message: string, current?: number, total?: number) => void, previousDocs?: DocumentMeta[], onCommitted?: (docs: DocumentMeta[]) => void, signal?: AbortSignal): Promise<DocumentMeta[]> {
   console.log('Navigating to Documents tab...');
   const docsTab = page.locator('#tab_documents');
   if (await docsTab.count() > 0) {
@@ -221,6 +221,7 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
 
   const CHUNK_SIZE = 25;
   for (let i = 0; i < bulkDownloadable.length; i += CHUNK_SIZE) {
+      if (signal?.aborted) throw new Error('Download cancelled');
       const chunk = bulkDownloadable.slice(i, i + CHUNK_SIZE);
       console.log(`Downloading bulk batch ${Math.floor(i/CHUNK_SIZE) + 1} with ${chunk.length} documents...`);
       
@@ -284,6 +285,7 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
   }
 
   for (const doc of individualDownloadable) {
+      if (signal?.aborted) throw new Error('Download cancelled');
       console.log(`Downloading individually: ${doc.baseName}`);
       try {
         const { filePath, filename } = await download(
@@ -533,7 +535,7 @@ export function resolvePortalUrl(currentUrl: string, hrefs: string[]): string {
   return first ?? currentUrl;
 }
 
-export async function downloadApplication(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID, onProgress?: (message: string, current?: number, total?: number) => void) {
+export async function downloadApplication(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID, onProgress?: (message: string, current?: number, total?: number) => void, signal?: AbortSignal) {
   const authority = getAuthority(authorityId);
   console.log(`Starting search for reference: ${reference} (authority: ${authority.id})`);
 
@@ -544,8 +546,31 @@ export async function downloadApplication(reference: string, authorityId: string
     fs.mkdirSync(outDir, { recursive: true });
   }
 
-  const { page, close, download } = await createPage();
-  
+  const pageHandle = await createPage();
+  const { page, download } = pageHandle;
+  // Make close idempotent: both the abort handler and the finally block may
+  // try to tear the browser down. Cache the underlying promise so a second
+  // caller awaits the same teardown instead of returning early.
+  let closePromise: Promise<void> | undefined;
+  const close = () => (closePromise ??= pageHandle.close().catch(() => {}));
+
+  const throwIfAborted = () => {
+    if (signal?.aborted) {
+      throw new Error('Download cancelled');
+    }
+  };
+
+  // Aborting tears down the browser, which makes the in-flight Playwright
+  // operation reject and unwinds through the try/finally below.
+  const onAbort = () => { void close(); };
+  if (signal) {
+    if (signal.aborted) {
+      await close();
+      throw new Error('Download cancelled');
+    }
+    signal.addEventListener('abort', onAbort, { once: true });
+  }
+
   try {
     await page.goto(`${authority.baseUrl}/search.do?action=advanced&searchType=Application`);
     
@@ -701,8 +726,10 @@ export async function downloadApplication(reference: string, authorityId: string
         persist();
       }
     } catch (err) {
+      if (signal?.aborted) throw err;
       console.error('Failed to scrape comments (continuing):', err);
     }
+    throwIfAborted();
 
     // Documents last — they are the largest and slowest part of a download.
     // Each file is written to disk as it arrives and metadata.json is re-saved
@@ -710,8 +737,9 @@ export async function downloadApplication(reference: string, authorityId: string
     meta.documents = await downloadDocuments(page, download, outDir, onProgress, previous?.documents, (docs) => {
       meta.documents = docs;
       persist();
-    });
+    }, signal);
     persist();
+    throwIfAborted();
 
     const { changes, message, newDocuments } = diffMeta(previous, meta);
     if (!previous || changes.length > 0) {
@@ -728,9 +756,13 @@ export async function downloadApplication(reference: string, authorityId: string
     return meta;
 
   } catch (err) {
+    if (signal?.aborted) {
+      throw new Error('Download cancelled');
+    }
     console.error('Error during execution:', err);
     throw err;
   } finally {
-    await close().catch(() => {});
+    signal?.removeEventListener('abort', onAbort);
+    await close();
   }
 }

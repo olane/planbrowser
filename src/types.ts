@@ -202,11 +202,12 @@ export interface QueueItem {
   id: string;
   reference: string;
   authorityId: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
   error?: string;
   enqueuedAt: string;
   startedAt?: string;
   completedAt?: string;
+  cancelledAt?: string;
   progress?: {
     message: string;
     current?: number;

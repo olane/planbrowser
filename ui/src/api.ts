@@ -96,6 +96,22 @@ export async function retryQueueItem(id: string): Promise<void> {
   }
 }
 
+export async function cancelQueueItem(id: string): Promise<void> {
+  const res = await fetch(`/api/queue/${encodeURIComponent(id)}/cancel`, { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to cancel download');
+  }
+}
+
+export async function requeueQueueItem(id: string): Promise<void> {
+  const res = await fetch(`/api/queue/${encodeURIComponent(id)}/requeue`, { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to re-queue download');
+  }
+}
+
 export async function setApplicationFlags(reference: string, flags: Partial<ApplicationFlags>, authority?: string): Promise<ApplicationFlags> {
   const res = await fetch(`/api/applications/${encodeURIComponent(reference)}`, {
     method: 'PATCH',
