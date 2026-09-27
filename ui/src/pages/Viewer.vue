@@ -168,11 +168,15 @@
               </div>
 
               <p v-if="insights.coverage?.partial" :class="$style.insightsPartial">
-                Analysis was capped after {{ insights.coverage.documentsAnalysed }} of
-                {{ insights.coverage.documentsTotal }} documents, so some documents weren't
-                scanned.
-                <button v-if="insights.depth !== 'deep'" @click="scanMoreInsights()" :class="$style.insightLinkButton">Scan more</button>
-                <button @click="activeTab = 'documents'" :class="$style.insightLinkButton">Browse all documents</button>
+                <span>
+                  Analysis was capped after {{ insights.coverage.documentsAnalysed }} of
+                  {{ insights.coverage.documentsTotal }} documents, so some documents weren't
+                  scanned.
+                </span>
+                <span :class="$style.insightsPartialActions">
+                  <button v-if="insights.depth !== 'deep'" @click="scanMoreInsights()" :class="$style.insightLinkButton">Scan more</button>
+                  <button @click="activeTab = 'documents'" :class="$style.insightLinkButton">Browse all documents</button>
+                </span>
               </p>
 
               <div v-if="insights.found?.length" :class="$style.insightToolbar">
@@ -1595,6 +1599,10 @@ onMounted(async () => {
 }
 
 .insightsPartial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem 1rem;
   margin: 0 0 1.5rem;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--color-amber-200, #fde68a);
@@ -1602,6 +1610,12 @@ onMounted(async () => {
   background: var(--color-amber-50, #fffbeb);
   color: var(--color-gray-700);
   font-size: 0.8125rem;
+}
+
+.insightsPartialActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .insightLinkButton {
