@@ -175,4 +175,25 @@ describe('classifyPage', () => {
     );
     expect(result.score).toBeGreaterThan(100);
   });
+
+  it('keeps a statement figure (large embedded image) that is not full-bleed', () => {
+    const figure = stats({ inkRatio: 0.35, colorfulness: 0.03, distinctColors: 80, dominantColorRatio: 0.6, grayscale: 0.8, edgeDensity: 0.1 });
+    const kept = classifyPage(
+      { documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' },
+      'Some body text describing the existing streetscape.',
+      figure,
+      { score: 6.5 },
+      { hasLargeImage: true }
+    );
+    expect(kept.kind).toBe('render');
+    expect(kept.score).toBeGreaterThan(0);
+
+    const dropped = classifyPage(
+      { documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' },
+      'Some body text describing the existing streetscape.',
+      figure,
+      { score: 6.5 }
+    );
+    expect(dropped.score).toBe(0);
+  });
 });

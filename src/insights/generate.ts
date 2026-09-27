@@ -3,11 +3,11 @@ import path from 'path';
 import crypto from 'crypto';
 import type { ApplicationInsights, Comment, DocumentMeta, InsightImage } from '../types.js';
 import { resolveApplicationMeta } from '../storage.js';
-import { documentPrior, normalise, type DocumentPrior } from './keywords.js';
+import { documentPrior, isDesignAndAccess, normalise, type DocumentPrior } from './keywords.js';
 import { classifyPage } from './classify.js';
 import { analysePagePng } from './pixels.js';
 import { selectImages, KIND_ORDER } from './select.js';
-import { selectDocumentPages, type ScannedPage } from './pages.js';
+import { selectDocumentPages, LARGE_IMAGE_AREA, type ScannedPage } from './pages.js';
 import { insightsLog } from './log.js';
 import { buildSummary, tallyComments } from './summary.js';
 import { analysePageImages, extractPageTexts, isPdf, openPdf, renderPageToPng, closePdf, type PdfDocument } from './render.js';
@@ -21,7 +21,7 @@ import {
   writePageText
 } from './cache.js';
 
-export const STRATEGY = { id: 'heuristic', version: 9 };
+export const STRATEGY = { id: 'heuristic', version: 10 };
 
 // Cost caps: analysis is expensive. Documents are ranked by prior, then pages
 // are chosen per document (a cheap embedded-image pre-scan finds renders that
@@ -32,15 +32,16 @@ const MAX_PAGES = 40;
 const MAX_PAGES_PER_DOC = 4;
 // Statement/appendix documents can hold many distinct renders spread across
 // their pages, so give them a little more room.
-const VISUAL_DOC_PAGES = 6;
+const VISUAL_DOC_PAGES = 8;
+// The Design & Access Statement is the closest thing to a human summary of the
+// scheme, but it mixes prose, plans, photos and renders, so scan it properly.
+const DAS_PAGES = 14;
 // Visual-impact photo appendices must not monopolise the render budget; cap the
 // total pages spent on `photo` documents and let the rest go to plans/renders.
 const PHOTO_PAGE_QUOTA = 8;
 // Bounds for the embedded-image pre-scan (it decodes images, so it is metered).
 const PRESCAN_PAGES_PER_DOC = 40;
-const PRESCAN_PAGES_TOTAL = 200;
-// Pages with more text than this are prose: skip the (decoding) image scan.
-const PRESCAN_TEXT_LIMIT = 1500;
+const PRESCAN_PAGES_TOTAL = 240;
 // Only pre-scan documents that plausibly hold visuals. Without this, long
 // transport/geo/environmental reports get scanned page-by-page for nothing.
 const VISUAL_DOC_RE =
@@ -56,6 +57,7 @@ interface Budget {
   maxPages: number;
   pagesPerDoc: number;
   visualDocPages: number;
+  dasPages: number;
   photoPageQuota: number;
   prescanPagesPerDoc: number;
   prescanPagesTotal: number;
@@ -66,6 +68,7 @@ const QUICK_BUDGET: Budget = {
   maxPages: MAX_PAGES,
   pagesPerDoc: MAX_PAGES_PER_DOC,
   visualDocPages: VISUAL_DOC_PAGES,
+  dasPages: DAS_PAGES,
   photoPageQuota: PHOTO_PAGE_QUOTA,
   prescanPagesPerDoc: PRESCAN_PAGES_PER_DOC,
   prescanPagesTotal: PRESCAN_PAGES_TOTAL
@@ -75,7 +78,8 @@ const DEEP_BUDGET: Budget = {
   maxDocs: DEEP_MAX_DOCS,
   maxPages: DEEP_MAX_PAGES,
   pagesPerDoc: 6,
-  visualDocPages: 10,
+  visualDocPages: 12,
+  dasPages: 20,
   photoPageQuota: 16,
   prescanPagesPerDoc: 80,
   prescanPagesTotal: 1500
@@ -195,8 +199,9 @@ function readComments(dir: string): Comment[] {
 }
 
 // Pre-scan a document's pages for the embedded-image signal without rasterising
-// them. Dense prose pages are skipped (a full-bleed render is not thousands of
-// characters of text). `takeBudget` meters decoded pages across the whole run.
+// them. Every page is checked (a statement mixes body text with figures, so
+// text length is not a safe filter); `takeBudget` meters decoded pages across
+// the whole run.
 async function scanDocumentPages(
   pdf: PdfDocument,
   texts: string[],
@@ -210,7 +215,7 @@ async function scanDocumentPages(
     const text = texts[page - 1] ?? '';
     let imageCount = 0;
     let largestImageArea = 0;
-    if (text.length <= PRESCAN_TEXT_LIMIT && takeBudget()) {
+    if (takeBudget()) {
       const stats = await analysePageImages(pdf, page);
       imageCount = stats.count;
       largestImageArea = stats.largestArea;
@@ -318,12 +323,12 @@ export async function generateInsights(
       const scanned = prior.kind
         ? []
         : await scanDocumentPages(pdf, texts, budget.prescanPagesPerDoc, takePrescanBudget);
-      const pages = selectDocumentPages(
-        prior.kind,
-        texts.length,
-        scanned,
-        prior.kind ? budget.pagesPerDoc : budget.visualDocPages
-      );
+      const pageCap = prior.kind
+        ? budget.pagesPerDoc
+        : isDesignAndAccess(doc)
+          ? budget.dasPages
+          : budget.visualDocPages;
+      const pages = selectDocumentPages(prior.kind, texts.length, scanned, pageCap);
       if (pages.length === 0) continue;
 
       const renderedPages: number[] = [];
@@ -349,7 +354,9 @@ export async function generateInsights(
         } catch {
           continue;
         }
-        const classification = classifyPage(doc, texts[page - 1] ?? '', stats, prior);
+        const pageScan = scanned.find((entry) => entry.page === page);
+        const hasLargeImage = (pageScan?.largestImageArea ?? 0) >= LARGE_IMAGE_AREA;
+        const classification = classifyPage(doc, texts[page - 1] ?? '', stats, prior, { hasLargeImage });
         if (classification.score <= 0) continue;
 
         const id = crypto.createHash('sha1').update(png).digest('hex');

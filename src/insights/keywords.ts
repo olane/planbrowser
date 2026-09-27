@@ -124,6 +124,15 @@ export function isSuperseded(doc: Pick<DocumentMeta, 'documentType' | 'descripti
   return /superseded/.test(normalise([doc.documentType, doc.description, doc.localFilename].join(' ')));
 }
 
+// The Design & Access Statement is usually the best single summary of a scheme
+// for a casual reader, so it is worth scanning and showing even when it is not
+// typed as a drawing.
+export function isDesignAndAccess(
+  doc: Pick<DocumentMeta, 'documentType' | 'description' | 'localFilename'>
+): boolean {
+  return /design (and|&) access/.test(normalise([doc.documentType, doc.description, doc.localFilename].join(' ')));
+}
+
 // A document-level prior used to choose which files to open first. Positive
 // means "likely to contain a visual worth showing"; comment/correspondence
 // documents are pushed down.
@@ -143,6 +152,10 @@ export function documentPrior(doc: Pick<DocumentMeta, 'documentType' | 'descript
   else if (/comment|correspondence|notification|attachment summary|officer/.test(type)) score -= 3;
 
   if (/render|visual|photomontage|cgi|artist impression|appendix|figure/.test(normalise(hay))) score += 2;
+
+  // Prioritise the Design & Access Statement regardless of how the portal typed
+  // it (it is sometimes filed under Drawings).
+  if (isDesignAndAccess(doc)) score += 5;
 
   // Administratively-named files (forms, fee letters, validation notices, …)
   // are almost never visual and otherwise ride the generic "Application

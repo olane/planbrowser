@@ -76,11 +76,19 @@ export function isProsePage(text: string, stats: PagePixelStats): boolean {
   return longLines >= 3 && stats.edgeDensity < 0.16;
 }
 
+export interface ClassifyOptions {
+  // True when the page carries a large embedded raster (from the pre-scan). A
+  // statement page can mix body text with a render/photo figure; this keeps such
+  // a page from being dismissed as prose.
+  hasLargeImage?: boolean;
+}
+
 export function classifyPage(
   doc: InsightDocument,
   text: string,
   stats: PagePixelStats,
-  prior: DocumentPrior
+  prior: DocumentPrior,
+  options: ClassifyOptions = {}
 ): PageClassification {
   const docType = normalise(doc.documentType || '');
   const docHay = normalise([doc.description, doc.documentType, doc.localFilename].join(' '));
@@ -105,7 +113,12 @@ export function classifyPage(
   if (isFlatGraphic(stats)) return { kind: 'other', score: 0, label: docLabel };
   const photographic = isPhotographic(stats);
   const fullBleed = isFullBleed(stats);
-  if (!photographic && !drawingType && prose) return { kind: 'other', score: 0, label: docLabel };
+  // A page is visual if it looks photographic or holds a large embedded image
+  // with real tonal content. The latter catches figures/texture in statements
+  // (a render or photo inset beside body copy), without letting flat decorative
+  // graphics through.
+  const visual = photographic || (options.hasLargeImage === true && stats.distinctColors >= 50);
+  if (!visual && !drawingType && prose) return { kind: 'other', score: 0, label: docLabel };
 
   let kind: InsightImageKind = keywordKind ?? 'other';
 
@@ -122,6 +135,10 @@ export function classifyPage(
     // An explicit plan/map/elevation/section keyword is kept even if the page is
     // photographic: a rendered elevation is still an elevation, and a coloured
     // site plan is still a plan.
+  } else if (visual && kind === 'other') {
+    // An embedded figure with no drawing keyword is a render (design visuals in
+    // a statement); a document that names photos/viewpoints is the exception.
+    kind = /photo|viewpoint|avr/.test(docHay) ? 'photo' : 'render';
   }
 
   const existing = /\bexisting\b/.test(docHay) || /\bexisting\b/.test(textHay);

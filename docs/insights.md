@@ -349,6 +349,26 @@ Result on `26/01872/OUT`: the gallery went from 0 to 5 renders, including the he
 Park to the City" CGI (DAS p12), alongside 8 plans, 1 location plan and the AVR views. A deep scan
 of the same app finds 38 candidates (vs 26) across 22 documents (vs 15).
 
+## Feedback round 3 (2026-09) — the Design & Access Statement
+
+`25/04484/FUL` pulled nothing from its Design & Access Statement even though it holds the site
+photos and the proposal photomontages. Two causes: the DAS is typed `Design and Access Statement`,
+so its pages were not treated as drawing-like; and its figures are **not full-bleed** (a render or
+photo inset beside body copy), so `isPhotographic` missed them. Strategy now at **10**.
+
+- **DAS prioritisation.** `documentPrior` gives a strong bonus (+5) to any document matching
+  "design and access" regardless of how the portal typed it, and `isDesignAndAccess` gives the DAS
+  its own, larger page budget (`DAS_PAGES`, 14 quick / 20 deep). The DAS is usually the closest
+  thing to a human summary of the scheme.
+- **Embedded-figure pages are visual.** `classifyPage` now takes `hasLargeImage` (from the
+  pre-scan) and treats such a page as visual when it has real tonal content
+  (`distinctColors >= 50`), even beside prose. This catches statement figures without letting flat
+  decorative graphics through, and the pre-scan no longer skips text-heavy pages (a statement mixes
+  body copy with its figures).
+
+Result on `25/04484/FUL`: the DAS now contributes 3 renders (the streetscape photos and the
+proposal photomontages); the app is at 16 highlights with nothing truncated.
+
 ## Renderer choice
 
 **First implementation: `unpdf` + `@napi-rs/canvas`.** Reuses the existing dependency, renders
