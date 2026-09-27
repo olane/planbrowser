@@ -68,7 +68,7 @@ function dedupe(candidates: InsightImage[]): InsightImage[] {
 export function selectImages(candidates: InsightImage[], opts: SelectOptions = {}): SelectionResult {
   const caps = { ...DEFAULT_KIND_CAPS, ...opts.caps };
   const total = opts.total ?? DEFAULT_TOTAL_CAP;
-  const maxPerDocument = opts.maxPerDocument ?? 3;
+  const maxPerDocument = opts.maxPerDocument ?? 4;
 
   const deduped = dedupe(candidates);
   const available = emptyCounts();

@@ -3,12 +3,14 @@ import path from 'path';
 import crypto from 'crypto';
 import type { ApplicationInsights, Comment, DocumentMeta, InsightImage } from '../types.js';
 import { resolveApplicationMeta } from '../storage.js';
-import { documentPrior, type DocumentPrior } from './keywords.js';
+import { documentPrior, normalise, type DocumentPrior } from './keywords.js';
 import { classifyPage } from './classify.js';
 import { analysePagePng } from './pixels.js';
 import { selectImages, KIND_ORDER } from './select.js';
+import { selectDocumentPages, type ScannedPage } from './pages.js';
+import { insightsLog } from './log.js';
 import { buildSummary, tallyComments } from './summary.js';
-import { extractPageTexts, isPdf, openPdf, renderPageToPng, closePdf } from './render.js';
+import { analysePageImages, extractPageTexts, isPdf, openPdf, renderPageToPng, closePdf, type PdfDocument } from './render.js';
 import {
   INSIGHTS_VERSION,
   pruneAssets,
@@ -19,13 +21,30 @@ import {
   writePageText
 } from './cache.js';
 
-export const STRATEGY = { id: 'heuristic', version: 3 };
+export const STRATEGY = { id: 'heuristic', version: 8 };
 
-// Cost caps: rendering is the expensive step. We rank documents by prior and
-// only render up to these limits, then cache everything.
+// Cost caps: analysis is expensive. Documents are ranked by prior, then pages
+// are chosen per document (a cheap embedded-image pre-scan finds renders that
+// sit deep inside a statement) and rendered until these limits are hit.
 const MAX_DOCS = 40;
-const MAX_PAGES = 36;
-const MAX_PAGES_PER_DOC = 8;
+const MAX_PAGES = 40;
+// Known drawing/photo documents carry their visual on the first page or two.
+const MAX_PAGES_PER_DOC = 4;
+// Statement/appendix documents can hold many distinct renders spread across
+// their pages, so give them a little more room.
+const VISUAL_DOC_PAGES = 6;
+// Visual-impact photo appendices must not monopolise the render budget; cap the
+// total pages spent on `photo` documents and let the rest go to plans/renders.
+const PHOTO_PAGE_QUOTA = 8;
+// Bounds for the embedded-image pre-scan (it decodes images, so it is metered).
+const PRESCAN_PAGES_PER_DOC = 40;
+const PRESCAN_PAGES_TOTAL = 200;
+// Pages with more text than this are prose: skip the (decoding) image scan.
+const PRESCAN_TEXT_LIMIT = 1500;
+// Only pre-scan documents that plausibly hold visuals. Without this, long
+// transport/geo/environmental reports get scanned page-by-page for nothing.
+const VISUAL_DOC_RE =
+  /design and access|\bfigures?\b|visual|landscape|render|photomontage|montage|illustrat|master ?plan|image|photo|cgi\b|3d |exhibition|street scene|palette|aerial/i;
 const THUMB_WIDTH = 1400;
 
 export interface GenerateOptions {
@@ -138,6 +157,31 @@ function readComments(dir: string): Comment[] {
   }
 }
 
+// Pre-scan a document's pages for the embedded-image signal without rasterising
+// them. Dense prose pages are skipped (a full-bleed render is not thousands of
+// characters of text). `takeBudget` meters decoded pages across the whole run.
+async function scanDocumentPages(
+  pdf: PdfDocument,
+  texts: string[],
+  takeBudget: () => boolean
+): Promise<ScannedPage[]> {
+  const pageCount = Math.max(texts.length, 1);
+  const limit = Math.min(pageCount, PRESCAN_PAGES_PER_DOC);
+  const scanned: ScannedPage[] = [];
+  for (let page = 1; page <= limit; page++) {
+    const text = texts[page - 1] ?? '';
+    let imageCount = 0;
+    let largestImageArea = 0;
+    if (text.length <= PRESCAN_TEXT_LIMIT && takeBudget()) {
+      const stats = await analysePageImages(pdf, page);
+      imageCount = stats.count;
+      largestImageArea = stats.largestArea;
+    }
+    scanned.push({ page, textLength: text.length, imageCount, largestImageArea });
+  }
+  return scanned;
+}
+
 export async function generateInsights(
   reference: string,
   authorityId?: string,
@@ -168,11 +212,34 @@ export async function generateInsights(
 
   const candidates: InsightImage[] = [];
   let pagesRendered = 0;
+  let photoPagesRendered = 0;
   let documentsAnalysed = 0;
+  let prescanPages = 0;
+  const startedAt = Date.now();
+  const takePrescanBudget = (): boolean => {
+    if (prescanPages >= PRESCAN_PAGES_TOTAL) return false;
+    prescanPages++;
+    return true;
+  };
+
+  insightsLog(`${reference}: ${docs.length} documents, analysing up to ${ranked.length}`);
 
   for (const { doc, prior } of ranked) {
     if (pagesRendered >= MAX_PAGES) break;
     if (!isPdf(doc.localFilename)) continue;
+
+    const isPhotoDoc = prior.kind === 'photo';
+    // Visual-impact photo appendices add little once the photo budget is spent,
+    // and would otherwise crowd out plans and renders.
+    if (isPhotoDoc && photoPagesRendered >= PHOTO_PAGE_QUOTA) continue;
+
+    // Documents without a name keyword are only worth scanning if they look
+    // visual at all; otherwise (transport/geo/environmental reports) they would
+    // be scanned page-by-page for nothing.
+    if (!prior.kind && !VISUAL_DOC_RE.test(normalise([doc.description, doc.documentType, doc.localFilename].filter(Boolean).join(' ')))) {
+      continue;
+    }
+
     const filePath = path.join(dir, doc.localFilename);
 
     let stat: fs.Stats;
@@ -205,12 +272,29 @@ export async function generateInsights(
         pageTextDirty = true;
       }
 
-      const pageCount = Math.max(texts.length, 1);
-      const budget = Math.min(MAX_PAGES_PER_DOC, MAX_PAGES - pagesRendered, pageCount);
-      for (let page = 1; page <= budget; page++) {
+      // Known drawing/photo documents put their visual on the first page(s);
+      // everything else is scanned for large embedded images so a render buried
+      // in a statement is still found.
+      const scanned = prior.kind ? [] : await scanDocumentPages(pdf, texts, takePrescanBudget);
+      const pages = selectDocumentPages(
+        prior.kind,
+        texts.length,
+        scanned,
+        prior.kind ? MAX_PAGES_PER_DOC : VISUAL_DOC_PAGES
+      );
+      if (pages.length === 0) continue;
+
+      const renderedPages: number[] = [];
+      let docImages = 0;
+      for (const page of pages) {
+        if (pagesRendered >= MAX_PAGES) break;
+        if (isPhotoDoc && photoPagesRendered >= PHOTO_PAGE_QUOTA) break;
         // Budget on render *attempts*, not just accepted pages, so a document
         // full of non-visual pages cannot push us far past MAX_PAGES.
         pagesRendered++;
+        if (isPhotoDoc) photoPagesRendered++;
+        renderedPages.push(page);
+
         let png: Buffer;
         try {
           png = await renderPageToPng(pdf, page, THUMB_WIDTH);
@@ -229,6 +313,7 @@ export async function generateInsights(
         const id = crypto.createHash('sha1').update(png).digest('hex');
         const imageFile = `${id}.png`;
         writeAsset(dir, imageFile, png);
+        docImages++;
         candidates.push({
           id,
           kind: classification.kind,
@@ -242,6 +327,9 @@ export async function generateInsights(
           phash: stats.phash
         });
       }
+      insightsLog(
+        `${reference}: ${doc.description || doc.localFilename} — pages [${renderedPages.join(', ')}] → ${docImages} image(s)`
+      );
     } finally {
       await closePdf(pdf).catch(() => {});
     }
@@ -269,13 +357,19 @@ export async function generateInsights(
         selected: images.filter((image) => image.kind === kind).length,
         available: selection.available[kind]
       })).filter((entry) => entry.available > 0),
-      // The render/document budget cuts candidates off the top, so "available"
-      // is only a lower bound when either cap was reached.
-      partial: pagesRendered >= MAX_PAGES || rankedAll.length > MAX_DOCS,
+      // The render/document/photo budget cuts candidates off, so "available" is
+      // only a lower bound when any cap was reached.
+      partial:
+        pagesRendered >= MAX_PAGES ||
+        rankedAll.length > MAX_DOCS ||
+        photoPagesRendered >= PHOTO_PAGE_QUOTA,
       documentsAnalysed,
       documentsTotal: docs.length
     }
   };
   writeInsights(dir, insights);
+  insightsLog(
+    `${reference}: done — ${images.length} images from ${documentsAnalysed} documents in ${((Date.now() - startedAt) / 1000).toFixed(0)}s`
+  );
   return insights;
 }

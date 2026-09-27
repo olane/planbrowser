@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classifyPage, isFlatGraphic, isPhotographic, isProsePage, titleFromText } from './classify.js';
+import { classifyPage, isFlatGraphic, isFullBleed, isPhotographic, isProsePage, titleFromText } from './classify.js';
 import type { PagePixelStats } from './pixels.js';
 
 function stats(overrides: Partial<PagePixelStats>): PagePixelStats {
@@ -22,11 +22,18 @@ function stats(overrides: Partial<PagePixelStats>): PagePixelStats {
 const photographic = stats({ inkRatio: 0.8, colorfulness: 0.32, distinctColors: 3000, grayscale: 0.1, edgeDensity: 0.14 });
 const lineArt = stats({ inkRatio: 0.08, colorfulness: 0.01, distinctColors: 40, grayscale: 0.99, edgeDensity: 0.05 });
 const cover = stats({ inkRatio: 0.89, colorfulness: 0.62, distinctColors: 15, dominantColorRatio: 0.75, grayscale: 0.23, edgeDensity: 0.066 });
+// A muted full-bleed CGI render: covers the sheet, many tones, no flat colour.
+const fullBleed = stats({ inkRatio: 0.97, colorfulness: 0.05, distinctColors: 90, dominantColorRatio: 0.2, grayscale: 0.4, edgeDensity: 0.08 });
 
 describe('isPhotographic', () => {
   it('detects photographic pages', () => {
     expect(isPhotographic(photographic)).toBe(true);
     expect(isPhotographic(lineArt)).toBe(false);
+  });
+
+  it('detects muted full-bleed renders', () => {
+    expect(isPhotographic(fullBleed)).toBe(true);
+    expect(isFullBleed(fullBleed)).toBe(true);
   });
 });
 
@@ -137,5 +144,35 @@ describe('classifyPage', () => {
       { score: 4, kind: 'photo' }
     );
     expect(result.score).toBe(0);
+  });
+
+  it('classifies a muted full-bleed statement figure as a render', () => {
+    const result = classifyPage(
+      { documentType: 'Application Information', description: 'DESIGN AND ACCESS STATEMENT' },
+      '',
+      fullBleed,
+      { score: 4 }
+    );
+    expect(result.kind).toBe('render');
+  });
+
+  it('does not let prose mentioning a plan word override a full-bleed render', () => {
+    const result = classifyPage(
+      { documentType: 'Drawings', description: 'DESIGN AND ACCESS STATEMENT PART 4' },
+      '4.2.2 The masterplan seeks to create a permeable neighbourhood, improving connectivity between the site and its surrounding context through a network of routes.',
+      fullBleed,
+      { score: 4 }
+    );
+    expect(result.kind).toBe('render');
+  });
+
+  it('does not penalise a render that mentions existing features', () => {
+    const result = classifyPage(
+      { documentType: 'Application Information', description: 'DESIGN AND ACCESS STATEMENT' },
+      'A new neighbourhood with existing tree groups retained.',
+      fullBleed,
+      { score: 4 }
+    );
+    expect(result.score).toBeGreaterThan(100);
   });
 });

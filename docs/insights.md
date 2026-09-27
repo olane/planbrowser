@@ -314,6 +314,32 @@ The UI surfaces this rather than implying completeness: a per-group "showing N o
 when caps cut a kind, and an application-level banner when `partial`. Both link to the Documents
 tab, which is the unfiltered ground truth.
 
+## Feedback round 2 (2026-09) — render discovery
+
+`26/01872/OUT` surfaced a structural miss: the best renders (Design & Access Statement CGIs) were
+never even reached. The render budget was consumed by photo appendices (`MAX_PAGES_PER_DOC = 8`
+each) and pages were sampled **sequentially**, so a render on page 12 of a 29-page statement was
+missed even when the document was opened. Strategy now at **8**.
+
+- **Budget rebalance.** `MAX_PAGES_PER_DOC` dropped 8 → 4, and `photo` documents are capped by a
+  global `PHOTO_PAGE_QUOTA` (8) so visual-impact appendices cannot monopolise the budget. Visual
+  documents (statements/appendices) get a slightly higher 6-page cap.
+- **Embedded-image pre-scan.** For documents with no name keyword, each page is scanned cheaply
+  with `unpdf` `extractImages` (dimensions only, no rasterisation) and the most image-rich pages
+  are chosen — so a render anywhere in the document is found. The scan is metered
+  (`PRESCAN_PAGES_TOTAL`, `PRESCAN_PAGES_PER_DOC`), skips prose pages, and is gated by
+  `VISUAL_DOC_RE` so transport/geo/environmental reports are not scanned page-by-page.
+- **Muted full-bleed renders.** Dawn/dusk CGI palettes have low colourfulness, so `isPhotographic`
+  now also treats a full-bleed page (ink > 0.82, many tones, no dominant flat colour) as an image.
+  A full-bleed page is a render/photo even if its caption text says "masterplan".
+- **Existing-penalty fix.** The −45 "existing-condition" penalty no longer applies to
+  render/photo pages, so a render that mentions existing trees is not buried.
+- **Progress logging.** `[insights]` logs each document's chosen pages and accepted image count,
+  plus a final summary (`log.ts`), silenced under tests.
+
+Result on `26/01872/OUT`: the gallery went from 0 to 5 renders, including the hero "Opening the
+Park to the City" CGI (DAS p12), alongside 8 plans, 1 location plan and the AVR views.
+
 ## Renderer choice
 
 **First implementation: `unpdf` + `@napi-rs/canvas`.** Reuses the existing dependency, renders
@@ -366,20 +392,25 @@ scripts/insights-report.mjs  # contact-sheet report over samples (also the eval 
 - `src/insights/select.ts` — dedupe by content hash and perceptual hash, per-kind/per-document/all
   caps.
 - `src/insights/summary.ts` — headline, "included" document inventory, metrics, comment tally.
-- `src/insights/render.ts` — `unpdf` + `@napi-rs/canvas` page text/render.
+- `src/insights/pages.ts` — pure per-page selection: front pages for known drawing/photo
+  documents, image-rich pages for statements/appendices.
+- `src/insights/render.ts` — `unpdf` + `@napi-rs/canvas` page text/render plus the embedded-image
+  pre-scan.
 - `src/insights/cache.ts` — insights.json + page-text + asset storage (atomic writes).
-- `src/insights/generate.ts` — orchestrates (MAX_DOCS 40, MAX_PAGES 36, 1400 px thumbs) and
-  exposes background `startInsights`/`isGenerating`.
+- `src/insights/generate.ts` — orchestrates (MAX_DOCS 40, MAX_PAGES 40, 4 pages/doc, 1400 px
+  thumbs) and exposes background `startInsights`/`isGenerating`.
+- `src/insights/log.ts` — `[insights]` progress logging (silenced under the test runner).
 - `src/insights/routes.ts` — `GET`/`POST /api/applications/:ref/insights`,
   `GET /api/applications/:ref/insights/images/:file`.
 - `ui/src/pages/Viewer.vue` — **Overview** tab (summary + image gallery, generate/poll).
 - `scripts/insights-report.mjs` — contact-sheet report over samples (`npm run build` first).
 
 Notes / known rough edges:
-- Generation is synchronous-per-app and CPU-heavy (~2 min for a 94-doc application); it runs in
-  the background and the UI polls, but there is no cross-process queue yet.
-- `extractImages` is not used yet (operator-list/embedded-image summaries were slower than
-  rendering for vector plans); renders are caught via photographic pixel stats instead.
+- Generation is synchronous-per-app and CPU-heavy; the embedded-image pre-scan roughly doubles it
+  for visual apps (~1 min for a 94-doc application). It runs in the background and the UI polls,
+  but there is no cross-process queue yet. Progress is logged.
+- `extractImages` is used only for the cheap per-page pre-scan, not as the asset source; renders
+  are still caught via photographic/full-bleed pixel stats after rasterising the page.
 - A stale cache (documents changed on sync, or a strategy bump) is refreshed automatically in the
   background on the next `GET`; a generation failure is surfaced as `status:'error'` for retry.
 - Render budget counts attempts, so a document full of non-visual pages cannot exceed `MAX_PAGES`.

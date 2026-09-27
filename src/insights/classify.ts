@@ -45,7 +45,16 @@ export function titleFromText(text: string): string | undefined {
 // white with thin strokes. Coloured flat-fill plans sit in between, so this is
 // only used to infer a kind when no explicit keyword exists.
 export function isPhotographic(stats: PagePixelStats): boolean {
-  return stats.inkRatio > 0.45 && stats.colorfulness > 0.15 && stats.edgeDensity > 0.05;
+  const colourful = stats.inkRatio > 0.45 && stats.colorfulness > 0.15 && stats.edgeDensity > 0.05;
+  return colourful || isFullBleed(stats);
+}
+
+// An image that covers essentially the whole sheet, with many distinct tones and
+// no dominant flat colour. CGI renders are often muted (dawn/dusk palettes), so
+// colourfulness alone misses them; this catches them whether or not the page
+// text mentions a drawing word like "masterplan".
+export function isFullBleed(stats: PagePixelStats): boolean {
+  return stats.inkRatio > 0.82 && stats.dominantColorRatio < 0.5 && stats.distinctColors >= 30;
 }
 
 // A cover/title page built from a single flat brand colour (common at the front
@@ -95,12 +104,17 @@ export function classifyPage(
   // exempt from the prose test.
   if (isFlatGraphic(stats)) return { kind: 'other', score: 0, label: docLabel };
   const photographic = isPhotographic(stats);
+  const fullBleed = isFullBleed(stats);
   if (!photographic && !drawingType && prose) return { kind: 'other', score: 0, label: docLabel };
 
   let kind: InsightImageKind = keywordKind ?? 'other';
 
   if (photographic) {
-    if (keywordKind === 'render' || keywordKind === 'photo') {
+    if (fullBleed) {
+      // A full-bleed image is a render/photo even if the page text mentions a
+      // plan word (a render page captioned "the masterplan").
+      kind = /photo|viewpoint|avr/.test(docHay) ? 'photo' : 'render';
+    } else if (keywordKind === 'render' || keywordKind === 'photo') {
       kind = keywordKind;
     } else if (!keywordKind || keywordKind === 'other') {
       kind = /photo|viewpoint|avr/.test(docHay) ? 'photo' : 'render';
@@ -124,9 +138,11 @@ export function classifyPage(
   score += stats.edgeDensity * 25;
   score += Math.min(stats.inkRatio, 0.9) * 8;
   if (proposed) score += 6;
-  if (existing && !proposed) score -= 45;
+  // "Existing" deprioritises an existing-condition drawing, but a render or
+  // photo that merely mentions existing trees should not be penalised.
+  if (existing && !proposed && kind !== 'render' && kind !== 'photo') score -= 45;
   if (isSuperseded(doc)) score -= 50;
 
-  const label = textKind ? (titleFromText(text) ?? docLabel) : docLabel;
+  const label = textKind && !fullBleed ? (titleFromText(text) ?? docLabel) : docLabel;
   return { kind, score, label: label || docLabel };
 }
