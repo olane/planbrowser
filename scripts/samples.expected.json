@@ -1,0 +1,62 @@
+{
+  "//": "Human-curated ground truth, used by scripts/insights-eval.mjs. `doc` is matched as a normalised substring of localFilename+description; `page` and `kind` are optional. This is intentionally small and grows as samples are inspected — it is not auto-generated.",
+  "samples": {
+    "25/04484/FUL": {
+      "expect": [
+        { "doc": "DESIGN  ACCESS STATEMENT", "page": 5, "kind": "render", "note": "streetscape / context photos" },
+        { "doc": "DESIGN  ACCESS STATEMENT", "page": 9, "kind": "render", "note": "proposal photomontage" },
+        { "doc": "DESIGN  ACCESS STATEMENT", "page": 15, "kind": "render" },
+        { "doc": "PROPOSED SITE PLAN", "kind": "plan" },
+        { "doc": "PROPOSED GROUND FLOOR PLAN", "kind": "plan" },
+        { "doc": "PROPOSED ELEVATIONS SHEET 1 OF 3", "kind": "elevation" },
+        { "doc": "EXISTING SITE LOCATION PLAN", "kind": "map" }
+      ],
+      "expectAbsent": [
+        { "doc": "COLLEGES ESTATE MASTERPLAN VISION", "reason": "prose slides, background only, not part of the application" }
+      ]
+    },
+    "26/01872/OUT": {
+      "expect": [
+        { "doc": "DESIGN AND ACCESS STATEMENTPART 4", "page": 12, "kind": "render", "note": "hero render 'Opening the Park to the City'" },
+        { "doc": "DESIGN AND ACCESS STATEMENTPART 4", "page": 13, "kind": "render" },
+        { "doc": "APPENDIX 02-FIGURES", "kind": "render" },
+        { "doc": "FRAMEWORK PARAMETER PLAN", "kind": "plan" },
+        { "doc": "SITE LOCATION PLAN EXISTING", "kind": "map" },
+        { "doc": "APPENDIX 03-PHOTOS AND AVRS VP10-12", "kind": "photo" }
+      ],
+      "expectAbsent": [
+        { "doc": "APPENDIX 03-PHOTOSHEETS AND AVRS VP30-34", "page": 1, "reason": "flat brand cover" }
+      ]
+    },
+    "26/00067/HFUL": {
+      "expect": [
+        { "doc": "SIDE ELEVATION WITH FENCE AS PROPOSED", "kind": "elevation" },
+        { "doc": "SECTION THROUGH REAR EXTENSION", "kind": "section" },
+        { "doc": "LOCATION PLAN", "kind": "map" }
+      ]
+    },
+    "26/03475/LBC": {
+      "expect": [
+        { "doc": "LOCATION PLAN  BLOCK PLAN", "kind": "map" },
+        { "doc": "PROPOSED ELEVATIONS", "kind": "elevation" },
+        { "doc": "PROPOSED BASEMENT  GROUND FLOOR PLANS", "kind": "plan" }
+      ]
+    },
+    "26/1078/TTCA": {
+      "expect": [
+        { "doc": "LOCATION PLAN", "kind": "map" },
+        { "doc": "TREE PHOTO", "kind": "photo" }
+      ]
+    },
+    "26/03455/ADV": {
+      "expect": [{ "doc": "LOCATION PLAN", "kind": "map" }]
+    },
+    "26/03623/HFUL": {
+      "expect": [{ "doc": "SITE LOCATION PLANS AND BLOCK PLAN", "kind": "map" }]
+    },
+    "26/01599/CONDF": {
+      "expectEmpty": true,
+      "note": "discharge of condition — thin, no visuals; must not invent a gallery"
+    }
+  }
+}

@@ -394,7 +394,9 @@ src/insights/
   cache.ts           # insights.json + page-text + content-addressed assets
   generate.ts        # orchestrate, version, background generation
   routes.ts          # insights endpoints
-scripts/insights-report.mjs  # contact-sheet report over samples (also the eval harness)
+scripts/insights-report.mjs   # contact-sheet report over samples
+scripts/samples.expected.json # hand-curated ground truth per sample
+scripts/insights-eval.mjs     # recall/leak check against the expectations
 ```
 
 ## Build order (slices)
@@ -433,6 +435,8 @@ scripts/insights-report.mjs  # contact-sheet report over samples (also the eval 
   `GET /api/applications/:ref/insights/images/:file`.
 - `ui/src/pages/Viewer.vue` — **Overview** tab (summary + image gallery, generate/poll).
 - `scripts/insights-report.mjs` — contact-sheet report over samples (`npm run build` first).
+- `scripts/insights-eval.mjs` + `scripts/samples.expected.json` — ground-truth recall/leak check
+  (`npm run insights:eval`).
 
 Notes / known rough edges:
 - Generation is synchronous-per-app and CPU-heavy; the embedded-image pre-scan roughly doubles it
@@ -457,8 +461,14 @@ Because this is a ranking problem, do not tune it blind.
 - A `scripts/` report that runs the selected strategy over the sample applications and dumps
   ranked pages as an HTML contact sheet for eyeballing. Fetch any missing samples first with
   `npm run samples`, then `npm run insights:report`.
-- A small expected-top-N file per sample to compute precision@k while tuning weights. The
-  `ImageDiscovery` seam means two strategies can be compared side by side through the same
+- **Ground truth + eval** (`scripts/samples.expected.json`, `scripts/insights-eval.mjs`). Each
+  sample lists the images that *should* surface (`expect`: doc substring + optional page/kind) and
+  things that must not (`expectAbsent`: covers, prose slides), plus `expectEmpty` for thin
+  follow-on apps. `npm run insights:eval` regenerates each sample, matches against the produced
+  `found` set, prints recall and any leaks, and exits non-zero on a miss — so a heuristic change
+  that drops a previously-good image is caught rather than eyeballed. It is curated by hand and
+  grows as samples are inspected; it needs downloaded samples so it is not run in CI.
+  The `ImageDiscovery` seam means two strategies can be compared side by side through the same
   harness.
 
 ## Slice 1 heuristic (finalised against samples)

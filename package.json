@@ -14,7 +14,8 @@
     "electron:dist": "npm run build && npm run build --prefix ui && electron-builder",
     "test": "vitest run",
     "samples": "npm run build && node scripts/fetch-samples.mjs",
-    "insights:report": "npm run build && node scripts/insights-report.mjs"
+    "insights:report": "npm run build && node scripts/insights-report.mjs",
+    "insights:eval": "npm run build && node scripts/insights-eval.mjs"
   },
   "keywords": [],
   "author": {
