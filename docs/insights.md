@@ -318,7 +318,8 @@ Because this is a ranking problem, do not tune it blind.
   (the repo uses vitest; `npm test`). Note: "relevance" is fuzzy, so keep scoring pure and
   deterministic so it is testable.
 - A `scripts/` report that runs the selected strategy over the sample applications and dumps
-  ranked pages as an HTML contact sheet for eyeballing.
+  ranked pages as an HTML contact sheet for eyeballing. Fetch any missing samples first with
+  `npm run samples`, then `npm run insights:report`.
 - A small expected-top-N file per sample to compute precision@k while tuning weights. The
   `ImageDiscovery` seam means two strategies can be compared side by side through the same
   harness.
@@ -388,7 +389,8 @@ thumbnails (target ~1600 px wide) and/or save the largest embedded image as the 
 
 ## Grounding: sample applications
 
-There is no downloaded data in the repo (`downloads/` is gitignored). The heuristics were
+There is no downloaded data in the repo (`downloads/` is gitignored). To reproduce the grounding
+set, run `npm run samples` (cache-first download of `scripts/samples.json`). The heuristics were
 grounded by running the existing scraper over a spread of real Greater Cambridge references.
 Downloaded and inspected (2026-09), covering large mixed-use, outline, older hybrid, and small
 householder / tree / advertisement / amendment / LBC / conditions cases:
@@ -415,8 +417,20 @@ Workflow:
 ```bash
 npm ci && npm ci --prefix ui
 npx playwright install chromium        # only for the non-Electron scraper path
+npm run samples                         # downloads the references above, cache-first
+```
+
+`npm run samples` is cache-first: any application already under
+`downloads/<authority>/<ref>/` (even a partial one) is left for the scraper to
+resume, and only missing references are fetched, sequentially. The manifest is
+`scripts/samples.json`; pass references to fetch a subset, `--force` to
+re-scrape, or `--list` to print the manifest. Run `npm run insights:report`
+afterwards to build the contact sheet.
+
+To fetch by hand instead, `npm run server` exposes the same scraper:
+
+```bash
 npm run server                          # API on :3000; downloads land in downloads/<authority>/<ref>/
-# then, per reference:
 curl -X POST localhost:3000/api/download -H 'content-type: application/json' \
   -d '{"reference":"<REF>"}'
 curl localhost:3000/api/queue           # downloads run sequentially, 5s apart
@@ -439,8 +453,8 @@ export FONTCONFIG_FILE=/tmp/pb/fonts.conf
    `git branch --show-current` / `git log`.
 3. Confirm the **locked decisions** above are still intended; this plan is malleable — update
    this doc before diverging.
-4. Samples are already downloaded in `downloads/cambridge/` (gitignored) — see
-   [Grounding](#grounding-sample-applications) for the list. Re-download with the scraper if the
-   directory is gone.
+4. Samples are not in the repo (`downloads/` is gitignored). Run `npm run samples` to fetch
+   (cache-first) whatever is missing — see
+   [Grounding](#grounding-sample-applications) for the list and manifest.
 5. Build order step 1 (renderer spike) is **done**; continue at **Build order** step 2.
 6. Where this doc and the code disagree, update the doc — it should not silently rot.
