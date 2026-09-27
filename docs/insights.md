@@ -79,13 +79,37 @@ application is shaped.
 - Only *after* deterministic pre-filtering would a vision model be called, and only on the
   top-K thumbnails, to confirm the kind and caption it (later slice).
 
+### Kind taxonomy (`plan` vs `map`)
+
+Feedback round 1 flagged that `map` and `plan` were coming out interchangeably. They are now split
+strictly:
+
+- **`map`** — *location/context only*: location plan, site location plan, block plan, boundary
+  plan, OS extract, constraints/designations map, key diagram. It answers "where is the site and
+  what surrounds it" and pairs with the Location tab.
+- **`plan`** — *the development itself*: site plan, general arrangement, layout plan, floor/roof
+  plan, parameter plan (framework, layout, land use, access & movement, heights, development
+  zone, green & blue), masterplan, indicative layout.
+- **`elevation` / `section`** — unchanged, the drawing's own projection.
+- **`render` / `photo`** — unchanged; `render` outranks `photo`.
+
+So a "PROPOSED SITE PLAN" is a `plan`, while an "EXISTING SITE LOCATION PLAN" is a `map`. The UI
+surfaces friendly labels ("Plans", "Location plans") and groups the gallery by kind, which is
+where the distinction is actually explained to the user.
+
 ### Proposal summary (deterministic)
 
-- Headline from `meta.description` (the formal proposal — authoritative).
+- Headline from `meta.description` (the formal proposal — authoritative). The viewer already
+  shows the description above, so it is **hidden in the Overview when it is identical** to avoid
+  restating it.
 - Anchored regex extraction of metrics: number of dwellings, storeys/height, floorspace (m²),
   site area, parking, affordable units/%, use class, materials.
-- Optionally a concise proposal paragraph mined from the DAS / planning statement using anchor
-  phrases ("the proposal", "the development comprises", "summary of proposals").
+- **"Included" inventory** (feedback round 1): the old summary re-derived "tags" from the
+  description (demolition, extension, ward, application type) — all already visible in the
+  metadata. Those are gone; the points now report *what the application contains*, i.e. the
+  statement/assessment types present (Design & Access, Heritage, Transport, Arboricultural,
+  Drainage, Ecology, Noise, Landscape & Visual, …) plus a drawing count. This is evidence you
+  cannot see from the metadata.
 - Neighbour comment sentiment tally (the existing `Comment.stance` values: support / object /
   neutral).
 
@@ -159,6 +183,7 @@ export interface InsightImage {
   width: number;
   height: number;
   score: number;
+  phash?: string;         // 64-bit difference hash, for near-duplicate collapse
 }
 
 export interface InsightSummary {
@@ -240,6 +265,35 @@ advertisement, LBC, amendment and conditions examples). See
   20–30 MB and page renders take ~0.2–7 s each at scale 1. Rendering *every* page is not viable —
   only candidate pages, downscaled, cached.
 
+## Feedback round 1 (2026-09) — changes
+
+First real use of the first cut surfaced concrete failures. Fixes landed against the same
+heuristic (strategy version bumped to **2**, insights cache to **2**):
+
+- **Text/prose pages were being promoted to drawings.** A document whose *name* mentions
+  "masterplan" (e.g. a Design & Access appendix) forced every one of its pages to `plan`,
+  including cover, contents and table slides. A document's name/kind is now only trusted for
+  documents typed `Drawings`/`Photographs` (or with no type at all), and prose pages (several
+  long text lines with weak line structure) are rejected outright.
+- **Cover pages were being classified as `photo`.** Appendix cover sheets are a flat brand
+  colour; they now fail a **flat-graphic** test (most of the page in one colour bucket, very few
+  distinct colours) and are dropped.
+- **The same cover appeared four times.** Exact content hashing could not catch pages that differ
+  only by a title. Each page now carries a 64-bit **difference hash** (`phash`); candidates
+  within 6 bits of an already-selected image are collapsed. Distinct drawings sit far above this
+  threshold.
+- **`map` vs `plan` were interchangeable** — see [Kind taxonomy](#kind-taxonomy-plan-vs-map).
+  "Site plan"/"site layout" are now `plan`; only location/context drawings are `map`.
+- **Repeated metadata in the summary** — see
+  [Proposal summary](#proposal-summary-deterministic).
+- **Page links and thumbnail size** — the gallery caption shows the source page and links with
+  `#page=N` so the browser PDF viewer opens at that page; thumbnails are larger and grouped by
+  kind with friendly labels.
+
+Verified on `25/04484/FUL` (cover/prose noise gone; 14 relevant drawings) and `26/01872/OUT`
+(4 duplicate covers collapsed to none; 8 parameter/site plans + 1 location plan + 6 AVR views
+instead of 17 mixed images).
+
 ## Renderer choice
 
 **First implementation: `unpdf` + `@napi-rs/canvas`.** Reuses the existing dependency, renders
@@ -285,10 +339,13 @@ scripts/insights-report.mjs  # contact-sheet report over samples (also the eval 
 ## Implementation status (first cut)
 
 - `src/insights/keywords.ts` — kind/name priors; suppresses admin files (forms, fee letters).
-- `src/insights/pixels.ts` — `analysePixels`/`analysePagePng` visual stats.
-- `src/insights/classify.ts` — per-page kind + score (renders inferred from photographic stats).
-- `src/insights/select.ts` — dedupe by content hash, per-kind/per-document/all caps.
-- `src/insights/summary.ts` — headline, proposal points, metrics, comment tally.
+- `src/insights/pixels.ts` — `analysePixels`/`analysePagePng` visual stats, dominant-colour
+  ratio and a 64-bit difference hash (`phash`).
+- `src/insights/classify.ts` — per-page kind + score; rejects flat covers and prose pages,
+  trusts document-name kinds only for drawing/photographic documents.
+- `src/insights/select.ts` — dedupe by content hash and perceptual hash, per-kind/per-document/all
+  caps.
+- `src/insights/summary.ts` — headline, "included" document inventory, metrics, comment tally.
 - `src/insights/render.ts` — `unpdf` + `@napi-rs/canvas` page text/render.
 - `src/insights/cache.ts` — insights.json + page-text + asset storage (atomic writes).
 - `src/insights/generate.ts` — orchestrates (MAX_DOCS 40, MAX_PAGES 36, 1400 px thumbs) and

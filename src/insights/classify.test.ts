@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classifyPage, isPhotographic, titleFromText } from './classify.js';
+import { classifyPage, isFlatGraphic, isPhotographic, isProsePage, titleFromText } from './classify.js';
 import type { PagePixelStats } from './pixels.js';
 
 function stats(overrides: Partial<PagePixelStats>): PagePixelStats {
@@ -11,19 +11,38 @@ function stats(overrides: Partial<PagePixelStats>): PagePixelStats {
     inkRatio: 0.1,
     colorfulness: 0.02,
     distinctColors: 120,
+    dominantColorRatio: 0.3,
     grayscale: 0.95,
     edgeDensity: 0.04,
+    phash: '0'.repeat(16),
     ...overrides
   };
 }
 
 const photographic = stats({ inkRatio: 0.8, colorfulness: 0.32, distinctColors: 3000, grayscale: 0.1, edgeDensity: 0.14 });
 const lineArt = stats({ inkRatio: 0.08, colorfulness: 0.01, distinctColors: 40, grayscale: 0.99, edgeDensity: 0.05 });
+const cover = stats({ inkRatio: 0.89, colorfulness: 0.62, distinctColors: 15, dominantColorRatio: 0.75, grayscale: 0.23, edgeDensity: 0.066 });
 
 describe('isPhotographic', () => {
   it('detects photographic pages', () => {
     expect(isPhotographic(photographic)).toBe(true);
     expect(isPhotographic(lineArt)).toBe(false);
+  });
+});
+
+describe('isFlatGraphic', () => {
+  it('detects a flat brand-coloured cover page', () => {
+    expect(isFlatGraphic(cover)).toBe(true);
+    expect(isFlatGraphic(photographic)).toBe(false);
+    expect(isFlatGraphic(lineArt)).toBe(false);
+  });
+});
+
+describe('isProsePage', () => {
+  it('flags several long lines when the page is not line-structured', () => {
+    const prose = 'This is a long sentence that runs well beyond sixty characters in length.\nAnd another long sentence also comfortably over sixty characters long.\nA third long sentence that is also more than sixty characters long indeed.';
+    expect(isProsePage(prose, lineArt)).toBe(true);
+    expect(isProsePage('PROPOSED ELEVATIONS\nSCALE 1:100\nREV A', lineArt)).toBe(false);
   });
 });
 
@@ -62,10 +81,10 @@ describe('classifyPage', () => {
     expect(result.kind).toBe('render');
   });
 
-  it('keeps a coloured site plan as a map despite photographic stats', () => {
+  it('keeps a coloured location plan as a map despite photographic stats', () => {
     const result = classifyPage(
-      { documentType: 'Drawings', description: 'PROPOSED SITE PLAN' },
-      'PROPOSED (Site Plan)',
+      { documentType: 'Drawings', description: 'PROPOSED SITE LOCATION PLAN' },
+      'PROPOSED (Site Location Plan)',
       photographic,
       { score: 8, kind: 'map' }
     );
@@ -96,5 +115,27 @@ describe('classifyPage', () => {
       { score: 8, kind: 'plan' }
     );
     expect(existing.score).toBeLessThan(proposed.score);
+  });
+
+  it('does not turn prose pages of a name-keyworded document into plans', () => {
+    const prose =
+      'A dynamic and inclusive academic community with a powerful heritage.\nThe above commitment is demonstrated in the statistics below and elsewhere.\nCommunity as our foundation, supporting excellence and a sense of purpose.';
+    const result = classifyPage(
+      { documentType: 'Application Information', description: 'COLLEGES ESTATE MASTERPLAN VISION' },
+      prose,
+      lineArt,
+      { score: 5, kind: 'plan' }
+    );
+    expect(result.score).toBe(0);
+  });
+
+  it('drops a flat appendix cover even when the document mentions photographs', () => {
+    const result = classifyPage(
+      { documentType: 'Photographs', description: 'APPENDIX 03-PHOTOSHEETS AND AVRS VP30-34' },
+      'CAMBRIDGE SCIENCE PARK Appendix 03: Photosheets and AVRs (Viewpoints 30-34)',
+      cover,
+      { score: 4, kind: 'photo' }
+    );
+    expect(result.score).toBe(0);
   });
 });

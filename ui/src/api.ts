@@ -13,6 +13,11 @@ export function documentUrl(reference: string, authorityId: string | undefined, 
   return `/api/documents/${docUrlPrefix(authorityId)}${encodeURIComponent(safeReference(reference))}/${encodeURIComponent(filename)}`;
 }
 
+// A document URL that opens the browser's PDF viewer at a given 1-based page.
+export function documentPageUrl(reference: string, authorityId: string | undefined, filename: string, page: number): string {
+  return `${documentUrl(reference, authorityId, filename)}#page=${page}`;
+}
+
 export async function fetchApplications(): Promise<ApplicationMeta[]> {
   const res = await fetch('/api/applications');
   if (!res.ok) throw new Error('Failed to fetch applications');

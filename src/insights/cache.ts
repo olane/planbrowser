@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type { ApplicationInsights } from '../types.js';
 
-export const INSIGHTS_VERSION = 1;
+export const INSIGHTS_VERSION = 2;
 const PAGE_TEXT_VERSION = 1;
 
 export interface PageTextEntry {

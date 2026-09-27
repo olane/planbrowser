@@ -28,8 +28,12 @@ export function titleFromText(text: string): string | undefined {
     .split(/\r?\n|[ ]{3,}/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const keyword = /(site plan|location plan|block plan|floor plan|roof plan|basement plan|elevation|section|layout|master ?plan|render|visual|photomontage|parameter plan)/i;
-  const candidates = lines.filter((line) => line.length >= 4 && line.length <= 90 && keyword.test(line));
+  const keyword = /(site plan|location plan|block plan|floor plan|roof plan|basement plan|elevation|section|layout|master ?plan|general arrangement|render|visual|photomontage|parameter plan)/i;
+  // Legend/key/scale chrome shares drawing words but is not the drawing title.
+  const chrome = /legend|key plan|scale|revision|notes?|north|title block|drawing schedule/i;
+  const candidates = lines.filter(
+    (line) => line.length >= 4 && line.length <= 90 && keyword.test(line) && !chrome.test(line)
+  );
   if (candidates.length === 0) return undefined;
   candidates.sort(
     (a, b) => Number(/(proposed|drawing)/i.test(b)) - Number(/(proposed|drawing)/i.test(a))
@@ -44,6 +48,25 @@ export function isPhotographic(stats: PagePixelStats): boolean {
   return stats.inkRatio > 0.45 && stats.colorfulness > 0.15 && stats.edgeDensity > 0.05;
 }
 
+// A cover/title page built from a single flat brand colour (common at the front
+// of appendices): most of the page is one colour bucket and there are very few
+// distinct colours. These match "photographic" on ink/colour but carry no content.
+export function isFlatGraphic(stats: PagePixelStats): boolean {
+  return stats.inkRatio > 0.5 && stats.dominantColorRatio > 0.5 && stats.distinctColors < 40;
+}
+
+// A page of running prose (statement, report, slide) rather than a drawing. Real
+// drawings have short, fragmented labels; prose has several long lines. Text
+// alone is not enough (drawings carry notes), so require weak drawing structure.
+export function isProsePage(text: string, stats: PagePixelStats): boolean {
+  if (!text) return false;
+  const longLines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 60).length;
+  return longLines >= 3 && stats.edgeDensity < 0.16;
+}
+
 export function classifyPage(
   doc: InsightDocument,
   text: string,
@@ -53,17 +76,30 @@ export function classifyPage(
   const docType = normalise(doc.documentType || '');
   const docHay = normalise([doc.description, doc.documentType, doc.localFilename].join(' '));
   const textHay = normalise(text);
-  const docKind = prior.kind;
-  // Only trust a page's title text for a visual kind when the document itself is
-  // drawing-like. Administrative pages (forms, letters) are full of generic
-  // words like "plan" and "section" that would otherwise cause false positives.
-  const drawingDoc = /drawing/.test(docType) || docKind !== undefined;
-  const textKind = drawingDoc ? kindFromText(text) : undefined;
+  // A document's own name is only a reliable kind prior when it is actually a
+  // drawing/photograph or its type is missing. A statement that happens to
+  // mention "masterplan" must not turn every one of its pages into a plan.
+  const drawingType = /drawing|photograph/.test(docType);
+  const docKind = drawingType || docType === '' ? prior.kind : undefined;
+  const prose = isProsePage(text, stats);
+  // Only read a page's own title text as a drawing kind when the page is not
+  // running prose and the document is drawing-like or untyped. Administrative
+  // pages are full of generic words like "plan" and "section".
+  const textKind = !prose && (drawingType || docType === '') ? kindFromText(text) : undefined;
   const keywordKind = docKind ?? textKind;
+
+  const docLabel = (doc.description || doc.documentType || 'Drawing').trim();
+
+  // Reject pages that carry no visual content: flat brand covers and pages of
+  // prose. Trusted drawing documents (whose pages are often note-heavy) are
+  // exempt from the prose test.
+  if (isFlatGraphic(stats)) return { kind: 'other', score: 0, label: docLabel };
+  const photographic = isPhotographic(stats);
+  if (!photographic && !drawingType && prose) return { kind: 'other', score: 0, label: docLabel };
 
   let kind: InsightImageKind = keywordKind ?? 'other';
 
-  if (isPhotographic(stats)) {
+  if (photographic) {
     if (keywordKind === 'render' || keywordKind === 'photo') {
       kind = keywordKind;
     } else if (!keywordKind || keywordKind === 'other') {
@@ -74,14 +110,13 @@ export function classifyPage(
     // site plan is still a plan.
   }
 
-  const docLabel = (doc.description || doc.documentType || 'Drawing').trim();
   const existing = /\bexisting\b/.test(docHay) || /\bexisting\b/.test(textHay);
   const proposed = /\bproposed\b/.test(docHay) || /\bproposed\b/.test(textHay);
 
   // A plain text page (statement, form, letter) is not a visual: drop it rather
   // than padding the gallery with "other". Ambiguous drawing pages and
   // photographic pages are kept.
-  if (kind === 'other' && !drawingDoc && !isPhotographic(stats)) {
+  if (kind === 'other' && !drawingType && !photographic) {
     return { kind, score: 0, label: docLabel };
   }
 

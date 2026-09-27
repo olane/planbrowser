@@ -1,4 +1,5 @@
 import type { ApplicationMeta, Comment, InsightCommentTally, InsightSummary } from '../types.js';
+import { normalise } from './keywords.js';
 
 interface MetricRule {
   label: string;
@@ -55,57 +56,59 @@ export function extractMetrics(text: string): Record<string, string> {
   return metrics;
 }
 
-const POINT_RULES: { label: string; re: RegExp }[] = [
-  { label: 'Outline application', re: /\boutline planning\b/i },
-  { label: 'Reserved matters', re: /\breserved matters\b/i },
-  { label: 'Demolition', re: /\bdemolition\b|\bdemolish\b/i },
-  { label: 'Change of use', re: /\bchange of use\b|\bpart change of use\b/i },
-  { label: 'Refurbishment', re: /\brefurbish/i },
-  { label: 'Extension', re: /\b(?:single|two|double|rear|front|side)[- ]storey extension\b|\bextension\b/i },
-  { label: 'New build', re: /\berection\b|\bconstruction of\b|\bnew build\b|\bredevelopment\b/i },
-  { label: 'Listed building', re: /\blisted building\b|\blbc\b/i },
-  { label: 'Tree works', re: /\btree(?:s)?\b|\btpo\b|\btca\b/i },
-  { label: 'Advertisement', re: /\badvert|\bsignage\b|\bsigns?\b/i },
-  { label: 'Discharge of condition', re: /\bdischarge of condition\b|\bapproval of details\b/i },
-  { label: 'Variation of condition', re: /\bvariation of condition\b|\bs73\b/i },
-  { label: 'Non-material amendment', re: /\bnon[- ]?material amendment\b|\bnma\b/i },
-  { label: 'Affordable housing', re: /\baffordable\b/i },
-  { label: 'Landscaping', re: /\blandscap/i }
+// The old summary repeated the proposal description back as keyword "tags"
+// (demolition, extension, ward, …) which the viewer already shows above. These
+// rules instead report what the application *contains*, which is the thing you
+// cannot see from the metadata: its evidence base.
+export interface SummaryDocument {
+  documentType?: string;
+  description?: string;
+  localFilename?: string;
+}
+
+const DOC_CATEGORY_RULES: { label: string; re: RegExp }[] = [
+  { label: 'Design & Access Statement', re: /design (and|&) access/ },
+  { label: 'Planning Statement', re: /planning statement|planning supporting/ },
+  { label: 'Heritage Statement', re: /heritage|historic environment|listed building/ },
+  { label: 'Transport Assessment', re: /transport|travel plan|highways|access statement/ },
+  { label: 'Landscape & Visual', re: /landscape|visual impact|photomontage|\bavrs?\b/ },
+  { label: 'Ecology / Biodiversity', re: /ecolog|biodiversit|protected species|\bbats?\b/ },
+  { label: 'Arboricultural Report', re: /arboricultur|tree (report|survey|constraint)/ },
+  { label: 'Drainage & Flood Risk', re: /drainage|flood risk|\bsuds?\b/ },
+  { label: 'Noise Assessment', re: /noise|acoustic/ },
+  { label: 'Air Quality', re: /air quality/ },
+  { label: 'Energy & Sustainability', re: /energy statement|sustainab|overheating/ },
+  { label: 'Viability Assessment', re: /viabilit/ },
+  { label: 'Community Consultation', re: /community involvement|statement of consultation|public consultation/ }
 ];
 
-export function derivePoints(meta: ApplicationMeta): string[] {
-  const hay = [
-    meta.description,
-    meta.furtherInformation?.['Application Type'],
-    meta.furtherInformation?.['Decision'],
-    meta.status
-  ]
-    .filter(Boolean)
-    .join(' ');
+const MAX_DOC_POINTS = 6;
+
+// A short inventory of the assessment/statement types present, so an empty-ish
+// or well-evidenced application is obvious at a glance.
+export function summariseDocuments(docs: SummaryDocument[]): string[] {
+  const hay = docs.map((doc) =>
+    normalise([doc.documentType, doc.description, doc.localFilename].filter(Boolean).join(' '))
+  );
+  const drawingCount = docs.filter((doc) => /drawing/.test(normalise(doc.documentType || ''))).length;
+
   const points: string[] = [];
-  for (const rule of POINT_RULES) {
-    if (rule.re.test(hay) && !points.includes(rule.label)) points.push(rule.label);
+  if (drawingCount > 0) points.push(`${drawingCount} drawing${drawingCount === 1 ? '' : 's'}`);
+  for (const rule of DOC_CATEGORY_RULES) {
+    if (points.length >= MAX_DOC_POINTS) break;
+    if (hay.some((h) => rule.re.test(h))) points.push(rule.label);
   }
   return points;
 }
 
-export function buildSummary(meta: ApplicationMeta): InsightSummary {
-  const text = [
-    meta.description,
-    Object.values(meta.furtherInformation ?? {}).join(' '),
-    meta.furtherInformation?.['Application Type']
-  ]
+export function buildSummary(meta: ApplicationMeta, docs: SummaryDocument[] = []): InsightSummary {
+  const text = [meta.description, Object.values(meta.furtherInformation ?? {}).join(' ')]
     .filter(Boolean)
     .join(' ');
 
-  const further = meta.furtherInformation ?? {};
-  const points = derivePoints(meta);
-  if (further['Application Type']) points.unshift(`Application type: ${further['Application Type']}`);
-  if (further['Ward']) points.push(`Ward: ${further['Ward']}`);
-
   return {
     headline: meta.description || meta.address || meta.reference,
-    points,
+    points: summariseDocuments(docs),
     metrics: extractMetrics(text)
   };
 }

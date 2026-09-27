@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSummary, derivePoints, extractMetrics, tallyComments } from './summary.js';
+import { buildSummary, extractMetrics, summariseDocuments, tallyComments } from './summary.js';
 import type { ApplicationMeta, Comment } from '../types.js';
 
 function meta(overrides: Partial<ApplicationMeta>): ApplicationMeta {
@@ -33,24 +33,32 @@ describe('extractMetrics', () => {
   });
 });
 
-describe('derivePoints', () => {
-  it('derives proposal tags from the description', () => {
-    const points = derivePoints(
-      meta({ description: 'Outline planning application for the demolition of the existing building and redevelopment with a new build.' })
-    );
-    expect(points).toContain('Outline application');
-    expect(points).toContain('Demolition');
-    expect(points).toContain('New build');
+describe('summariseDocuments', () => {
+  it('reports the document mix rather than restating the description', () => {
+    const points = summariseDocuments([
+      { documentType: 'Drawings', description: 'PROPOSED SITE PLAN' },
+      { documentType: 'Drawings', description: 'PROPOSED ELEVATIONS' },
+      { documentType: 'Design and Access Statement', description: 'DESIGN AND ACCESS STATEMENT' },
+      { documentType: 'Application Survey - Assessment - Statement', description: 'TRANSPORT ASSESSMENT' }
+    ]);
+    expect(points).toContain('2 drawings');
+    expect(points).toContain('Design & Access Statement');
+    expect(points).toContain('Transport Assessment');
+  });
+
+  it('returns no points for an application with no documents', () => {
+    expect(summariseDocuments([])).toEqual([]);
   });
 });
 
 describe('buildSummary', () => {
-  it('uses the description as the headline and includes application type', () => {
+  it('uses the description as the headline and reports the document mix', () => {
     const summary = buildSummary(
-      meta({ description: 'Two storey rear extension.', furtherInformation: { 'Application Type': 'Householder' } })
+      meta({ description: 'Two storey rear extension.', furtherInformation: { 'Application Type': 'Householder' } }),
+      [{ documentType: 'Drawings', description: 'PROPOSED REAR EXTENSION' }]
     );
     expect(summary.headline).toBe('Two storey rear extension.');
-    expect(summary.points[0]).toBe('Application type: Householder');
+    expect(summary.points).toEqual(['1 drawing']);
     expect(summary.metrics['Storeys']).toBe('2');
   });
 });

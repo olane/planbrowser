@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { analysePixels } from './pixels.js';
+import { analysePixels, hammingDistance, perceptualHash } from './pixels.js';
 
 function solid(width: number, height: number, r: number, g: number, b: number): Uint8ClampedArray {
   const data = new Uint8ClampedArray(width * height * 4);
@@ -31,6 +31,8 @@ describe('analysePixels', () => {
     const stats = analysePixels(solid(10, 10, 255, 0, 0), 10, 10);
     expect(stats.colorfulness).toBeCloseTo(1, 5);
     expect(stats.grayscale).toBe(0);
+    expect(stats.dominantColorRatio).toBe(1);
+    expect(stats.phash).toHaveLength(16);
   });
 
   it('detects edges between light and dark regions', () => {
@@ -50,5 +52,18 @@ describe('analysePixels', () => {
     const stats = analysePixels(data, width, height);
     expect(stats.edgeDensity).toBeGreaterThan(0);
     expect(stats.inkRatio).toBeGreaterThan(0.4);
+  });
+});
+
+describe('perceptual hash', () => {
+  it('returns an identical hash for identical pixels', () => {
+    const pixels = solid(10, 10, 128, 128, 128);
+    expect(perceptualHash(pixels, 10, 10)).toBe(perceptualHash(pixels, 10, 10));
+  });
+
+  it('measures hamming distance in bits', () => {
+    expect(hammingDistance('0000000000000000', '0000000000000000')).toBe(0);
+    expect(hammingDistance('0000000000000000', '0000000000000001')).toBe(1);
+    expect(hammingDistance('0000000000000000', 'ffffffffffffffff')).toBe(64);
   });
 });

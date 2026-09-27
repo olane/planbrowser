@@ -245,6 +245,8 @@ export interface InsightImage {
   width: number;
   height: number;
   score: number;
+  // Difference hash of the page, for collapsing near-duplicate images.
+  phash?: string;
 }
 
 export interface InsightSummary {

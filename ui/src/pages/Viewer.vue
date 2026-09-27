@@ -136,15 +136,18 @@
             </div>
             <template v-else-if="insights">
               <div :class="$style.insightsSummary">
-                <p :class="$style.insightsHeadline">{{ insights.summary.headline }}</p>
+                <p v-if="insights.summary.headline && insights.summary.headline !== app.description" :class="$style.insightsHeadline">{{ insights.summary.headline }}</p>
                 <div v-if="Object.keys(insights.summary.metrics).length" :class="$style.metricChips">
                   <span v-for="(value, key) in insights.summary.metrics" :key="key" :class="$style.metricChip">
                     <span :class="$style.metricKey">{{ key }}</span> {{ value }}
                   </span>
                 </div>
-                <ul v-if="insights.summary.points.length" :class="$style.insightPoints">
-                  <li v-for="point in insights.summary.points" :key="point">{{ point }}</li>
-                </ul>
+                <div v-if="insights.summary.points.length" :class="$style.insightPointsWrap">
+                  <span :class="$style.insightPointsLabel">Included</span>
+                  <ul :class="$style.insightPoints">
+                    <li v-for="point in insights.summary.points" :key="point">{{ point }}</li>
+                  </ul>
+                </div>
                 <p v-if="insights.comments.total > 0" :class="$style.commentTally">
                   Comments: {{ insights.comments.support }} support ·
                   {{ insights.comments.object }} object ·
@@ -154,16 +157,26 @@
                 <button @click="generateInsights" :class="[$style.regenerateButton, ui.btn, ui.btnOutline]">Regenerate</button>
               </div>
 
-              <div v-if="insights.images.length" :class="$style.insightsGrid">
-                <figure v-for="image in insights.images" :key="image.id" :class="$style.insightFigure">
-                  <a :href="api.documentUrl(app.reference, app.authorityId, image.localFilename)" target="_blank" rel="noopener" :class="$style.insightLink">
-                    <img :src="api.insightImageUrl(app.reference, app.authorityId, image.imageFile)" :alt="image.label" loading="lazy" :class="$style.insightImage" />
-                  </a>
-                  <figcaption :class="$style.insightCaption">
-                    <span :class="$style.insightKind">{{ image.kind }}</span>
-                    <span :class="$style.insightLabel">{{ image.label }}</span>
-                  </figcaption>
-                </figure>
+              <div v-if="insights.images.length" :class="$style.insightGroups">
+                <section v-for="group in insightGroups" :key="group.kind" :class="$style.insightGroup">
+                  <h3 :class="$style.insightGroupTitle">
+                    {{ group.label }} <span :class="$style.insightGroupCount">{{ group.images.length }}</span>
+                  </h3>
+                  <div :class="$style.insightsGrid">
+                    <figure v-for="image in group.images" :key="image.id" :class="$style.insightFigure">
+                      <a :href="api.documentPageUrl(app.reference, app.authorityId, image.localFilename, image.page)" target="_blank" rel="noopener" :class="$style.insightLink" :title="`Open ${image.localFilename} at page ${image.page}`">
+                        <img :src="api.insightImageUrl(app.reference, app.authorityId, image.imageFile)" :alt="image.label" loading="lazy" :class="$style.insightImage" />
+                      </a>
+                      <figcaption :class="$style.insightCaption">
+                        <span :class="$style.insightKind">{{ kindLabel(image.kind) }}</span>
+                        <span :class="$style.insightLabel">{{ image.label }}</span>
+                        <a :href="api.documentPageUrl(app.reference, app.authorityId, image.localFilename, image.page)" target="_blank" rel="noopener" :class="$style.insightSource">
+                          Page {{ image.page }} · {{ shortDocumentName(image.localFilename) }}
+                        </a>
+                      </figcaption>
+                    </figure>
+                  </div>
+                </section>
               </div>
               <p v-else :class="$style.muted">No relevant images, plans or renders were found.</p>
             </template>
@@ -337,6 +350,46 @@ const selectedDocType = ref('All')
 const docFilterActive = computed(() => docSearch.value.trim() !== '' || selectedDocType.value !== 'All')
 
 const tabClass = (tab: string) => (activeTab.value === tab ? styles.tabActive : styles.tabInactive)
+
+const KIND_GROUP_ORDER = ['render', 'map', 'elevation', 'plan', 'section', 'photo', 'other']
+const KIND_GROUP_LABELS: Record<string, string> = {
+  render: 'Renders',
+  map: 'Location plans',
+  elevation: 'Elevations',
+  plan: 'Plans',
+  section: 'Sections',
+  photo: 'Photos',
+  other: 'Other'
+}
+const KIND_LABELS: Record<string, string> = {
+  render: 'Render',
+  map: 'Location plan',
+  elevation: 'Elevation',
+  plan: 'Plan',
+  section: 'Section',
+  photo: 'Photo',
+  other: 'Other'
+}
+const kindLabel = (kind: string) => KIND_LABELS[kind] ?? kind
+
+// Group the flat insights image list by kind for a clearer gallery, in a stable
+// order rather than by score.
+const insightGroups = computed(() => {
+  if (!insights.value) return []
+  const groups = new Map<string, ApplicationInsights['images']>()
+  for (const image of insights.value.images) {
+    const list = groups.get(image.kind) ?? []
+    list.push(image)
+    groups.set(image.kind, list)
+  }
+  return [...groups.entries()]
+    .map(([kind, images]) => ({ kind, label: KIND_GROUP_LABELS[kind] ?? kind, images }))
+    .sort((a, b) => KIND_GROUP_ORDER.indexOf(a.kind) - KIND_GROUP_ORDER.indexOf(b.kind))
+})
+
+// "13 Jan 2026 - Drawings - PROPOSED SITE PLAN.pdf" -> "PROPOSED SITE PLAN"
+const shortDocumentName = (name: string) =>
+  name.replace(/\.pdf$/i, '').replace(/^\d{1,2}\s+\w{3}\s+\d{4}\s*-\s*[^-]+-\s*/, '')
 
 const osmEmbedUrl = computed(() => {
   const loc = app.value?.location
@@ -1341,13 +1394,28 @@ onMounted(async () => {
   color: var(--color-blue-500);
 }
 
+.insightPointsWrap {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.insightPointsLabel {
+  color: var(--color-gray-500);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .insightPoints {
   display: flex;
   flex-wrap: wrap;
   gap: 0.375rem;
-  margin-top: 0.75rem;
   list-style: none;
   padding: 0;
+  margin: 0;
 }
 
 .insightPoints li {
@@ -1371,10 +1439,34 @@ onMounted(async () => {
   padding-bottom: 0.25rem;
 }
 
+.insightGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.insightGroupTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  color: var(--color-gray-700);
+}
+
+.insightGroupCount {
+  padding: 0.0625rem 0.4375rem;
+  border-radius: 999px;
+  background: var(--color-gray-100);
+  color: var(--color-gray-600);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
 .insightsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
 }
 
 .insightFigure {
@@ -1391,7 +1483,7 @@ onMounted(async () => {
 
 .insightImage {
   width: 100%;
-  height: 180px;
+  height: 280px;
   object-fit: contain;
   background: var(--color-gray-50);
 }
@@ -1418,5 +1510,16 @@ onMounted(async () => {
 .insightLabel {
   color: var(--color-gray-800);
   line-height: 1.2;
+}
+
+.insightSource {
+  margin-top: 0.125rem;
+  color: var(--color-blue-600);
+  font-size: 0.6875rem;
+  text-decoration: none;
+}
+
+.insightSource:hover {
+  text-decoration: underline;
 }
 </style>

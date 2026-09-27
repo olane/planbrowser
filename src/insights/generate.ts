@@ -19,7 +19,7 @@ import {
   writePageText
 } from './cache.js';
 
-export const STRATEGY = { id: 'heuristic', version: 1 };
+export const STRATEGY = { id: 'heuristic', version: 2 };
 
 // Cost caps: rendering is the expensive step. We rank documents by prior and
 // only render up to these limits, then cache everything.
@@ -236,7 +236,8 @@ export async function generateInsights(
           imageFile,
           width: stats.width,
           height: stats.height,
-          score: Math.round(classification.score)
+          score: Math.round(classification.score),
+          phash: stats.phash
         });
       }
     } finally {
@@ -256,7 +257,7 @@ export async function generateInsights(
     strategy: STRATEGY,
     generatedAt: new Date().toISOString(),
     source,
-    summary: buildSummary(meta),
+    summary: buildSummary(meta, docs),
     images,
     comments: tallyComments(readComments(dir))
   };

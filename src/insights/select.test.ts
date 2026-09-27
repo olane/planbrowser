@@ -32,6 +32,16 @@ describe('selectImages', () => {
     expect(out.filter((i) => i.kind === 'plan')).toHaveLength(3);
   });
 
+  it('collapses near-duplicate pages by perceptual hash', () => {
+    const out = selectImages([
+      image({ id: '1'.repeat(40), kind: 'photo', score: 90, phash: 'aaaaaaaaaaaaaaaa' }),
+      image({ id: '2'.repeat(40), kind: 'photo', score: 80, phash: 'aaaaaaaaaaaaaaab' }),
+      image({ id: '3'.repeat(40), kind: 'photo', score: 70, phash: '0123456789abcdef' })
+    ]);
+    expect(out).toHaveLength(2);
+    expect(out.map((i) => i.id)).toContain('1'.repeat(40));
+  });
+
   it('respects the overall cap', () => {
     const candidates = Array.from({ length: 20 }, (_, i) =>
       image({ id: i.toString(16).padStart(40, '0'), kind: 'render', localFilename: `render-${i}.pdf`, score: 100 - i })

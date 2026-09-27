@@ -22,7 +22,12 @@ export function normalise(input: string): string {
 }
 
 // Ordered by specificity: the first match wins, so "photomontage" resolves to a
-// render rather than a photo, and "site plan" to a map rather than a plan.
+// render rather than a photo, and "site location plan" to a map rather than a
+// plan.
+//
+// `map` means a *location/context* drawing only (where the site sits, its
+// boundaries and designations). A plan of the development itself — including a
+// "site plan" or "site layout" — is a `plan`.
 const KIND_MATCHERS: { kind: InsightImageKind; patterns: RegExp[] }[] = [
   {
     kind: 'render',
@@ -53,12 +58,15 @@ const KIND_MATCHERS: { kind: InsightImageKind; patterns: RegExp[] }[] = [
   {
     kind: 'map',
     patterns: [
-      /site (?:location )?(?:plan|layout)/,
       /location (?:plan|map)/,
+      /site location/,
       /block plan/,
       /boundary (?:plan|map)/,
-      /site location/,
-      /location and block plan/
+      /context (?:plan|map)/,
+      /constraints? (?:plan|map)/,
+      /designations? (?:plan|map)/,
+      /\bkey diagram\b/,
+      /\bos (?:map|extract)\b/
     ]
   },
   {
@@ -72,6 +80,8 @@ const KIND_MATCHERS: { kind: InsightImageKind; patterns: RegExp[] }[] = [
   {
     kind: 'plan',
     patterns: [
+      /site (?:plan|layout)/,
+      /general arrangement/,
       /floor plan/,
       /(?:ground|first|second|third|fourth|fifth|sixth|lower|upper|basement|attic|loft) floor/,
       /roof plan/,
@@ -79,6 +89,7 @@ const KIND_MATCHERS: { kind: InsightImageKind; patterns: RegExp[] }[] = [
       /parameter plan/,
       /master ?plan/,
       /framework plan/,
+      /indicative (?:layout|masterplan)/,
       /land use/,
       /development zone/,
       /access and movement/,

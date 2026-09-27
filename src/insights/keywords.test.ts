@@ -2,8 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { documentPrior, isSuperseded, kindFromText, normalise } from './keywords.js';
 
 describe('kindFromText', () => {
-  it('recognises a site plan as a map', () => {
-    expect(kindFromText('PROPOSED (Site Plan)')).toBe('map');
+  it('recognises a site plan as a plan', () => {
+    expect(kindFromText('PROPOSED (Site Plan)')).toBe('plan');
+  });
+  it('recognises a site location plan as a map', () => {
+    expect(kindFromText('EXISTING SITE LOCATION PLAN')).toBe('map');
+  });
+  it('recognises a block plan as a map', () => {
+    expect(kindFromText('LOCATION AND BLOCK PLAN')).toBe('map');
+  });
+  it('recognises a general arrangement as a plan', () => {
+    expect(kindFromText('PROPOSED GENERAL ARRANGEMENT')).toBe('plan');
   });
   it('recognises elevations', () => {
     expect(kindFromText('BUILDING A NORTH WEST ELEVATION')).toBe('elevation');
@@ -42,7 +51,7 @@ describe('documentPrior', () => {
   it('ranks drawings highly', () => {
     const prior = documentPrior({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' });
     expect(prior.score).toBeGreaterThan(0);
-    expect(prior.kind).toBe('map');
+    expect(prior.kind).toBe('plan');
   });
   it('pushes comments down', () => {
     const comment = documentPrior({ documentType: 'Consultee Comments', description: 'Environment Agency' });

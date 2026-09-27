@@ -1,4 +1,5 @@
 import type { InsightImage, InsightImageKind } from '../types.js';
+import { hammingDistance } from './pixels.js';
 
 export const KIND_ORDER: InsightImageKind[] = ['render', 'map', 'elevation', 'plan', 'section', 'photo', 'other'];
 
@@ -8,11 +9,16 @@ export const DEFAULT_KIND_CAPS: Record<InsightImageKind, number> = {
   elevation: 6,
   plan: 8,
   section: 4,
-  photo: 8,
+  photo: 6,
   other: 3
 };
 
 export const DEFAULT_TOTAL_CAP = 24;
+
+// Two difference hashes within this many bits are treated as the same image.
+// Deliberately strict: repeated covers differ only by a little text (distance
+// ~0), while genuinely distinct drawings of the same kind sit well above it.
+const PHASH_DISTANCE = 6;
 
 export interface SelectOptions {
   caps?: Partial<Record<InsightImageKind, number>>;
@@ -39,14 +45,21 @@ export function selectImages(candidates: InsightImage[], opts: SelectOptions = {
   const counts: Partial<Record<InsightImageKind, number>> = {};
   const perDocument: Record<string, number> = {};
   const chosen: InsightImage[] = [];
+  const keptHashes: string[] = [];
   for (const candidate of sorted) {
     if (chosen.length >= total) break;
+    // Drop near-identical pages (e.g. the repeated cover of several appendices)
+    // so they neither pad the gallery nor consume a kind/document slot.
+    if (candidate.phash && keptHashes.some((hash) => hammingDistance(hash, candidate.phash as string) <= PHASH_DISTANCE)) {
+      continue;
+    }
     const used = counts[candidate.kind] ?? 0;
     if (used >= (caps[candidate.kind] ?? 3)) continue;
     const docUsed = perDocument[candidate.localFilename] ?? 0;
     if (docUsed >= maxPerDocument) continue;
     counts[candidate.kind] = used + 1;
     perDocument[candidate.localFilename] = docUsed + 1;
+    if (candidate.phash) keptHashes.push(candidate.phash);
     chosen.push(candidate);
   }
 
