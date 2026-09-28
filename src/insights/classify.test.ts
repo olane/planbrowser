@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { classifyPage, isFlatGraphic, isFullBleed, isPhotographic, isProsePage, titleFromText } from './classify.js';
+import { classifyPage, isFlatGraphic, isFullBleed, isPhotographic, isProsePage } from './classify.js';
+import { profileDocument } from './keywords.js';
+import { titleFromText } from './title.js';
 import type { PagePixelStats } from './pixels.js';
 
 function stats(overrides: Partial<PagePixelStats>): PagePixelStats {
@@ -70,56 +72,50 @@ describe('titleFromText', () => {
 describe('classifyPage', () => {
   it('keeps an explicit elevation keyword on a line drawing', () => {
     const result = classifyPage(
-      { documentType: 'Drawings', description: 'PROPOSED ELEVATIONS' },
+      profileDocument({ documentType: 'Drawings', description: 'PROPOSED ELEVATIONS' }),
       'PROPOSED (Elevations)',
-      lineArt,
-      { score: 8, kind: 'elevation' }
+      lineArt
     );
     expect(result.kind).toBe('elevation');
   });
 
   it('infers a render for a photographic page with no keyword', () => {
     const result = classifyPage(
-      { documentType: 'Application Information', description: 'S20064-ETS26082813240' },
+      profileDocument({ documentType: 'Application Information', description: 'S20064-ETS26082813240' }),
       '',
-      photographic,
-      { score: 1 }
+      photographic
     );
     expect(result.kind).toBe('render');
   });
 
   it('keeps a coloured location plan as a map despite photographic stats', () => {
     const result = classifyPage(
-      { documentType: 'Drawings', description: 'PROPOSED SITE LOCATION PLAN' },
+      profileDocument({ documentType: 'Drawings', description: 'PROPOSED SITE LOCATION PLAN' }),
       'PROPOSED (Site Location Plan)',
-      photographic,
-      { score: 8, kind: 'map' }
+      photographic
     );
     expect(result.kind).toBe('map');
   });
 
   it('labels using the document description', () => {
     const result = classifyPage(
-      { documentType: 'Drawings', description: 'BUILDING A NORTH WEST ELEVATION' },
+      profileDocument({ documentType: 'Drawings', description: 'BUILDING A NORTH WEST ELEVATION' }),
       '',
-      photographic,
-      { score: 8, kind: 'elevation' }
+      photographic
     );
     expect(result.label).toBe('BUILDING A NORTH WEST ELEVATION');
   });
 
   it('penalises existing-only drawings', () => {
     const existing = classifyPage(
-      { documentType: 'Drawings', description: 'EXISTING GROUND FLOOR PLAN' },
+      profileDocument({ documentType: 'Drawings', description: 'EXISTING GROUND FLOOR PLAN' }),
       '',
-      lineArt,
-      { score: 8, kind: 'plan' }
+      lineArt
     );
     const proposed = classifyPage(
-      { documentType: 'Drawings', description: 'PROPOSED GROUND FLOOR PLAN' },
+      profileDocument({ documentType: 'Drawings', description: 'PROPOSED GROUND FLOOR PLAN' }),
       '',
-      lineArt,
-      { score: 8, kind: 'plan' }
+      lineArt
     );
     expect(existing.score).toBeLessThan(proposed.score);
   });
@@ -128,50 +124,45 @@ describe('classifyPage', () => {
     const prose =
       'A dynamic and inclusive academic community with a powerful heritage.\nThe above commitment is demonstrated in the statistics below and elsewhere.\nCommunity as our foundation, supporting excellence and a sense of purpose.';
     const result = classifyPage(
-      { documentType: 'Application Information', description: 'COLLEGES ESTATE MASTERPLAN VISION' },
+      profileDocument({ documentType: 'Application Information', description: 'COLLEGES ESTATE MASTERPLAN VISION' }),
       prose,
-      lineArt,
-      { score: 5, kind: 'plan' }
+      lineArt
     );
     expect(result.score).toBe(0);
   });
 
   it('drops a flat appendix cover even when the document mentions photographs', () => {
     const result = classifyPage(
-      { documentType: 'Photographs', description: 'APPENDIX 03-PHOTOSHEETS AND AVRS VP30-34' },
+      profileDocument({ documentType: 'Photographs', description: 'APPENDIX 03-PHOTOSHEETS AND AVRS VP30-34' }),
       'CAMBRIDGE SCIENCE PARK Appendix 03: Photosheets and AVRs (Viewpoints 30-34)',
-      cover,
-      { score: 4, kind: 'photo' }
+      cover
     );
     expect(result.score).toBe(0);
   });
 
   it('classifies a muted full-bleed statement figure as a render', () => {
     const result = classifyPage(
-      { documentType: 'Application Information', description: 'DESIGN AND ACCESS STATEMENT' },
+      profileDocument({ documentType: 'Application Information', description: 'DESIGN AND ACCESS STATEMENT' }),
       '',
-      fullBleed,
-      { score: 4 }
+      fullBleed
     );
     expect(result.kind).toBe('render');
   });
 
   it('does not let prose mentioning a plan word override a full-bleed render', () => {
     const result = classifyPage(
-      { documentType: 'Drawings', description: 'DESIGN AND ACCESS STATEMENT PART 4' },
+      profileDocument({ documentType: 'Drawings', description: 'DESIGN AND ACCESS STATEMENT PART 4' }),
       '4.2.2 The masterplan seeks to create a permeable neighbourhood, improving connectivity between the site and its surrounding context through a network of routes.',
-      fullBleed,
-      { score: 4 }
+      fullBleed
     );
     expect(result.kind).toBe('render');
   });
 
   it('does not penalise a render that mentions existing features', () => {
     const result = classifyPage(
-      { documentType: 'Application Information', description: 'DESIGN AND ACCESS STATEMENT' },
+      profileDocument({ documentType: 'Application Information', description: 'DESIGN AND ACCESS STATEMENT' }),
       'A new neighbourhood with existing tree groups retained.',
-      fullBleed,
-      { score: 4 }
+      fullBleed
     );
     expect(result.score).toBeGreaterThan(100);
   });
@@ -179,10 +170,9 @@ describe('classifyPage', () => {
   it('drops an appendix-of-figures diagram instead of calling it a render', () => {
     const diagram = stats({ inkRatio: 0.71, colorfulness: 0.1, distinctColors: 69, dominantColorRatio: 0.29, grayscale: 0.6, edgeDensity: 0.043 });
     const result = classifyPage(
-      { documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' },
+      profileDocument({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' }),
       '',
       diagram,
-      { score: 6 },
       { hasLargeImage: true }
     );
     expect(result.score).toBe(0);
@@ -190,10 +180,9 @@ describe('classifyPage', () => {
 
   it('uses the image caption to call a statement page a photo', () => {
     const result = classifyPage(
-      { documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' },
+      profileDocument({ documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' }),
       '',
       fullBleed,
-      { score: 6.5 },
       { hasLargeImage: true, caption: 'Existing view along Oxford Road - context photograph' }
     );
     expect(result.kind).toBe('photo');
@@ -201,10 +190,9 @@ describe('classifyPage', () => {
 
   it('lets a caption supply positive evidence in a reference volume', () => {
     const result = classifyPage(
-      { documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' },
+      profileDocument({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' }),
       '',
       photographic,
-      { score: 4 },
       { caption: "Artist's impression of the proposed park" }
     );
     expect(result.kind).toBe('render');
@@ -212,10 +200,9 @@ describe('classifyPage', () => {
 
   it('drops a photographic-looking figure in an appendix volume', () => {
     const result = classifyPage(
-      { documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' },
+      profileDocument({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' }),
       '',
-      photographic,
-      { score: 4 }
+      photographic
     );
     expect(result.score).toBe(0);
   });
@@ -223,21 +210,47 @@ describe('classifyPage', () => {
   it('keeps a statement figure (large embedded image) that is not full-bleed', () => {
     const figure = stats({ inkRatio: 0.35, colorfulness: 0.03, distinctColors: 80, dominantColorRatio: 0.6, grayscale: 0.8, edgeDensity: 0.1 });
     const kept = classifyPage(
-      { documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' },
+      profileDocument({ documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' }),
       'Some body text describing the existing streetscape.',
       figure,
-      { score: 6.5 },
       { hasLargeImage: true }
     );
     expect(kept.kind).toBe('render');
     expect(kept.score).toBeGreaterThan(0);
 
     const dropped = classifyPage(
-      { documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' },
+      profileDocument({ documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' }),
       'Some body text describing the existing streetscape.',
-      figure,
-      { score: 6.5 }
+      figure
     );
     expect(dropped.score).toBe(0);
+  });
+});
+
+describe('classifyPage evidence precedence', () => {
+  const pack = profileDocument({ documentType: 'Drawings', description: 'PROPOSED PLANS AND ELEVATIONS' });
+  const sitePlan = profileDocument({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' });
+
+  it('lets a qualified page title beat the document name', () => {
+    const result = classifyPage(pack, 'LOCATION PLAN 1:1250\nPROPOSED GROUND FLOOR PLAN', lineArt);
+    expect(result.kind).toBe('plan');
+    expect(result.label).toBe('PROPOSED GROUND FLOOR PLAN');
+    expect(result.reason).toMatch(/^plan from qualified page title/);
+  });
+
+  it('keeps a single-kind document name over a bare inset heading', () => {
+    const result = classifyPage(sitePlan, 'LOCATION PLAN 1:1250', lineArt);
+    expect(result.kind).toBe('plan');
+    expect(result.reason).toMatch(/document name/);
+  });
+
+  it('uses an unqualified page title inside a multi-kind pack', () => {
+    const floors = profileDocument({ documentType: 'Drawings', description: 'Proposed plans and elevations' });
+    expect(classifyPage(floors, 'GROUND FLOOR', lineArt).kind).toBe('plan');
+    expect(classifyPage(floors, 'REAR ELEVATION', lineArt).kind).toBe('elevation');
+  });
+
+  it('explains rejections', () => {
+    expect(classifyPage(sitePlan, '', cover).reason).toMatch(/^rejected: flat graphic/);
   });
 });

@@ -1,5 +1,3 @@
-import type { InsightImageKind } from '../types.js';
-
 // A page's embedded-image signal, gathered cheaply (no page rasterisation).
 export interface ScannedPage {
   page: number;
@@ -20,21 +18,31 @@ export function pageImageScore(page: ScannedPage): number {
 }
 
 // Which pages of a document to rasterise.
-// - A known drawing/photograph document puts its visual on the first page(s),
+// - A known drawing/photograph document (`frontPages`) puts its visual on the
+//   first page(s),
 //   and vector plans carry no embedded images at all, so take from the front.
+//   When a drawing pack has more pages than the cap, prefer the pages whose own
+//   text carries a drawing title (`titleScores[page - 1]`, see
+//   `pageTitleScore`), so a pack's later sheets are not ignored.
 // - A statement/appendix document is scanned for large embedded images, so a
 //   render on page 12 is found without rendering the eleven before it.
 export function selectDocumentPages(
-  priorKind: InsightImageKind | undefined,
+  frontPages: boolean,
   pageCount: number,
   scanned: ScannedPage[],
-  cap: number
+  cap: number,
+  titleScores: number[] = []
 ): number[] {
   const pages = Math.max(pageCount, 1);
-  if (priorKind) {
-    const out: number[] = [];
-    for (let page = 1; page <= pages && out.length < cap; page++) out.push(page);
-    return out;
+  if (frontPages) {
+    const all = Array.from({ length: pages }, (_, index) => index + 1);
+    if (pages <= cap) return all;
+    return all
+      .map((page) => ({ page, score: titleScores[page - 1] ?? 0 }))
+      .sort((a, b) => b.score - a.score || a.page - b.page)
+      .slice(0, Math.max(cap, 0))
+      .map((entry) => entry.page)
+      .sort((a, b) => a - b);
   }
   return scanned
     .map((page) => ({ page: page.page, score: pageImageScore(page) }))

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { imageBoxes, captionForBox, boxArea, type ImageOps, type TextItem } from './caption.js';
+import { imagePlacements, captionForBox, boxArea, type ImageOps, type TextItem } from './caption.js';
+
+const imageBoxes = (fn: number[], args: unknown[], ops: ImageOps) => imagePlacements(fn, args, ops).map((p) => p.box);
 
 const OPS: ImageOps = {
   save: 1,
@@ -16,7 +18,7 @@ function item(str: string, x: number, y: number, width = 40, height = 10): TextI
   return { str, x, y, width, height };
 }
 
-describe('imageBoxes', () => {
+describe('imagePlacements', () => {
   it('applies the current transform to the unit-square image', () => {
     const boxes = imageBoxes([OPS.transform, OPS.paintImageXObject], [[2, 0, 0, 2, 10, 20], []], OPS);
     expect(boxes).toEqual([{ x0: 10, y0: 20, x1: 12, y1: 22 }]);

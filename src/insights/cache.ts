@@ -3,18 +3,6 @@ import path from 'path';
 import type { ApplicationInsights } from '../types.js';
 
 export const INSIGHTS_VERSION = 2;
-const PAGE_TEXT_VERSION = 1;
-
-export interface PageTextEntry {
-  mtimeMs: number;
-  size: number;
-  pages: string[];
-}
-
-export interface PageTextCache {
-  version: number;
-  documents: Record<string, PageTextEntry>;
-}
 
 export function insightsDir(appDir: string): string {
   return path.join(appDir, 'insights');
@@ -37,7 +25,7 @@ export function assetPath(appDir: string, imageFile: string): string {
   return path.join(insightsDir(appDir), imageFile);
 }
 
-function atomicWrite(filePath: string, data: string | Buffer): void {
+export function atomicWrite(filePath: string, data: string | Buffer): void {
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   const tmp = `${filePath}.tmp`;
@@ -86,26 +74,4 @@ export function pruneAssets(appDir: string, keep: Set<string>): void {
       // Best-effort cleanup.
     }
   }
-}
-
-export function readPageText(appDir: string): PageTextCache {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(path.join(insightsDir(appDir), 'page-text.json'), 'utf-8'));
-    if (
-      parsed &&
-      typeof parsed === 'object' &&
-      parsed.version === PAGE_TEXT_VERSION &&
-      parsed.documents &&
-      typeof parsed.documents === 'object'
-    ) {
-      return { version: parsed.version, documents: parsed.documents as Record<string, PageTextEntry> };
-    }
-  } catch {
-    // Missing or unreadable cache.
-  }
-  return { version: PAGE_TEXT_VERSION, documents: {} };
-}
-
-export function writePageText(appDir: string, cache: PageTextCache): void {
-  atomicWrite(path.join(insightsDir(appDir), 'page-text.json'), JSON.stringify(cache, null, 2));
 }

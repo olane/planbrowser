@@ -65,11 +65,30 @@ const asMatrix = (value: unknown): Matrix => {
   return [Number(v[0]), Number(v[1]), Number(v[2]), Number(v[3]), Number(v[4]), Number(v[5])] as Matrix;
 };
 
+// One painted image: where it lands on the page and, for image XObjects, its
+// pixel dimensions (pdf.js passes them as the op's arguments, so no pixel data
+// needs to be read).
+export interface ImagePlacement {
+  box: Box;
+  // Width x height in pixels for an image XObject; 0 for masks.
+  pixelArea: number;
+}
+
+const pixelArea = (fn: number | undefined, args: unknown, ops: ImageOps): number => {
+  if (!Array.isArray(args)) return 0;
+  if (fn === ops.paintImageXObject) return (Number(args[1]) || 0) * (Number(args[2]) || 0);
+  if (fn === ops.paintInlineImageXObject) {
+    const image = args[0] as { width?: unknown; height?: unknown } | undefined;
+    return (Number(image?.width) || 0) * (Number(image?.height) || 0);
+  }
+  return 0;
+};
+
 // Walk a pdf.js operator list, tracking the current transformation matrix, and
-// return the bounding box of every painted image. Images are drawn into the unit
-// square, so their extent is the transformed [0,1] x [0,1].
-export function imageBoxes(fnArray: number[], argsArray: unknown[], ops: ImageOps): Box[] {
-  const boxes: Box[] = [];
+// return every painted image. Images are drawn into the unit square, so their
+// extent is the transformed [0,1] x [0,1].
+export function imagePlacements(fnArray: number[], argsArray: unknown[], ops: ImageOps): ImagePlacement[] {
+  const placements: ImagePlacement[] = [];
   const stack: Matrix[] = [];
   let ctm: Matrix = IDENTITY;
 
@@ -98,16 +117,17 @@ export function imageBoxes(fnArray: number[], argsArray: unknown[], ops: ImageOp
       case ops.paintImageXObject:
       case ops.paintInlineImageXObject:
       case ops.paintImageMaskXObject: {
-        boxes.push(
-          bounds([apply(ctm, 0, 0), apply(ctm, 1, 0), apply(ctm, 1, 1), apply(ctm, 0, 1)])
-        );
+        placements.push({
+          box: bounds([apply(ctm, 0, 0), apply(ctm, 1, 0), apply(ctm, 1, 1), apply(ctm, 0, 1)]),
+          pixelArea: pixelArea(fn, args, ops)
+        });
         break;
       }
       default:
         break;
     }
   }
-  return boxes;
+  return placements;
 }
 
 function itemBox(item: TextItem): Box {

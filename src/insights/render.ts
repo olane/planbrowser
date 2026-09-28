@@ -1,6 +1,10 @@
 import fs from 'fs';
-import { getDocumentProxy, getResolvedPDFJS, extractText, extractImages, renderPageAsImage } from 'unpdf';
-import { captionForBox, imageBoxes, boxArea, type Box, type ImageOps, type TextItem } from './caption.js';
+import { getDocumentProxy, getResolvedPDFJS, renderPageAsImage } from 'unpdf';
+import { boxArea, captionForBox, imagePlacements, type ImageOps, type TextItem } from './caption.js';
+import type { PageLine } from './title.js';
+
+// pdf.js access: the only module that talks to the PDF library. Everything it
+// returns is plain data, cached by `features.ts` and interpreted elsewhere.
 
 export type PdfDocument = Awaited<ReturnType<typeof getDocumentProxy>>;
 
@@ -9,6 +13,7 @@ interface RawTextItem {
   transform?: unknown;
   width?: unknown;
   height?: unknown;
+  hasEOL?: unknown;
 }
 
 export function isPdf(filename: string): boolean {
@@ -21,43 +26,91 @@ export async function openPdf(filePath: string): Promise<PdfDocument> {
   return getDocumentProxy(data, { verbosity: 0 });
 }
 
-// Per-page text (title blocks etc.). Merged text is not enough: a document can
-// hold many pages of very different kinds, and we reason per page.
-export async function extractPageTexts(pdf: PdfDocument): Promise<string[]> {
-  const result = await extractText(pdf, { mergePages: false });
-  const text = result.text;
-  return Array.isArray(text) ? text : [text];
+function toTextItems(items: RawTextItem[]): TextItem[] {
+  const out: TextItem[] = [];
+  for (const raw of items) {
+    if (typeof raw.str !== 'string') continue;
+    const t = Array.isArray(raw.transform) ? raw.transform.map(Number) : [];
+    const height = Number(raw.height) || 0;
+    // The glyph matrix's vertical scale is the font size in user space.
+    const fontSize = Math.hypot(t[2] ?? 0, t[3] ?? 0) || height;
+    out.push({
+      str: raw.str,
+      x: t[4] || 0,
+      y: t[5] || 0,
+      width: Number(raw.width) || 0,
+      height,
+      fontSize: fontSize || undefined
+    });
+  }
+  return out;
 }
 
-export interface PageImageStats {
+// Group positioned text items into visual lines. Items on one baseline are
+// joined with a space when there is a visible gap: pdf.js's own merged text
+// glues neighbouring title-block cells together ("SITE PLANLocation plan").
+export function groupLines(items: TextItem[]): PageLine[] {
+  const lines: PageLine[] = [];
+  let current: { str: string; size: number; y: number; right: number } | undefined;
+  const flush = (): void => {
+    const str = current?.str.replace(/\s+/g, ' ').trim();
+    if (current && str) lines.push({ str, size: Math.round(current.size * 10) / 10 });
+    current = undefined;
+  };
+  for (const item of items) {
+    if (!item.str.trim()) continue;
+    const size = item.fontSize ?? item.height ?? 0;
+    const unit = Math.max(1, Math.min(size, current?.size ?? size));
+    const gap = current ? item.x - current.right : 0;
+    // Same baseline and near the previous item: the same line. A large gap (or
+    // a jump backwards) is a separate title-block cell or label.
+    if (current && Math.abs(item.y - current.y) <= unit * 0.5 && gap > -unit && gap < unit * 3) {
+      const spaced = /\s$/.test(current.str) || /^\s/.test(item.str);
+      current.str += !spaced && gap > Math.max(size, 1) * 0.15 ? ` ${item.str}` : item.str;
+      current.size = Math.max(current.size, size);
+      current.right = Math.max(current.right, item.x + item.width);
+    } else {
+      flush();
+      current = { str: item.str, size, y: item.y, right: item.x + item.width };
+    }
+  }
+  flush();
+  return lines;
+}
+
+// Per-page text lines (title blocks etc.). Merged text is not enough: a
+// document can hold many pages of very different kinds, and we reason per page.
+export async function extractPageLines(pdf: PdfDocument): Promise<PageLine[][]> {
+  const pages: PageLine[][] = [];
+  for (let page = 1; page <= pdf.numPages; page++) {
+    try {
+      const content = await (await pdf.getPage(page)).getTextContent();
+      pages.push(groupLines(toTextItems(content.items as RawTextItem[])));
+    } catch {
+      pages.push([]);
+    }
+  }
+  return pages;
+}
+
+// A page's embedded-image signal, read from the operator list without
+// rasterising the page or copying any image's pixels.
+export interface PageScan {
   // Number of embedded raster images on the page.
-  count: number;
+  imageCount: number;
   // Largest embedded image by pixel area. A full-bleed render is one huge
   // image; a vector plan has many tiny symbol/hatch images (or none at all).
-  largestArea: number;
-}
-
-// Summarise a page's embedded raster images without rasterising the page. This
-// is the cheap signal that finds a render sitting on page 12 of a statement,
-// which sequential page rendering would miss.
-export async function analysePageImages(pdf: PdfDocument, page: number): Promise<PageImageStats> {
-  let images;
-  try {
-    images = await extractImages(pdf, page);
-  } catch {
-    return { count: 0, largestArea: 0 };
-  }
-  let largestArea = 0;
-  for (const image of images) {
-    const area = (image.width || 0) * (image.height || 0);
-    if (area > largestArea) largestArea = area;
-  }
-  return { count: images.length, largestArea };
+  largestImageArea: number;
+  // Fraction of the page covered by the largest placed image (0-1).
+  largestImageCoverage: number;
+  // Text nearest the largest placed image (its caption), when the page carries
+  // an image of at least `captionMinArea` pixels; '' otherwise.
+  caption: string;
 }
 
 let cachedOps: Promise<ImageOps> | undefined;
 
-// pdf.js operator codes, resolved lazily once for the render/photo caption pass.
+// pdf.js operator codes, resolved lazily once.
 function resolvedOps(): Promise<ImageOps> {
   if (!cachedOps) {
     cachedOps = getResolvedPDFJS().then((pdfjs) => {
@@ -77,42 +130,37 @@ function resolvedOps(): Promise<ImageOps> {
   return cachedOps;
 }
 
-function largestBox(boxes: Box[]): Box | undefined {
-  let largest: Box | undefined;
-  for (const box of boxes) if (!largest || boxArea(box) > boxArea(largest)) largest = box;
-  return largest;
-}
+const EMPTY_SCAN: PageScan = { imageCount: 0, largestImageArea: 0, largestImageCoverage: 0, caption: '' };
 
-// The text nearest the page's largest embedded image. Used to disambiguate a
-// render from a photo using the image's own caption rather than the document
-// name. Returns '' when the page has no embedded image or no nearby text.
-export async function extractPageCaption(pdf: PdfDocument, page: number): Promise<string> {
+// One operator-list pass gives both the pre-scan signal (image count and size)
+// and, for pages with a large image, the caption beside it.
+export async function scanPage(pdf: PdfDocument, page: number, captionMinArea: number): Promise<PageScan> {
   try {
     const [ops, pdfPage] = await Promise.all([resolvedOps(), pdf.getPage(page)]);
-    const [opList, textContent] = await Promise.all([
-      pdfPage.getOperatorList(),
-      pdfPage.getTextContent()
-    ]);
-    const box = largestBox(imageBoxes(opList.fnArray as number[], opList.argsArray, ops));
-    if (!box) return '';
-    const items: TextItem[] = [];
-    for (const raw of textContent.items as RawTextItem[]) {
-      if (typeof raw.str !== 'string') continue;
-      const transform = Array.isArray(raw.transform) ? raw.transform : [];
-      const height = Number(raw.height) || 0;
-      items.push({
-        str: raw.str,
-        x: Number(transform[4]) || 0,
-        y: Number(transform[5]) || 0,
-        width: Number(raw.width) || 0,
-        height,
-        fontSize: height || undefined
-      });
-    }
+    const opList = await pdfPage.getOperatorList();
+    const placements = imagePlacements(opList.fnArray as number[], opList.argsArray, ops);
+    const images = placements.filter((placement) => placement.pixelArea > 0);
+    const largestImageArea = images.reduce((max, placement) => Math.max(max, placement.pixelArea), 0);
+    let largest = placements[0];
+    for (const placement of placements) if (boxArea(placement.box) > boxArea(largest!.box)) largest = placement;
+
     const viewport = pdfPage.getViewport({ scale: 1 });
-    return captionForBox(items, box, viewport.height);
+    const pageArea = viewport.width * viewport.height;
+    const coverage = largest && pageArea > 0 ? Math.min(1, boxArea(largest.box) / pageArea) : 0;
+
+    let caption = '';
+    if (largest && largestImageArea >= captionMinArea) {
+      const content = await pdfPage.getTextContent();
+      caption = captionForBox(toTextItems(content.items as RawTextItem[]), largest.box, viewport.height);
+    }
+    return {
+      imageCount: images.length,
+      largestImageArea,
+      largestImageCoverage: Math.round(coverage * 1000) / 1000,
+      caption
+    };
   } catch {
-    return '';
+    return EMPTY_SCAN;
   }
 }
 

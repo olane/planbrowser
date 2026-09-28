@@ -247,6 +247,8 @@ export interface InsightImage {
   score: number;
   // Difference hash of the page, for collapsing near-duplicate images.
   phash?: string;
+  // Why the classifier chose this kind (debug; shown in the contact sheet).
+  reason?: string;
 }
 
 export interface InsightSummary {

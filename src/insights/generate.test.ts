@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { generateInsights, getInsightsState, startInsights } from './generate.js';
+import { generateInsights } from './generate.js';
+import { getInsightsState, startInsights } from './jobs.js';
 import type { ApplicationMeta } from '../types.js';
 
 const REFERENCE = '24/00001/FUL';

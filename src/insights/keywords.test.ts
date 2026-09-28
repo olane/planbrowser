@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   documentPrior,
-  isDesignVisualDoc,
-  isReferenceVolume,
-  isSuperseded,
   kindFromText,
+  kindsFromText,
+  profileDocument,
   normalise,
   visualKindFromText
 } from './keywords.js';
@@ -65,31 +64,31 @@ describe('normalise', () => {
   });
 });
 
-describe('isSuperseded', () => {
+describe('profileDocument.superseded', () => {
   it('flags superseded documents', () => {
-    expect(isSuperseded({ documentType: 'Drawings', description: 'SUPERSEDED SITE PLAN' })).toBe(true);
-    expect(isSuperseded({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' })).toBe(false);
+    expect(profileDocument({ documentType: 'Drawings', description: 'SUPERSEDED SITE PLAN' }).superseded).toBe(true);
+    expect(profileDocument({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' }).superseded).toBe(false);
   });
 });
 
-describe('isDesignVisualDoc', () => {
+describe('profileDocument.designVisual', () => {
   it('accepts design statements and visual documents', () => {
-    expect(isDesignVisualDoc({ documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' })).toBe(true);
-    expect(isDesignVisualDoc({ documentType: 'Application Information', description: 'LANDSCAPE AND VISUAL IMPACT ASSESSMENT' })).toBe(true);
+    expect(profileDocument({ documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' }).designVisual).toBe(true);
+    expect(profileDocument({ documentType: 'Application Information', description: 'LANDSCAPE AND VISUAL IMPACT ASSESSMENT' }).designVisual).toBe(true);
   });
   it('rejects appendix/figure/report volumes', () => {
-    expect(isDesignVisualDoc({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' })).toBe(false);
-    expect(isDesignVisualDoc({ documentType: 'Application Survey / Assessment / Statement', description: 'TRANSPORT ASSESSMENT' })).toBe(false);
+    expect(profileDocument({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' }).designVisual).toBe(false);
+    expect(profileDocument({ documentType: 'Application Survey / Assessment / Statement', description: 'TRANSPORT ASSESSMENT' }).designVisual).toBe(false);
   });
 });
 
-describe('isReferenceVolume', () => {
+describe('profileDocument.referenceVolume', () => {
   it('flags appendices, figure books and schedules', () => {
-    expect(isReferenceVolume({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' })).toBe(true);
-    expect(isReferenceVolume({ documentType: 'Application Information', description: 'LVIA APPENDIX 01 METHODOLOGY' })).toBe(true);
+    expect(profileDocument({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' }).referenceVolume).toBe(true);
+    expect(profileDocument({ documentType: 'Application Information', description: 'LVIA APPENDIX 01 METHODOLOGY' }).referenceVolume).toBe(true);
   });
   it('does not flag ordinary drawings', () => {
-    expect(isReferenceVolume({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' })).toBe(false);
+    expect(profileDocument({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' }).referenceVolume).toBe(false);
   });
 });
 
@@ -117,5 +116,41 @@ describe('documentPrior', () => {
     const superseded = documentPrior({ documentType: 'Drawings', description: 'SUPERSEDED PROPOSED SITE PLAN' });
     const current = documentPrior({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' });
     expect(superseded.score).toBeLessThan(current.score - 5);
+  });
+});
+
+describe('keyword fixes', () => {
+  it("matches artist's impression after normalisation", () => {
+    expect(kindFromText("Artist's impression of the square")).toBe('render');
+    expect(documentPrior({ documentType: 'Supporting Documents', description: "Artist's Impression" }).score).toBeGreaterThan(0);
+  });
+  it('matches plural photos', () => {
+    expect(kindFromText('Site Photos')).toBe('photo');
+  });
+  it('does not read legal/statutory sections as drawing sections', () => {
+    expect(kindFromText('Section 106 heads of terms')).toBeUndefined();
+    expect(kindFromText('Section 73 variation of condition 2')).toBeUndefined();
+    expect(kindFromText('PROPOSED SECTION A-A')).toBe('section');
+  });
+});
+
+describe('kindsFromText', () => {
+  it('lists every kind a drawing pack names', () => {
+    expect(kindsFromText('Proposed plans and elevations')).toEqual(['elevation', 'plan']);
+    expect(kindsFromText('Proposed floor plans and elevations')).toEqual(['elevation', 'plan']);
+  });
+});
+
+describe('profileDocument', () => {
+  it('computes the name facts once', () => {
+    const profile = profileDocument({ documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' });
+    expect(profile.designAndAccess).toBe(true);
+    expect(profile.designVisual).toBe(true);
+    expect(profile.drawing).toBe(false);
+    expect(profile.visualName).toBe(true);
+    expect(profile.prior.score).toBeGreaterThan(5);
+  });
+  it('flags admin files by description/filename', () => {
+    expect(profileDocument({ documentType: 'Application Information', description: 'Application Form' }).admin).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { resolveAuthority } from '../authorities.js';
 import { resolveApplicationMeta } from '../storage.js';
-import { getInsightsState, startInsights } from './generate.js';
+import { getInsightsState, startInsights } from './jobs.js';
 import { insightsDir, isValidAssetFile } from './cache.js';
 
 export const insightsRouter = Router();

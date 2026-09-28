@@ -15,7 +15,7 @@ describe('pageImageScore', () => {
 
 describe('selectDocumentPages', () => {
   it('takes from the front for known drawing/photo documents', () => {
-    expect(selectDocumentPages('plan', 10, [], 3)).toEqual([1, 2, 3]);
+    expect(selectDocumentPages(true, 10, [], 3)).toEqual([1, 2, 3]);
   });
 
   it('picks the most image-rich pages for statement/appendix documents', () => {
@@ -26,10 +26,20 @@ describe('selectDocumentPages', () => {
       page({ page: 4, textLength: 1000, imageCount: 3, largestImageArea: 2_000_000 }),
       page({ page: 5, textLength: 800 })
     ];
-    expect(selectDocumentPages(undefined, 5, scanned, 2)).toEqual([3, 4]);
+    expect(selectDocumentPages(false, 5, scanned, 2)).toEqual([3, 4]);
   });
 
   it('returns nothing when no page has a large image', () => {
-    expect(selectDocumentPages(undefined, 3, [page({}), page({ page: 2 })], 4)).toEqual([]);
+    expect(selectDocumentPages(false, 3, [page({}), page({ page: 2 })], 4)).toEqual([]);
+  });
+});
+
+describe('selectDocumentPages for long drawing packs', () => {
+  it('prefers titled sheets over registers and note pages', () => {
+    // Page 1 register (0), page 3 notes (0), others titled.
+    expect(selectDocumentPages(true, 6, [], 4, [0, 2, 0, 2, 1, 2])).toEqual([2, 4, 5, 6]);
+  });
+  it('takes every page when the pack fits the cap', () => {
+    expect(selectDocumentPages(true, 3, [], 4, [0, 0, 0])).toEqual([1, 2, 3]);
   });
 });
