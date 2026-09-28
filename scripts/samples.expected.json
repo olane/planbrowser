@@ -25,7 +25,8 @@
       ],
       "expectAbsent": [
         { "doc": "APPENDIX 03-PHOTOSHEETS AND AVRS VP30-34", "page": 1, "reason": "flat brand cover" },
-        { "doc": "APPENDIX 02-FIGURES", "reason": "appendix of maps/diagrams, not the scheme's renders" }
+        { "doc": "APPENDIX 02-FIGURES", "reason": "appendix of maps/diagrams, not the scheme's renders" },
+        { "doc": "LVIA-APPENDIX-02-FIGURES", "reason": "landscape figure book, not the scheme's renders" }
       ]
     },
     "26/00067/HFUL": {
