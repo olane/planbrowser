@@ -10,7 +10,16 @@ import { selectImages, KIND_ORDER } from './select.js';
 import { selectDocumentPages, LARGE_IMAGE_AREA, type ScannedPage } from './pages.js';
 import { insightsLog } from './log.js';
 import { buildSummary, tallyComments } from './summary.js';
-import { analysePageImages, extractPageTexts, isPdf, openPdf, renderPageToPng, closePdf, type PdfDocument } from './render.js';
+import {
+  analysePageImages,
+  extractPageCaption,
+  extractPageTexts,
+  isPdf,
+  openPdf,
+  renderPageToPng,
+  closePdf,
+  type PdfDocument
+} from './render.js';
 import {
   INSIGHTS_VERSION,
   pruneAssets,
@@ -21,7 +30,7 @@ import {
   writePageText
 } from './cache.js';
 
-export const STRATEGY = { id: 'heuristic', version: 10 };
+export const STRATEGY = { id: 'heuristic', version: 11 };
 
 // Cost caps: analysis is expensive. Documents are ranked by prior, then pages
 // are chosen per document (a cheap embedded-image pre-scan finds renders that
@@ -356,7 +365,13 @@ export async function generateInsights(
         }
         const pageScan = scanned.find((entry) => entry.page === page);
         const hasLargeImage = (pageScan?.largestImageArea ?? 0) >= LARGE_IMAGE_AREA;
-        const classification = classifyPage(doc, texts[page - 1] ?? '', stats, prior, { hasLargeImage });
+        // The caption beside an embedded figure distinguishes a render from a
+        // photo when the document name does not.
+        const caption = hasLargeImage ? await extractPageCaption(pdf, page) : '';
+        const classification = classifyPage(doc, texts[page - 1] ?? '', stats, prior, {
+          hasLargeImage,
+          caption
+        });
         if (classification.score <= 0) continue;
 
         const id = crypto.createHash('sha1').update(png).digest('hex');

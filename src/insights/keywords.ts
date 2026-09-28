@@ -99,6 +99,28 @@ const KIND_MATCHERS: { kind: InsightImageKind; patterns: RegExp[] }[] = [
   }
 ];
 
+// Captions that disambiguate a render from a photo, read from the text next to
+// the image (or the whole page when it is a full-bleed visual). A render shows
+// the proposal ("artist's impression", "CGI", "photomontage"); a photo records
+// existing conditions ("viewpoint", "existing view") or carries the photomontage
+// apparatus ("season", "direction of view"). Orientation words alone are not
+// decisive — a render legend can mention "existing tree groups" — so they are
+// only hints alongside an explicit render/photo word.
+const RENDER_HINTS =
+  /\b(?:artist s? impression|impression|render(?:ed|ing|s)?|cgi|computer generated|visuali[sz]ation|photomontage|photoreal|axonometric|3d (?:view|visual|image)|aerial (?:view|image|visual)|how (?:it|the scheme|the development) (?:will|would) look)\b/;
+const PHOTO_HINTS =
+  /\b(?:photograph(?:s|ic|y)?|photos?|photosheet|viewpoint|verified view|accurate visual representation|avrs?|existing (?:view|condition|photograph)|as existing|context (?:view|photograph)|site (?:photo|photograph)|season|direction of view|shortest distance|single image)\b/;
+
+export function visualKindFromText(text: string): 'render' | 'photo' | undefined {
+  const hay = normalise(text);
+  if (!hay) return undefined;
+  // An explicit render word wins even when the caption also says "viewpoint":
+  // a photomontage is a proposed render, not a record photograph.
+  if (RENDER_HINTS.test(hay)) return 'render';
+  if (PHOTO_HINTS.test(hay)) return 'photo';
+  return undefined;
+}
+
 // Classify a piece of text (usually a page's title block, or a document's
 // name/type/description) into a visual kind, if it mentions one.
 export function kindFromText(text: string): InsightImageKind | undefined {

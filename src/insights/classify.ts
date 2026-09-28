@@ -5,6 +5,7 @@ import {
   isReferenceVolume,
   isSuperseded,
   normalise,
+  visualKindFromText,
   type DocumentPrior
 } from './keywords.js';
 import type { PagePixelStats } from './pixels.js';
@@ -88,6 +89,9 @@ export interface ClassifyOptions {
   // statement page can mix body text with a render/photo figure; this keeps such
   // a page from being dismissed as prose.
   hasLargeImage?: boolean;
+  // Text near the page's largest embedded image. Its own caption is the best
+  // evidence for render-vs-photo when the document name is silent.
+  caption?: string | undefined;
 }
 
 export function classifyPage(
@@ -131,6 +135,9 @@ export function classifyPage(
   // A document that names photos/viewpoints resolves an otherwise-unknown
   // visual to `photo`; a design/statement document to `render`.
   const docVisual: 'photo' | undefined = /photo|viewpoint|avr/.test(docHay) ? 'photo' : undefined;
+  // The image's own caption outranks the document name: a DAS names neither
+  // "photo" nor "render", but the text beside the figure usually does.
+  const captionKind = options.caption ? visualKindFromText(options.caption) : undefined;
   const visualStatement = isDesignVisualDoc(doc);
   // An unnamed visual in a reference volume (appendix/figures) should not be
   // promoted to a render, even when it looks photographic.
@@ -144,13 +151,13 @@ export function classifyPage(
     if (fullBleed) {
       // A full-bleed image is a render/photo even if the page text mentions a
       // plan word (a render page captioned "the masterplan").
-      const inferred = docVisual ?? inferRender();
+      const inferred = captionKind ?? docVisual ?? inferRender();
       if (!inferred) return { kind: 'other', score: 0, label: docLabel };
       kind = inferred;
     } else if (keywordKind === 'render' || keywordKind === 'photo') {
-      kind = keywordKind;
+      kind = captionKind ?? keywordKind;
     } else if (!keywordKind || keywordKind === 'other') {
-      const inferred = docVisual ?? inferRender();
+      const inferred = captionKind ?? docVisual ?? inferRender();
       if (!inferred) return { kind: 'other', score: 0, label: docLabel };
       kind = inferred;
     }
@@ -159,10 +166,10 @@ export function classifyPage(
     // site plan is still a plan.
   } else if (visual && kind === 'other') {
     // A non-photographic embedded figure (large image, few tones) is only a
-    // render when the document is a design/statement one that legitimately
-    // holds scheme visuals. An appendix of maps or a report diagram is not: drop
-    // it rather than let it masquerade as a render.
-    const inferred = docVisual ?? (visualStatement ? 'render' : undefined);
+    // render when a caption says so or the document is a design/statement one
+    // that legitimately holds scheme visuals. An appendix of maps or a report
+    // diagram is not: drop it rather than let it masquerade as a render.
+    const inferred = captionKind ?? docVisual ?? (visualStatement ? 'render' : undefined);
     if (!inferred) return { kind: 'other', score: 0, label: docLabel };
     kind = inferred;
   }

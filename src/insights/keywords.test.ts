@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { documentPrior, isDesignVisualDoc, isReferenceVolume, isSuperseded, kindFromText, normalise } from './keywords.js';
+import {
+  documentPrior,
+  isDesignVisualDoc,
+  isReferenceVolume,
+  isSuperseded,
+  kindFromText,
+  normalise,
+  visualKindFromText
+} from './keywords.js';
 
 describe('kindFromText', () => {
   it('recognises a site plan as a plan', () => {
@@ -31,6 +39,23 @@ describe('kindFromText', () => {
   });
   it('returns undefined when nothing matches', () => {
     expect(kindFromText('S20064-ETS26082813240')).toBeUndefined();
+  });
+});
+
+describe('visualKindFromText', () => {
+  it('reads a render from its caption', () => {
+    expect(visualKindFromText("Artist's impression of the proposed park")).toBe('render');
+    expect(visualKindFromText('Proposed CGI view from the east')).toBe('render');
+    expect(visualKindFromText('Photomontage viewpoint 3')).toBe('render');
+  });
+  it('reads a photo from its caption or photosheet apparatus', () => {
+    expect(visualKindFromText('Existing view along Oxford Road')).toBe('photo');
+    expect(visualKindFromText('Season Autumn Direction of view 200 degrees')).toBe('photo');
+    expect(visualKindFromText('Single Image VP 30')).toBe('photo');
+  });
+  it('does not decide on orientation words alone', () => {
+    expect(visualKindFromText('existing tree groups, landmark building')).toBeUndefined();
+    expect(visualKindFromText('the masterplan seeks a permeable neighbourhood')).toBeUndefined();
   });
 });
 

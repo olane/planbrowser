@@ -188,6 +188,28 @@ describe('classifyPage', () => {
     expect(result.score).toBe(0);
   });
 
+  it('uses the image caption to call a statement page a photo', () => {
+    const result = classifyPage(
+      { documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' },
+      '',
+      fullBleed,
+      { score: 6.5 },
+      { hasLargeImage: true, caption: 'Existing view along Oxford Road - context photograph' }
+    );
+    expect(result.kind).toBe('photo');
+  });
+
+  it('lets a caption supply positive evidence in a reference volume', () => {
+    const result = classifyPage(
+      { documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' },
+      '',
+      photographic,
+      { score: 4 },
+      { caption: "Artist's impression of the proposed park" }
+    );
+    expect(result.kind).toBe('render');
+  });
+
   it('drops a photographic-looking figure in an appendix volume', () => {
     const result = classifyPage(
       { documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' },
