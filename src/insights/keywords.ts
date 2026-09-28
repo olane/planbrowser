@@ -145,6 +145,18 @@ export function isDesignVisualDoc(
   );
 }
 
+// Supporting/reference volumes: appendices, figure books and schedules. These
+// are usually maps, diagrams and data. They can still hold named photos or
+// renders, but an *unnamed* visual in one is far more likely to be a reference
+// diagram than one of the scheme's own renders.
+export function isReferenceVolume(
+  doc: Pick<DocumentMeta, 'documentType' | 'description' | 'localFilename'>
+): boolean {
+  return /\bappendi(?:x|ces)\b|\bfigures?\b|\bschedules?\b/.test(
+    normalise([doc.documentType, doc.description, doc.localFilename].filter(Boolean).join(' '))
+  );
+}
+
 // A document-level prior used to choose which files to open first. Positive
 // means "likely to contain a visual worth showing"; comment/correspondence
 // documents are pushed down.
@@ -163,11 +175,16 @@ export function documentPrior(doc: Pick<DocumentMeta, 'documentType' | 'descript
   else if (/application information/.test(type)) score += 0.5;
   else if (/comment|correspondence|notification|attachment summary|officer/.test(type)) score -= 3;
 
-  if (/render|visual|photomontage|cgi|artist impression|appendix|figure/.test(normalise(hay))) score += 2;
+  if (/render|visual|photomontage|cgi|artist impression/.test(normalise(hay))) score += 2;
 
   // Prioritise the Design & Access Statement regardless of how the portal typed
   // it (it is sometimes filed under Drawings).
   if (isDesignAndAccess(doc)) score += 5;
+
+  // Appendix/figure volumes are supporting reference, not the scheme's own
+  // design visuals. Without a visual kind they mostly contribute diagrams and
+  // maps, so do not let them crowd out real drawings.
+  if (!kind && isReferenceVolume(doc)) score -= 2;
 
   // Administratively-named files (forms, fee letters, validation notices, …)
   // are almost never visual and otherwise ride the generic "Application

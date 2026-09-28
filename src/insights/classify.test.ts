@@ -188,6 +188,16 @@ describe('classifyPage', () => {
     expect(result.score).toBe(0);
   });
 
+  it('drops a photographic-looking figure in an appendix volume', () => {
+    const result = classifyPage(
+      { documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' },
+      '',
+      photographic,
+      { score: 4 }
+    );
+    expect(result.score).toBe(0);
+  });
+
   it('keeps a statement figure (large embedded image) that is not full-bleed', () => {
     const figure = stats({ inkRatio: 0.35, colorfulness: 0.03, distinctColors: 80, dominantColorRatio: 0.6, grayscale: 0.8, edgeDensity: 0.1 });
     const kept = classifyPage(

@@ -1,5 +1,12 @@
 import type { DocumentMeta, InsightImageKind } from '../types.js';
-import { kindFromText, isDesignVisualDoc, isSuperseded, normalise, type DocumentPrior } from './keywords.js';
+import {
+  kindFromText,
+  isDesignVisualDoc,
+  isReferenceVolume,
+  isSuperseded,
+  normalise,
+  type DocumentPrior
+} from './keywords.js';
 import type { PagePixelStats } from './pixels.js';
 
 export interface PageClassification {
@@ -125,6 +132,10 @@ export function classifyPage(
   // visual to `photo`; a design/statement document to `render`.
   const docVisual: 'photo' | undefined = /photo|viewpoint|avr/.test(docHay) ? 'photo' : undefined;
   const visualStatement = isDesignVisualDoc(doc);
+  // An unnamed visual in a reference volume (appendix/figures) should not be
+  // promoted to a render, even when it looks photographic.
+  const reference = isReferenceVolume(doc);
+  const inferRender = (): 'render' | undefined => (visualStatement || !reference ? 'render' : undefined);
 
   if (photographic) {
     // A photographic page (a broad-toned image filling the frame) is a
@@ -133,11 +144,15 @@ export function classifyPage(
     if (fullBleed) {
       // A full-bleed image is a render/photo even if the page text mentions a
       // plan word (a render page captioned "the masterplan").
-      kind = docVisual ?? 'render';
+      const inferred = docVisual ?? inferRender();
+      if (!inferred) return { kind: 'other', score: 0, label: docLabel };
+      kind = inferred;
     } else if (keywordKind === 'render' || keywordKind === 'photo') {
       kind = keywordKind;
     } else if (!keywordKind || keywordKind === 'other') {
-      kind = docVisual ?? 'render';
+      const inferred = docVisual ?? inferRender();
+      if (!inferred) return { kind: 'other', score: 0, label: docLabel };
+      kind = inferred;
     }
     // An explicit plan/map/elevation/section keyword is kept even if the page is
     // photographic: a rendered elevation is still an elevation, and a coloured
@@ -157,8 +172,9 @@ export function classifyPage(
 
   // A plain text page (statement, form, letter) is not a visual: drop it rather
   // than padding the gallery with "other". Ambiguous drawing pages and
-  // photographic pages are kept.
-  if (kind === 'other' && !drawingType && !photographic) {
+  // photographic pages are kept, except in a reference volume where an
+  // unnamed page is more likely to be a diagram than a drawing.
+  if (kind === 'other' && (reference || (!drawingType && !photographic))) {
     return { kind, score: 0, label: docLabel };
   }
 

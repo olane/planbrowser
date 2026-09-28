@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { documentPrior, isDesignVisualDoc, isSuperseded, kindFromText, normalise } from './keywords.js';
+import { documentPrior, isDesignVisualDoc, isReferenceVolume, isSuperseded, kindFromText, normalise } from './keywords.js';
 
 describe('kindFromText', () => {
   it('recognises a site plan as a plan', () => {
@@ -58,6 +58,16 @@ describe('isDesignVisualDoc', () => {
   });
 });
 
+describe('isReferenceVolume', () => {
+  it('flags appendices, figure books and schedules', () => {
+    expect(isReferenceVolume({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' })).toBe(true);
+    expect(isReferenceVolume({ documentType: 'Application Information', description: 'LVIA APPENDIX 01 METHODOLOGY' })).toBe(true);
+  });
+  it('does not flag ordinary drawings', () => {
+    expect(isReferenceVolume({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' })).toBe(false);
+  });
+});
+
 describe('documentPrior', () => {
   it('ranks drawings highly', () => {
     const prior = documentPrior({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' });
@@ -68,6 +78,15 @@ describe('documentPrior', () => {
     const comment = documentPrior({ documentType: 'Consultee Comments', description: 'Environment Agency' });
     const drawing = documentPrior({ documentType: 'Drawings', description: 'PROPOSED ELEVATIONS' });
     expect(comment.score).toBeLessThan(drawing.score);
+  });
+  it('does not boost an appendix of figures as if it were a visual', () => {
+    const appendix = documentPrior({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' });
+    const drawing = documentPrior({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' });
+    expect(appendix.score).toBeLessThan(drawing.score);
+  });
+  it('keeps the kind when a reference volume names photos', () => {
+    const photos = documentPrior({ documentType: 'Photographs', description: 'APPENDIX 03-PHOTOS AND AVRS (VP10-12)' });
+    expect(photos.kind).toBe('photo');
   });
   it('penalises superseded documents hard', () => {
     const superseded = documentPrior({ documentType: 'Drawings', description: 'SUPERSEDED PROPOSED SITE PLAN' });
