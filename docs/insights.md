@@ -1,9 +1,10 @@
 # Application insights: design plan
 
 > **Status: implemented and iterated on real samples.** The sections below are the original design;
-> the three **Feedback round** sections record what changed in practice after first use (detection
->   fixes, coverage + deep scan, Design & Access Statement handling, render/photo captions).
-> Current strategy is **v11**.
+> the four **Feedback round** sections and the [Review](#review-2026-09--page-facts-evidence-eval)
+> section record what changed in practice (detection fixes, coverage + deep scan, Design & Access
+> Statement handling, render/photo captions, the page-facts cache, evidence-based classification
+> and the precision/recall eval). Current strategy is **v12**.
 > Start with [Resuming in a new session](#resuming-in-a-new-session) at the end.
 
 The goal is to automatically surface, for a downloaded planning application:
@@ -123,39 +124,37 @@ are reusable no matter how the approach changes.
 
 ### Two caches
 
-- **Artifacts** (strategy-independent, expensive to produce): per-page rendered PNGs and
-  per-page text (and OCR text later). Cached under
-  `downloads/<authorityId>/<reference>/insights/` (e.g. `insights/pages/*.png`,
-  `insights/page-text.json`). Keyed by document `mtimeMs` + `size` + page, mirroring the
-  existing `src/search/searchTextCache.ts` pattern, so replaced files are re-extracted.
+- **Page facts** (strategy-independent, expensive to produce): per-page text lines (with font
+  size), the embedded-image scan (image count, largest pixel area, page coverage, caption) and the
+  rendered thumbnail's pixel statistics + perceptual hash. Stored in
+  `downloads/<authorityId>/<reference>/insights/features.json`, keyed by document `mtimeMs` +
+  `size` (and page, and thumbnail width for renders), so replaced files are re-extracted. Bump
+  `FEATURES_VERSION` in `features.ts` when *extraction* changes.
 - **Insights** (strategy output, cheap to recompute): scores, selected images and summary,
-  stored in `insights.json` alongside `metadata.json`. Carries
-  `strategy: { id, version }` plus the source document mtimes/sizes.
+  stored in `insights/insights.json`. Carries `strategy: { id, version }` plus the source
+  document mtimes/sizes. Bump `STRATEGY.version` in `generate.ts` when *interpretation* changes.
 
 Changing the strategy (or bumping its version) invalidates `insights.json` but **reuses** all
-rendered pages and text. Without this split, every experiment would re-render every PDF.
+page facts: a warm re-run opens no PDFs at all, and gives exactly the same result as a cold run
+(budgets count pages *considered*, not pages computed). Thumbnails are content-addressed PNGs;
+only those of `found` images are kept, and a cached page whose thumbnail was pruned is re-rendered
+on demand if it later enters the gallery.
 
-### Interfaces (two seams, one config switch)
+### Seams (as built)
 
-```ts
-// Rasterise a single page. First impl: MupdfRenderer (WASM).
-interface PageRenderer {
-  render(filePath: string, page: number, opts?: RenderOptions): Promise<RenderedPage>;
-}
+The original plan sketched `PageRenderer` / `ImageDiscovery` / `SummaryProvider` interfaces
+selected by config. They were never needed as interfaces; the seams that exist are module
+boundaries:
 
-// Turn page artifacts + metadata into ranked, labelled images. First impl: HeuristicImageDiscovery.
-interface ImageDiscovery {
-  find(meta: ApplicationMeta, pages: PageArtifacts[]): InsightImage[];
-}
+- **Extraction** — `render.ts` (the only module that talks to pdf.js) and `features.ts` (the
+  page-facts store over it). Plain data out.
+- **Interpretation** — `keywords.ts` (document profile), `title.ts`, `classify.ts`, `pages.ts`,
+  `select.ts`: pure functions over page facts, unit-tested with synthetic inputs.
+- **Orchestration** — `generate.ts` (the pipeline) and `jobs.ts` (background runs and API state).
 
-// Turn metadata + page text into a summary. First impl: HeuristicSummaryProvider.
-interface SummaryProvider {
-  summarise(meta: ApplicationMeta, pages: PageArtifacts[]): InsightSummary;
-}
-```
-
-`src/insights/generate.ts` composes the chosen renderer + discovery + summary and writes the
-caches. Implementations are selected by config (e.g. `INSIGHTS_RENDERER`, `INSIGHTS_STRATEGY`).
+A second strategy (e.g. a vision pass over the top-K thumbnails) would slot in as another
+interpretation step over the same cached facts; add an interface when there are two
+implementations, not before.
 
 ### What we deliberately do NOT do
 
@@ -186,6 +185,7 @@ export interface InsightImage {
   height: number;
   score: number;
   phash?: string;         // 64-bit difference hash, for near-duplicate collapse
+  reason?: string;        // why the classifier chose this kind (debug)
 }
 
 export interface InsightSummary {
@@ -327,7 +327,8 @@ missed even when the document was opened. Strategy now at **9**.
 
 - **Budget rebalance.** `MAX_PAGES_PER_DOC` dropped 8 → 4, and `photo` documents are capped by a
   global `PHOTO_PAGE_QUOTA` (8) so visual-impact appendices cannot monopolise the budget. Visual
-  documents (statements/appendices) get a slightly higher 6-page cap.
+  documents (statements/appendices) get a higher 8-page cap. (All budgets now live in
+  `QUICK_BUDGET` / `DEEP_BUDGET` in `generate.ts`.)
 - **Embedded-image pre-scan.** For documents with no name keyword, each page is scanned cheaply
   with `unpdf` `extractImages` (dimensions only, no rasterisation) and the most image-rich pages
   are chosen — so a render anywhere in the document is found. The scan is metered
@@ -344,7 +345,7 @@ missed even when the document was opened. Strategy now at **9**.
   distinct candidate after dedupe, before the selection caps — and keeps its thumbnails. The
   Overview has a **Highlights / All found** toggle, so the caps are visible rather than implied.
   A **Scan more documents** button re-runs generation with a deep budget
-  (`DEEP_MAX_DOCS`/`DEEP_MAX_PAGES` 120, 6–10 pages/doc, 1500 pre-scan pages) and persists
+  (120 documents / 120 pages, 6–12 pages/doc, 1500 pre-scan pages) and persists
   `depth: 'deep'`. Automatic refreshes preserve the depth of the cached result.
 
 Result on `26/01872/OUT`: the gallery went from 0 to 5 renders, including the hero "Opening the
@@ -401,6 +402,58 @@ caption. Strategy now at **11**.
 Result on `26/01872/OUT`: `APPENDIX 02-FIGURES` yields no renders (was four), while the DAS
 renders, parameter plans and AVR photos are unchanged.
 
+## Review (2026-09) — page facts, evidence, eval
+
+A review of rounds 1–4 found that the rules were being tuned on two applications without the
+tooling that makes tuning cheap and safe. Strategy now at **12**.
+
+- **Page-facts cache** (`features.ts`, `insights/features.json`). The "two caches" design had only
+  been half built: page text was cached, but every run re-rendered every candidate page and
+  re-ran the image pre-scan. All page facts are now cached; interpretation reruns from them, so a
+  strategy bump or an eval run re-renders nothing. See [Two caches](#two-caches).
+- **One operator-list pass.** The pre-scan used `unpdf`'s `extractImages`, which copies every
+  embedded image's pixels (a 9933×7017 render is ~280 MB as RGBA) just to read its dimensions, and
+  the caption step then walked the operator list again. `scanPage` reads image sizes from the
+  operator list's arguments and the placement box from the transform matrix, in one pass, and
+  records page coverage as well as pixel area.
+- **Text lines.** `unpdf`'s merged text glues neighbouring title-block cells together ("SITE
+  PLANLocation plan 1:1250"), which broke title detection. `extractPageLines` groups positioned
+  text into lines itself (splitting on large gaps) and keeps each line's font size.
+- **Keyword fixes.** "Artist's impression" never matched (`normalise` turns the apostrophe into a
+  space), so such a document scored 0 and was never opened; "Site Photos" did not match `photo\b`;
+  "Section 106" / "Section 73" read as drawing sections; "Proposed plans (and elevations)" named
+  no plan kind. Drawing-typed documents with a cryptic name (a drawing number) were skipped
+  outright because they had no kind and no "visual" name; they now get front-page selection.
+- **Page content beats the document name** (`title.ts`, `classify.ts`). The kind used to come from
+  the document name first, and otherwise from the first keyword anywhere on the page, so every
+  page of "Proposed plans and elevations" was an elevation and a floor plan with a "LOCATION
+  PLAN" inset was a map. Now, in order: a qualified page title ("PROPOSED FIRST FLOOR PLAN") → the
+  document name when it names one kind → an unqualified page title (preferring one the name also
+  mentions) → the name's first kind → any drawing word on the page. Notes, cross-references and
+  chrome are not titles; a page listing many titles is a drawing register, not a drawing. The
+  label comes from the same title line as the kind. Long drawing packs render their titled sheets
+  rather than just pages 1–4.
+- **Evidence and reasons.** `classifyPage` gathers appearance (flat graphic, prose, photographic,
+  full-bleed, embedded figure) and evidence (page title, document name, caption, document
+  profile) and resolves them by one explicit precedence, returning a `reason` such as `plan from
+  qualified page title "PROPOSED GROUND FLOOR PLAN"` or `rejected: prose page`. The reason is
+  stored on each image and shown in the contact sheet. The five overlapping "is this a visual
+  document" regexes became one `DocumentProfile` per document (`profileDocument`).
+- **Eval measures what users see.** It used to check recall against `found` only, so a render
+  dropping out of the gallery still passed. `expect` entries can now require `highlight: true`, and
+  per-page `labels` (good/bad + kind, made in the contact sheet) give precision, recall and kind
+  accuracy for both the highlights and `found`. The contact sheet shows every rendered page
+  (highlights, other found, rejected) with its reason and is the labelling tool; `npm run
+  insights:labels -- labels.json` merges a download into `samples.expected.json`.
+- **Structure.** `jobs.ts` holds background runs and API state; `generate.ts` is the pipeline;
+  budgets are two objects. A synthetic-PDF fixture (`__fixtures__/pdf.ts`) drives end-to-end
+  tests (`pipeline.test.ts`) including cold-vs-warm equivalence.
+
+**Not yet verified on the real samples** (the sandbox this was written in could not reach the
+planning portal): run `npm run insights:eval` and look at the contact sheet before trusting v12.
+The three `highlight: true` flags added to `samples.expected.json` are the intended behaviour and
+may fail at first.
+
 ## Renderer choice
 
 **First implementation: `unpdf` + `@napi-rs/canvas`.** Reuses the existing dependency, renders
@@ -417,19 +470,26 @@ zero new deps but hacky, slow and unreliable for this purpose.
 
 ```
 src/insights/
-  render.ts          # PDF open / page text / page render (unpdf + @napi-rs/canvas)
-  pixels.ts         # page visual statistics
-  caption.ts        # image-box proximity caption (render vs photo)
-  keywords.ts        # kind and document priors
-  classify.ts        # per-page kind + score + label
+  render.ts          # pdf.js access: text lines, operator-list scan + caption, page render
+  features.ts        # page-facts store (features.json), lazy PDF opening
+  pixels.ts          # page visual statistics + perceptual hash
+  caption.ts         # image placements and nearest-text caption (pure)
+  keywords.ts        # kind matchers, DocumentProfile, document prior
+  title.ts           # page title candidates, drawing registers, page title score
+  classify.ts        # per-page evidence → kind + score + label + reason
+  pages.ts           # which pages of a document to render
   select.ts          # dedupe, caps, ranking
   summary.ts         # headline, points, metrics, comment tally
-  cache.ts           # insights.json + page-text + content-addressed assets
-  generate.ts        # orchestrate, version, background generation
+  cache.ts           # insights.json + content-addressed assets
+  generate.ts        # the pipeline
+  jobs.ts            # background generation + API state
   routes.ts          # insights endpoints
-scripts/insights-report.mjs   # contact-sheet report over samples
+  __fixtures__/pdf.ts # test-only synthetic PDF builder
+scripts/insights-truth.mjs    # ground-truth format + scoring (shared)
+scripts/insights-eval.mjs     # hard assertions + precision/recall
+scripts/insights-report.mjs   # contact sheet + labelling tool
+scripts/insights-labels.mjs   # merge downloaded labels into the ground truth
 scripts/samples.expected.json # hand-curated ground truth per sample
-scripts/insights-eval.mjs     # recall/leak check against the expectations
 ```
 
 ## Build order (slices)
@@ -437,82 +497,67 @@ scripts/insights-eval.mjs     # recall/leak check against the expectations
 1. ~~**Renderer spike** on real sample data~~ — **done** (2026-09): `unpdf` +
    `@napi-rs/canvas` renders pages and extracts embedded images; see
    [Findings from sample data](#findings-from-sample-data-2026-09).
-2. ~~**Artifact pipeline + cache**~~ — **first cut done**: per-page text cached in
-   `insights/page-text.json` (mtime/size invalidation); rendered thumbnails are content-addressed
-   PNGs under `insights/`.
+2. ~~**Artifact pipeline + cache**~~ — **done**: all page facts cached in
+   `insights/features.json` (mtime/size invalidation); thumbnails are content-addressed PNGs
+   under `insights/`.
 3. ~~**Image discovery**~~ — **first cut done**: see implementation status below.
 4. ~~**Summary**~~ — **done**: description headline (hidden when it repeats the viewer's
    description), an "Included" document inventory, regex metrics and comment tally.
 5. **Hardening (remaining)** — Electron/Docker packaging verification, revision collapse across
-   differently-named docs, mining a proposal paragraph from the DAS/planning statement, OCR only
-   if scans appear. The evaluation harness (`npm run insights:eval`) is now in place for tuning.
+   differently-named docs, a richer proposal summary (see
+   [Known gaps](#known-gaps--future-slices)), OCR only if scans appear. Label the remaining
+   samples before further tuning.
 
 ## Implementation status
 
-- `src/insights/keywords.ts` — kind/name priors; suppresses admin files (forms, fee letters).
-- `src/insights/pixels.ts` — `analysePixels`/`analysePagePng` visual stats, dominant-colour
-  ratio and a 64-bit difference hash (`phash`).
-- `src/insights/classify.ts` — per-page kind + score; rejects flat covers and prose pages,
-  trusts document-name kinds only for drawing/photographic documents.
-- `src/insights/select.ts` — dedupe by content hash and perceptual hash, per-kind/per-document/all
-  caps.
-- `src/insights/summary.ts` — headline, "included" document inventory, metrics, comment tally.
-- `src/insights/pages.ts` — pure per-page selection: front pages for known drawing/photo
-  documents, image-rich pages for statements/appendices.
-- `src/insights/render.ts` — `unpdf` + `@napi-rs/canvas` page text/render plus the embedded-image
-  pre-scan.
-- `src/insights/cache.ts` — insights.json + page-text + asset storage (atomic writes).
-- `src/insights/generate.ts` — orchestrates (MAX_DOCS 40, MAX_PAGES 40, 4 pages/doc, 1400 px
-  thumbs) and exposes background `startInsights`/`isGenerating`.
-- `src/insights/log.ts` — `[insights]` progress logging (silenced under the test runner).
-- `src/insights/routes.ts` — `GET`/`POST /api/applications/:ref/insights`,
-  `GET /api/applications/:ref/insights/images/:file`.
-- `ui/src/pages/Viewer.vue` — **Overview** tab (summary + image gallery, generate/poll).
-- `scripts/insights-report.mjs` — contact-sheet report over samples (`npm run build` first).
-- `scripts/insights-eval.mjs` + `scripts/samples.expected.json` — ground-truth recall/leak check
-  (`npm run insights:eval`).
+See [Module layout](#module-layout) for what lives where. Current budgets (`generate.ts`): quick
+40 documents / 40 rendered pages, 4 pages per drawing document, 8 per statement/appendix, 14 for
+the DAS, 8 photo pages, 240 pre-scanned pages; deep 120 / 120, 6 / 12 / 20, 16 photo pages, 1500
+pre-scanned. Thumbnails are 1400 px wide.
 
 Notes / known rough edges:
-- Generation is synchronous-per-app and CPU-heavy; the embedded-image pre-scan roughly doubles it
-  for visual apps (~1 min for a 94-doc application). It runs in the background and the UI polls,
-  but there is no cross-process queue yet. Progress is logged.
-- `extractImages` is used only for the cheap per-page pre-scan, not as the asset source; renders
-  are still caught via photographic/full-bleed pixel stats after rasterising the page.
+- A cold generation is CPU-heavy (~1 min for a 94-document application); it runs in the
+  background and the UI polls, but there is no cross-process queue. Warm re-runs are near-instant.
 - A stale cache (documents changed on sync, or a strategy bump) is refreshed automatically in the
   background on the next `GET`; a generation failure is surfaced as `status:'error'` for retry.
-- Render budget counts attempts, so a document full of non-visual pages cannot exceed `MAX_PAGES`.
-- Unreferenced thumbnails are pruned after each generation, so the `insights/` directory tracks
-  `insights.json`.
-- The heuristic is due a tuning pass against the contact sheet (kind scoring, caps).
+  While a download is still in progress each poll can see a new file set and start a refresh.
+- Render budget counts attempts, so a document full of non-visual pages cannot exceed `maxPages`.
+- Unreferenced thumbnails are pruned after each generation, so `insights/` tracks `found`.
+- Ranking within a kind still leans on `edgeDensity`; the document prior, title confidence and
+  recency are better candidates once labels exist to tune against.
 
 ## Testing & evaluation
 
 Because this is a ranking problem, do not tune it blind.
 
-- Unit-test `feature.ts`, `score.ts`, `select.ts`, `summary.ts` with synthetic fixtures
-  (the repo uses vitest; `npm test`). Note: "relevance" is fuzzy, so keep scoring pure and
-  deterministic so it is testable.
-- A `scripts/` report that runs the selected strategy over the sample applications and dumps
-  ranked pages as an HTML contact sheet for eyeballing. Fetch any missing samples first with
-  `npm run samples`, then `npm run insights:report`.
-- **Ground truth + eval** (`scripts/samples.expected.json`, `scripts/insights-eval.mjs`). Each
-  sample lists the images that *should* surface (`expect`: doc substring + optional page/kind) and
-  things that must not (`expectAbsent`: covers, prose slides), plus `expectEmpty` for thin
-  follow-on apps. `npm run insights:eval` regenerates each sample, matches against the produced
-  `found` set, prints recall and any leaks, and exits non-zero on a miss — so a heuristic change
-  that drops a previously-good image is caught rather than eyeballed. It is curated by hand and
-  grows as samples are inspected; it needs downloaded samples so it is not run in CI.
-  The `ImageDiscovery` seam means two strategies can be compared side by side through the same
-  harness.
+- Unit tests (vitest, `npm test`) cover the pure interpretation modules with synthetic inputs,
+  and `pipeline.test.ts` runs the whole pipeline over synthetic PDFs built by
+  `__fixtures__/pdf.ts` (titles, insets, drawing registers, captioned figures, cold-vs-warm
+  cache equivalence).
+- **Contact sheet** (`npm run insights:report`, after `npm run samples`): every rendered page —
+  highlights, other found, rejected — with its kind, reason and score. It is also the labelling
+  tool: mark tiles good/bad (and fix the kind), *Download labels*, then
+  `npm run insights:labels -- labels.json`.
+- **Ground truth + eval** (`scripts/samples.expected.json`, `npm run insights:eval`; format in
+  `scripts/insights-truth.mjs`). Hard assertions — `expect` (doc substring + optional
+  page/kind, optionally `highlight: true`), `expectAbsent`, `expectEmpty` — fail the run. Labels
+  give precision, recall and kind accuracy for the highlights and for `found`, plus lists of bad
+  highlights and missed good pages. The eval lists manifest samples with no ground truth yet.
+  It needs downloaded samples, so it is not run in CI; thanks to the page-facts cache, re-runs
+  take seconds.
+- Ground truth covers 8 of 14 samples, all from one council (Greater Cambridge). Label the other
+  six — especially `24/04575/FUL` and `S/4629/18/FL` — and add a few applications from another
+  authority before tuning further; the heuristics were tuned mostly on two applications.
 
 ## Slice 1 heuristic (finalised against samples)
 
 Two passes, all deterministic and cacheable. Signals are combined into scores; no single missing
 tag or cryptic name breaks the result.
 
-**Pass A — artifacts (expensive, cached, strategy-independent).** For every PDF document:
-per-page text (`extractText`, `mergePages: false`) and per-page embedded-image summaries
-(`extractImages` → count, largest width/height/area). Keyed by document `mtimeMs`/`size`.
+**Pass A — page facts (expensive, cached, strategy-independent).** For every analysed PDF:
+per-page text lines, per-page embedded-image summaries from the operator list (count, largest
+pixel area, coverage, caption) and, for rendered pages, pixel statistics. Keyed by document
+`mtimeMs`/`size` (see [Two caches](#two-caches)).
 
 **Pass B — interpretation (cheap, versioned).** Score each *page* using:
 
@@ -529,7 +574,7 @@ per-page text (`extractText`, `mergePages: false`) and per-page embedded-image s
 
 Then: pick candidate pages to rasterise (drawing-like docs, plus pages with large embedded
 images), **capped per application** (start ~40 pages) and prioritised by score; render
-thumbnails (target ~1600 px wide) and/or save the largest embedded image as the asset; classify
+thumbnails (1400 px wide); classify
 `kind` + `label`; dedupe by content hash; rank and select top-N per kind.
 
 **Hard cases confirmed by the samples:**
@@ -550,8 +595,24 @@ thumbnails (target ~1600 px wide) and/or save the largest embedded image as the 
   (`scrapeTabTable()` in `src/scraper.ts` already generalises to any tab), then resolve the
   parent so a follow-on can point at the primary application's content. This also gives a
   *richness prior* so a follow-on with no drawing-like pages does not pretend to have visuals.
-- **Vision strategy**: `VisionImageDiscovery` (confirm kind, caption) and
-  `LlmSummaryProvider`, called only on the heuristic's top-K candidates to bound cost.
+- **Richer proposal summary (option).** The Overview's "what's proposed" is still just the
+  description, regex metrics and a list of document types present. Two deterministic sources
+  would do much better:
+  - *The application form.* Where the council publishes it, the standard application form has
+    structured sections — residential units by type/tenure/bedrooms, non-residential floorspace by
+    use class (existing / lost / proposed), materials, vehicle and cycle parking, site area. It is
+    currently scored −6 as an admin file and never read. A section-anchored parser over its page
+    text (already extracted by the page-facts cache once the form is opened) could fill the
+    metrics authoritatively.
+  - *The Design & Access / Planning Statement.* Its page text is already cached; a "The proposal"
+    / "Description of development" / "Summary" section could supply a short proposal paragraph.
+  Also keep qualifiers the metrics currently drop ("up to 1,500 homes" in outline applications),
+  and show where each metric came from.
+- **Vision strategy**: a vision pass (confirm kind, caption) and an LLM summary, called only on
+  the heuristic's top-K candidates to bound cost. Render-vs-photo-vs-diagram is where rules have
+  churned most, and the thumbnails are already rendered and cached.
+- **Revision collapse**: when near-duplicates collapse, prefer the newest `datePublished`;
+  parse drawing number + revision from the title block for the full fix.
 - **OCR** for scanned drawing sets (`tesseract.js`, WASM) if sample data shows they are common.
 - **User curation** feedback loop feeding ranking weights.
 
@@ -630,24 +691,24 @@ export FONTCONFIG_FILE=/tmp/pb/fonts.conf
 ## Resuming in a new session
 
 1. Read this document first; it is the source of truth for the plan and decisions. The
-   **Feedback round 1/2/3** sections near the top supersede the original design where they differ.
-2. The work lives on the `docs/insights-plan` branch, in **PR #8**
-   (`https://github.com/olane/planbrowser/pull/8`). Check `git branch --show-current` / `git log`.
-3. **Current state (2026-09):** heuristic strategy **v11**; `INSIGHTS_VERSION` 2. The pipeline
-   renders selected pages, persists curated `images` plus the full `found` set and `coverage`, and
-   supports a user-triggered `deep` scan. The UI offers Highlights/All-found, page deep links and
-   generation progress. The DAS is prioritised and its mixed-layout figures are picked up; appendix
-   figure books are excluded and render-vs-photo is read from the image caption.
+   **Feedback round 1–4** and **Review** sections supersede the original design where they differ.
+2. Check `git branch --show-current` / `git log` for where the work currently lives (it started on
+   `docs/insights-plan`, PR #8).
+3. **Current state (2026-09):** heuristic strategy **v12**; `INSIGHTS_VERSION` 2;
+   `FEATURES_VERSION` 1. Page facts are cached, so re-interpretation is cheap. The pipeline
+   persists curated `images` (with a `reason` each) plus the full `found` set and `coverage`, and
+   supports a user-triggered `deep` scan. Page titles beat document names; the DAS is prioritised;
+   appendix figure books are excluded; render-vs-photo is read from the image caption.
 4. Samples are not in the repo (`downloads/` is gitignored). `npm run samples` fetches what is
    missing (cache-first) from `scripts/samples.json`.
-5. **Evaluate, don't guess:** `npm run insights:eval` runs the heuristic over the curated
-   `scripts/samples.expected.json` and reports recall/leaks (non-zero on a miss). The contact sheet
-   `npm run insights:report` is still useful for eyeballing new samples.
-6. **Strategy changes:** bump `STRATEGY.version` in `generate.ts` (old caches auto-refresh in the
-   background). Bump `INSIGHTS_VERSION` only for a schema change (it makes old caches read as
-   absent, i.e. a manual regenerate).
-7. **Likely next work:** hardening (Electron/Docker packaging, revision collapse across
-   differently-named docs), mining a proposal paragraph from the DAS/planning statement for the
-   Overview summary (still just metrics + document inventory), OCR only if scans appear, and
-   extending `samples.expected.json` as more samples are inspected.
+5. **Evaluate, don't guess:** `npm run insights:eval` checks the hard assertions (non-zero on a
+   miss) and reports label precision/recall. `npm run insights:report` writes the contact sheet,
+   which is also where labels are made.
+6. **Versions:** bump `STRATEGY.version` (`generate.ts`) for interpretation changes (old caches
+   auto-refresh in the background, reusing page facts); `FEATURES_VERSION` (`features.ts`) for
+   extraction changes (re-extracts everything); `INSIGHTS_VERSION` (`cache.ts`) only for a schema
+   change (old caches read as absent, i.e. a manual regenerate).
+7. **Likely next work:** run the eval on real samples to validate v12; label the six unlabelled
+   samples and some from another authority; then ranking within a kind, revision collapse,
+   the richer summary option, and Electron/Docker packaging checks.
 8. Where this doc and the code disagree, update the doc — it should not silently rot.
