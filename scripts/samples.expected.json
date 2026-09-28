@@ -1,12 +1,12 @@
 {
-  "//": "Human-curated ground truth, used by scripts/insights-eval.mjs. `doc` is matched as a normalised substring of localFilename+description; `page` and `kind` are optional. This is intentionally small and grows as samples are inspected — it is not auto-generated.",
+  "//": "Human-curated ground truth for scripts/insights-eval.mjs; the format is documented in scripts/insights-truth.mjs. `expect`/`expectAbsent`/`expectEmpty` are hard assertions (`doc` is a normalised substring of filename+label; `page`/`kind` optional; `highlight: true` means it must be in the curated highlights, not just found). `labels` are per-page good/bad verdicts made in the contact sheet (`npm run insights:report`, then `npm run insights:labels -- labels.json`) and drive the precision/recall metrics. Not auto-generated.",
   "samples": {
     "25/04484/FUL": {
       "expect": [
         { "doc": "DESIGN  ACCESS STATEMENT", "page": 5, "kind": "render", "note": "streetscape / context photos" },
-        { "doc": "DESIGN  ACCESS STATEMENT", "page": 9, "kind": "render", "note": "proposal photomontage" },
+        { "doc": "DESIGN  ACCESS STATEMENT", "page": 9, "kind": "render", "highlight": true, "note": "proposal photomontage" },
         { "doc": "DESIGN  ACCESS STATEMENT", "page": 15, "kind": "render" },
-        { "doc": "PROPOSED SITE PLAN", "kind": "plan" },
+        { "doc": "PROPOSED SITE PLAN", "kind": "plan", "highlight": true },
         { "doc": "PROPOSED GROUND FLOOR PLAN", "kind": "plan" },
         { "doc": "PROPOSED ELEVATIONS SHEET 1 OF 3", "kind": "elevation" },
         { "doc": "EXISTING SITE LOCATION PLAN", "kind": "map" }
@@ -17,7 +17,7 @@
     },
     "26/01872/OUT": {
       "expect": [
-        { "doc": "DESIGN AND ACCESS STATEMENTPART 4", "page": 12, "kind": "render", "note": "hero render 'Opening the Park to the City'" },
+        { "doc": "DESIGN AND ACCESS STATEMENTPART 4", "page": 12, "kind": "render", "highlight": true, "note": "hero render 'Opening the Park to the City'" },
         { "doc": "DESIGN AND ACCESS STATEMENTPART 4", "page": 13, "kind": "render" },
         { "doc": "FRAMEWORK PARAMETER PLAN", "kind": "plan" },
         { "doc": "SITE LOCATION PLAN EXISTING", "kind": "map" },

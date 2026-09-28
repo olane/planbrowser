@@ -1,72 +1,40 @@
-// Evaluate the insights heuristic against the human-curated expectations in
-// scripts/samples.expected.json.
+// Evaluate the insights heuristic against the ground truth in
+// scripts/samples.expected.json (see scripts/insights-truth.mjs for the format).
 //
 //   npm run build
 //   node scripts/insights-eval.mjs [reference ...] [--deep]
 //
-// With no references it evaluates every sample that has expectations. Exits
-// non-zero if an expected image is missing, an expected-absent image leaks into
-// the results, or an expect-empty sample produced a gallery. This is the
-// regression guard for heuristic changes; it is not run in CI (it needs
-// downloaded samples).
+// With no references it evaluates every sample that has ground truth. Exits
+// non-zero on a hard failure: an expected image is missing (or missing from the
+// highlights when marked `highlight`), an expected-absent image leaks, or an
+// expect-empty sample produced a gallery. Label-based precision/recall is
+// reported but does not fail the run.
+//
+// Page facts are cached per application (insights/features.json), so after the
+// first run this re-interprets without re-rendering: seconds, not minutes. It
+// is not run in CI (it needs downloaded samples).
 
-import fs from 'fs';
-import path from 'path';
 import { generateInsights } from '../dist/insights/generate.js';
-
-const root = process.env.DOWNLOADS_DIR
-  ? path.resolve(process.env.DOWNLOADS_DIR)
-  : path.join(process.cwd(), 'downloads');
+import { findApplication, loadManifest, loadTruth, pct, scoreSample } from './insights-truth.mjs';
 
 const args = process.argv.slice(2);
 const deep = args.includes('--deep');
-const filters = args.filter((a) => a !== '--deep');
+const filters = args.filter((a) => !a.startsWith('--'));
 
-const expectedPath = path.join(process.cwd(), 'scripts', 'samples.expected.json');
-const { samples: expectations } = JSON.parse(fs.readFileSync(expectedPath, 'utf-8'));
-
-function normalise(value) {
-  return String(value ?? '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
-
-function findApplication(reference) {
-  if (!fs.existsSync(root)) return null;
-  for (const authority of fs.readdirSync(root)) {
-    const dir = path.join(root, authority, reference.replace(/\//g, '-'));
-    const metaPath = path.join(dir, 'metadata.json');
-    if (!fs.existsSync(metaPath)) continue;
-    try {
-      return { meta: JSON.parse(fs.readFileSync(metaPath, 'utf-8')), dir };
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
-function matchImage(image, spec) {
-  const hay = normalise(`${image.localFilename} ${image.label ?? ''}`);
-  if (!hay.includes(normalise(spec.doc))) return false;
-  if (spec.page !== undefined && image.page !== spec.page) return false;
-  if (spec.kind !== undefined && image.kind !== spec.kind) return false;
-  return true;
-}
-
-const references = filters.length ? filters : Object.keys(expectations);
+const { samples: truth } = loadTruth();
+const references = filters.length ? filters : Object.keys(truth);
 let failed = false;
+const totals = { good: 0, bad: 0, hGood: 0, hBad: 0, labelledGood: 0, missedGood: 0 };
 
 for (const reference of references) {
-  const spec = expectations[reference];
+  const spec = truth[reference];
   if (!spec) {
-    console.log(`? ${reference}: no expectations, skipped`);
+    console.log(`? ${reference}: no ground truth, skipped`);
     continue;
   }
   const found = findApplication(reference);
   if (!found) {
-    console.log(`? ${reference}: not downloaded, skipped`);
+    console.log(`? ${reference}: not downloaded, skipped (npm run samples)`);
     continue;
   }
 
@@ -79,24 +47,46 @@ for (const reference of references) {
     failed = true;
     continue;
   }
-  const pool = insights?.found ?? insights?.images ?? [];
-  const expect = spec.expect ?? [];
-  const hits = expect.filter((e) => pool.some((i) => matchImage(i, e)));
-  const misses = expect.filter((e) => !pool.some((i) => matchImage(i, e)));
-  const leaks = (spec.expectAbsent ?? []).filter((e) => pool.some((i) => matchImage(i, e)));
-  const emptyFail = spec.expectEmpty === true && pool.length > 0;
-  const ok = !misses.length && !leaks.length && !emptyFail;
-  if (!ok) failed = true;
-
+  const s = scoreSample(insights, spec);
+  if (!s.ok) failed = true;
   const secs = ((Date.now() - started) / 1000).toFixed(0);
+  const l = s.labels;
   console.log(
-    `${ok ? '✓' : '✗'} ${reference}: ${hits.length}/${expect.length} expected, ` +
-      `${pool.length} found, ${secs}s${deep ? ' [deep]' : ''}`
+    `${s.ok ? '✓' : '✗'} ${reference}: expected ${s.expectHits}/${s.expectTotal} found, ` +
+      `${s.highlightHits}/${s.expectTotal} in highlights · ${s.highlights} highlights / ${s.found} found · ${secs}s${deep ? ' [deep]' : ''}`
   );
-  for (const e of misses) console.log(`    MISS  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''}${e.note ? ` — ${e.note}` : ''}`);
-  for (const e of leaks) console.log(`    LEAK  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''} — ${e.reason ?? 'should not appear'}`);
-  if (emptyFail) console.log(`    LEAK  expected no images, found ${pool.length}`);
+  if (l.total) {
+    console.log(
+      `    labels (${l.total}): precision highlights ${pct(l.highlightTally.precision)}, found ${pct(l.foundTally.precision)} · ` +
+        `recall highlights ${pct(l.recallHighlights)}, found ${pct(l.recallFound)} · kind accuracy ${pct(l.foundTally.kindAccuracy)} · ` +
+        `${l.foundTally.unlabelled} found unlabelled`
+    );
+    totals.good += l.foundTally.good;
+    totals.bad += l.foundTally.bad;
+    totals.hGood += l.highlightTally.good;
+    totals.hBad += l.highlightTally.bad;
+    totals.labelledGood += l.good;
+    totals.missedGood += l.missedGood.length;
+  }
+  for (const e of s.misses) console.log(`    MISS  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''}${e.note ? ` — ${e.note}` : ''}`);
+  for (const e of s.notHighlighted) console.log(`    NOT IN HIGHLIGHTS  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''}`);
+  for (const e of s.leaks) console.log(`    LEAK  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''} — ${e.reason ?? 'should not appear'}`);
+  if (s.emptyFail) console.log(`    LEAK  expected no images, found ${s.found}`);
+  for (const i of l.badHighlights) console.log(`    BAD HIGHLIGHT  ${i.kind} ${i.localFilename} p${i.page} — ${i.reason ?? ''}`);
+  for (const m of l.missedGood) console.log(`    MISSED GOOD  ${m.kind ?? 'any'} ${m.file} p${m.page}`);
 }
+
+if (totals.good + totals.bad) {
+  console.log(
+    `\nAll labelled samples: precision highlights ${pct(totals.hGood / (totals.hGood + totals.hBad || 1))}, ` +
+      `found ${pct(totals.good / (totals.good + totals.bad))} · recall found ${pct((totals.labelledGood - totals.missedGood) / (totals.labelledGood || 1))}`
+  );
+}
+
+const unlabelled = loadManifest()
+  .map((s) => s.reference)
+  .filter((ref) => !truth[ref]);
+if (unlabelled.length) console.log(`\nNo ground truth yet: ${unlabelled.join(', ')} (label them in the contact sheet)`);
 
 console.log(failed ? '\nFAILED' : '\nOK');
 process.exit(failed ? 1 : 0);
