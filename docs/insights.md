@@ -446,13 +446,15 @@ tooling that makes tuning cheap and safe. Strategy now at **12**.
   (highlights, other found, rejected) with its reason and is the labelling tool; `npm run
   insights:labels -- labels.json` merges a download into `samples.expected.json`.
 - **Structure.** `jobs.ts` holds background runs and API state; `generate.ts` is the pipeline;
-  budgets are two objects. A synthetic-PDF fixture (`__fixtures__/pdf.ts`) drives end-to-end
-  tests (`pipeline.test.ts`) including cold-vs-warm equivalence.
+  budgets are two objects. The pipeline and the cache are checked against the real samples, not
+  synthetic PDFs: `npm run insights:eval -- --cache-check` runs each sample cold and warm and
+  fails if the results differ, if the warm run opens a PDF, or if a pruned thumbnail is not
+  re-rendered.
 
 **Not yet verified on the real samples** (the sandbox this was written in could not reach the
-planning portal): run `npm run insights:eval` and look at the contact sheet before trusting v12.
-The three `highlight: true` flags added to `samples.expected.json` are the intended behaviour and
-may fail at first.
+planning portal): run `npm run insights:eval -- --cache-check` and look at the contact sheet
+before trusting v12. The three `highlight: true` flags added to `samples.expected.json` are the
+intended behaviour and may fail at first.
 
 ## Renderer choice
 
@@ -484,7 +486,6 @@ src/insights/
   generate.ts        # the pipeline
   jobs.ts            # background generation + API state
   routes.ts          # insights endpoints
-  __fixtures__/pdf.ts # test-only synthetic PDF builder
 scripts/insights-truth.mjs    # ground-truth format + scoring (shared)
 scripts/insights-eval.mjs     # hard assertions + precision/recall
 scripts/insights-report.mjs   # contact sheet + labelling tool
@@ -530,10 +531,12 @@ Notes / known rough edges:
 
 Because this is a ranking problem, do not tune it blind.
 
-- Unit tests (vitest, `npm test`) cover the pure interpretation modules with synthetic inputs,
-  and `pipeline.test.ts` runs the whole pipeline over synthetic PDFs built by
-  `__fixtures__/pdf.ts` (titles, insets, drawing registers, captioned figures, cold-vs-warm
-  cache equivalence).
+- Unit tests (vitest, `npm test`) cover the pure interpretation modules (keywords, titles,
+  classification, page choice, selection, line grouping) with small hand-written inputs. The
+  pipeline itself is only exercised against real documents, via the eval.
+- **Cache check** (`npm run insights:eval -- --cache-check`): per sample, a cold run (page facts
+  removed) and a warm run must give identical `found` and highlights, the warm run must open no
+  PDFs, and a pruned thumbnail must be re-rendered (exactly one page) when it is needed again.
 - **Contact sheet** (`npm run insights:report`, after `npm run samples`): every rendered page —
   highlights, other found, rejected — with its kind, reason and score. It is also the labelling
   tool: mark tiles good/bad (and fix the kind), *Download labels*, then

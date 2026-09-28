@@ -10,7 +10,7 @@ import { pageTitleScore } from './title.js';
 import { insightsLog } from './log.js';
 import { buildSummary, tallyComments } from './summary.js';
 import { isPdf, type PageScan } from './render.js';
-import { FeatureStore, type DocumentHandle } from './features.js';
+import { FeatureStore, type DocumentHandle, type FeatureWork } from './features.js';
 import { INSIGHTS_VERSION, assetPath, pruneAssets, readInsights, writeInsights } from './cache.js';
 
 // The pipeline: rank documents by name, choose pages, gather page facts (from
@@ -85,6 +85,9 @@ export interface GenerateOptions {
   // Scan more documents and pages. Slower, but finds visuals a quick run misses.
   deep?: boolean;
   trace?: (entry: PageTrace) => void;
+  // Cache misses the run incurred (PDFs opened, pages scanned/rendered), for
+  // tooling that checks the page-facts cache (`insights-eval --cache-check`).
+  onWork?: (work: FeatureWork) => void;
 }
 
 export function documentList(meta: { documents?: DocumentMeta[] }): DocumentMeta[] {
@@ -346,6 +349,7 @@ export async function generateInsights(
   };
   writeInsights(dir, insights);
   const { work } = store;
+  opts.onWork?.({ ...work });
   insightsLog(
     `${reference}: done — ${images.length} highlights (${found.length} found) from ${documentsAnalysed} documents in ` +
       `${((Date.now() - startedAt) / 1000).toFixed(0)}s (rendered ${work.rendered}, scanned ${work.scanned}, ` +

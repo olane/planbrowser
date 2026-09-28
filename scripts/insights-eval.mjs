@@ -2,7 +2,7 @@
 // scripts/samples.expected.json (see scripts/insights-truth.mjs for the format).
 //
 //   npm run build
-//   node scripts/insights-eval.mjs [reference ...] [--deep]
+//   node scripts/insights-eval.mjs [reference ...] [--deep] [--cache-check]
 //
 // With no references it evaluates every sample that has ground truth. Exits
 // non-zero on a hard failure: an expected image is missing (or missing from the
@@ -13,13 +13,49 @@
 // Page facts are cached per application (insights/features.json), so after the
 // first run this re-interprets without re-rendering: seconds, not minutes. It
 // is not run in CI (it needs downloaded samples).
+//
+// --cache-check also verifies the page-facts cache on each sample: a cold run
+// (features.json removed) and a warm run must give identical results, the warm
+// run must open no PDFs, and a pruned thumbnail must be re-rendered on demand.
+// The cold run re-renders everything, so this is slow.
 
+import fs from 'fs';
+import path from 'path';
+import { isDeepStrictEqual } from 'util';
 import { generateInsights } from '../dist/insights/generate.js';
 import { findApplication, loadManifest, loadTruth, pct, scoreSample } from './insights-truth.mjs';
 
 const args = process.argv.slice(2);
 const deep = args.includes('--deep');
+const cacheCheck = args.includes('--cache-check');
 const filters = args.filter((a) => !a.startsWith('--'));
+
+// Returns the problems found (none when the cache behaves) and a work summary.
+async function checkCache(reference, authorityId, dir) {
+  const problems = [];
+  const run = async () => {
+    let work;
+    const insights = await generateInsights(reference, authorityId, { force: true, deep, onWork: (w) => (work = w) });
+    return { insights, work };
+  };
+  fs.rmSync(path.join(dir, 'insights', 'features.json'), { force: true });
+  const cold = await run();
+  const warm = await run();
+  if (warm.work.opened !== 0) problems.push(`warm run opened ${warm.work.opened} PDFs (expected 0)`);
+  if (!isDeepStrictEqual(cold.insights?.found, warm.insights?.found)) problems.push('warm `found` differs from cold');
+  if (!isDeepStrictEqual(cold.insights?.images, warm.insights?.images)) problems.push('warm highlights differ from cold');
+
+  const victim = warm.insights?.found?.[0];
+  if (victim) {
+    fs.rmSync(path.join(dir, 'insights', victim.imageFile), { force: true });
+    const again = await run();
+    const image = again.insights?.found?.find((i) => i.localFilename === victim.localFilename && i.page === victim.page);
+    if (!image || !fs.existsSync(path.join(dir, 'insights', image.imageFile))) problems.push('pruned thumbnail was not re-rendered');
+    if (again.work.rendered !== 1) problems.push(`re-rendering one pruned thumbnail rendered ${again.work.rendered} pages`);
+  }
+  const work = (w) => `opened ${w.opened}, scanned ${w.scanned}, rendered ${w.rendered}`;
+  return { problems, summary: `cold ${work(cold.work)} · warm ${work(warm.work)}` };
+}
 
 const { samples: truth } = loadTruth();
 const references = filters.length ? filters : Object.keys(truth);
@@ -49,6 +85,8 @@ for (const reference of references) {
   }
   const s = scoreSample(insights, spec);
   if (!s.ok) failed = true;
+  const cache = cacheCheck ? await checkCache(reference, found.meta.authorityId, found.dir) : undefined;
+  if (cache?.problems.length) failed = true;
   const secs = ((Date.now() - started) / 1000).toFixed(0);
   const l = s.labels;
   console.log(
@@ -72,6 +110,8 @@ for (const reference of references) {
   for (const e of s.notHighlighted) console.log(`    NOT IN HIGHLIGHTS  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''}`);
   for (const e of s.leaks) console.log(`    LEAK  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''} — ${e.reason ?? 'should not appear'}`);
   if (s.emptyFail) console.log(`    LEAK  expected no images, found ${s.found}`);
+  if (cache) console.log(`    cache: ${cache.summary}`);
+  for (const p of cache?.problems ?? []) console.log(`    CACHE  ${p}`);
   for (const i of l.badHighlights) console.log(`    BAD HIGHLIGHT  ${i.kind} ${i.localFilename} p${i.page} — ${i.reason ?? ''}`);
   for (const m of l.missedGood) console.log(`    MISSED GOOD  ${m.kind ?? 'any'} ${m.file} p${m.page}`);
 }
