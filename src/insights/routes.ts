@@ -32,7 +32,9 @@ insightsRouter.get('/api/applications/:ref/insights', (req, res) => {
     res.json({ status: 'error', error: state.error });
     return;
   }
-  res.json({ status: state.status });
+  // `running` may carry the previous result so the UI can keep it on screen
+  // while a deep scan or background refresh proceeds.
+  res.json({ status: state.status, ...(state.insights ? { insights: state.insights } : {}) });
 });
 
 // Generation is CPU-heavy (it may render dozens of pages), so this kicks it off

@@ -156,12 +156,20 @@ export function getInsightsState(reference: string, authorityId?: string): Insig
   const source = sourceSignature(dir, documentList(meta));
 
   const cached = readInsights(dir);
+  const key = jobKey(reference);
+
+  // A generation in flight (a "scan more" deep run, or an automatic refresh)
+  // must be reported as running even when a fresh cache already exists. Reading
+  // the cache first would otherwise report `ready` and stop the UI polling while
+  // the scan continues in the background. The existing result is returned
+  // alongside so it can stay on screen instead of being replaced by a spinner.
+  if (inFlight.has(key)) {
+    return { status: 'running', ...(cached ? { insights: cached } : {}) };
+  }
+
   if (cached && sameStrategy(cached) && sameSource(cached.source, source)) {
     return { status: 'ready', insights: cached };
   }
-
-  const key = jobKey(reference);
-  if (inFlight.has(key)) return { status: 'running' };
 
   const previousError = lastError.get(key);
   if (previousError) return { status: 'error', error: previousError };
@@ -169,7 +177,7 @@ export function getInsightsState(reference: string, authorityId?: string): Insig
   if (cached) {
     // Preserve the depth of the cached result on an automatic refresh.
     startInsights(reference, authorityId, { force: false, deep: cached.depth === 'deep' });
-    return { status: 'running' };
+    return { status: 'running', insights: cached };
   }
   return { status: 'none' };
 }

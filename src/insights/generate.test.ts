@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { generateInsights, getInsightsState } from './generate.js';
+import { generateInsights, getInsightsState, startInsights } from './generate.js';
 import type { ApplicationMeta } from '../types.js';
 
 const REFERENCE = '24/00001/FUL';
@@ -76,5 +76,17 @@ describe('getInsightsState', () => {
 
   it('returns null for an unknown application', () => {
     expect(getInsightsState('99/99999/FUL')).toBeNull();
+  });
+
+  it('reports running with the cached result while a scan is in flight', async () => {
+    await generateInsights(REFERENCE);
+    startInsights(REFERENCE, undefined, { force: true, deep: true });
+    const state = getInsightsState(REFERENCE);
+    // The fresh quick cache must not mask the in-flight deep run...
+    expect(state?.status).toBe('running');
+    // ...and the previous result stays available so the UI need not blank out.
+    expect(state?.insights).toBeTruthy();
+    // Let the background job settle before the temp dir is removed.
+    await new Promise((resolve) => setTimeout(resolve, 20));
   });
 });

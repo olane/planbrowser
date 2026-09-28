@@ -122,19 +122,19 @@
         <div :class="$style.tabContent">
           <div v-show="activeTab === 'overview'">
             <div v-if="insightsStatus === 'loading'" :class="$style.muted">Loading insights…</div>
-            <div v-else-if="insightsStatus === 'error'">
+            <div v-else-if="insightsStatus === 'error' && !insights">
               <p :class="$style.errorText">{{ insightsError }}</p>
               <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Retry</button>
             </div>
-            <div v-else-if="insightsStatus === 'running'" :class="$style.insightsRunning">
-              <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-              Generating insights — this can take a minute for large applications.
-            </div>
-            <div v-else-if="insightsStatus === 'none'">
-              <p :class="$style.muted">No insights have been generated for this application yet.</p>
-              <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Generate insights</button>
-            </div>
             <template v-else-if="insights">
+              <div v-if="insightsStatus === 'running'" :class="$style.insightsRunning">
+                <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                Scanning more documents — existing results stay visible.
+              </div>
+              <p v-else-if="insightsStatus === 'error'" :class="$style.errorText">
+                {{ insightsError }}
+                <button @click="generateInsights()" :class="$style.insightLinkButton">Retry</button>
+              </p>
               <div :class="$style.insightsSummary">
                 <p v-if="insights.summary.headline && insights.summary.headline !== app.description" :class="$style.insightsHeadline">{{ insights.summary.headline }}</p>
                 <div v-if="Object.keys(insights.summary.metrics).length" :class="$style.metricChips">
@@ -225,6 +225,14 @@
               </div>
               <p v-else :class="$style.muted">No relevant images, plans or renders were found.</p>
             </template>
+            <div v-else-if="insightsStatus === 'running'" :class="$style.insightsRunning">
+              <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+              Generating insights — this can take a minute for large applications.
+            </div>
+            <div v-else-if="insightsStatus === 'none'">
+              <p :class="$style.muted">No insights have been generated for this application yet.</p>
+              <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Generate insights</button>
+            </div>
           </div>
 
           <div v-show="activeTab === 'key-documents'" v-if="keyDocs.length > 0">
@@ -731,7 +739,11 @@ const loadInsights = async () => {
       insightsStatus.value = 'ready'
       insightsError.value = ''
     } else if (res.status === 'running') {
+      // A deep scan or background refresh reports `running` but may carry the
+      // previous result; keep it on screen and keep polling.
+      if (res.insights) insights.value = res.insights
       insightsStatus.value = 'running'
+      insightsError.value = ''
       scheduleInsightsPoll()
     } else if (res.status === 'error') {
       insightsStatus.value = 'error'
