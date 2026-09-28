@@ -2,7 +2,8 @@
 
 > **Status: implemented and iterated on real samples.** The sections below are the original design;
 > the three **Feedback round** sections record what changed in practice after first use (detection
-> fixes, coverage + deep scan, Design & Access Statement handling). Current strategy is **v10**.
+>   fixes, coverage + deep scan, Design & Access Statement handling, render/photo captions).
+> Current strategy is **v11**.
 > Start with [Resuming in a new session](#resuming-in-a-new-session) at the end.
 
 The goal is to automatically surface, for a downloaded planning application:
@@ -370,6 +371,36 @@ photo inset beside body copy), so `isPhotographic` missed them. Strategy now at 
 Result on `25/04484/FUL`: the DAS now contributes 3 renders (the streetscape photos and the
 proposal photomontages); the app is at 16 highlights with nothing truncated.
 
+## Feedback round 4 (2026-09) — renders vs photos, and appendix figures
+
+`26/01872/OUT` surfaced two related classification errors: appendix figure books were being
+presented as renders, and render-vs-photo leaned on the document name rather than the image's own
+caption. Strategy now at **11**.
+
+- **Positive evidence for `render`.** A non-photographic embedded figure (a large raster with few
+  tones) was unconditionally promoted to `render`, which turned appendix maps and report diagrams
+  into fake renders. It is now only inferred for a design/statement document
+  (`isDesignVisualDoc`: design & access, design code, landscape & visual, masterplan, …); otherwise
+  the page is dropped.
+- **Reference volumes are not renders.** Appendices, figure books and schedules
+  (`isReferenceVolume`) lose their document-prior bonus and are demoted when they carry no visual
+  kind. An unnamed visual in one is never promoted to a render — even when it looks photographic —
+  because it is far more likely to be a map or diagram. A volume that names photos/renders keeps
+  its kind, so the AVR photosheets still surface.
+- **Caption-driven render-vs-photo.** `unpdf`'s positioned text items plus the pdf.js operator
+  list let `caption.ts` find the largest embedded image's bounding box and read the text nearest
+  it. A small lexicon then decides: `artist's impression`/`render`/`CGI`/`photomontage` ⇒ `render`;
+  `photograph`/`existing view`/`viewpoint` and the photosheet apparatus (`season`,
+  `direction of view`, `single image`) ⇒ `photo`. Orientation words alone never decide (a render
+  legend can mention "existing tree groups"), and an explicit plan/map/elevation word still wins.
+  The caption outranks the document name and can supply positive evidence inside a reference
+  volume.
+- **Locked by the eval.** `scripts/samples.expected.json` now marks the `APPENDIX 02-FIGURES` and
+  `LVIA-APPENDIX-02-FIGURES` books as `expectAbsent`.
+
+Result on `26/01872/OUT`: `APPENDIX 02-FIGURES` yields no renders (was four), while the DAS
+renders, parameter plans and AVR photos are unchanged.
+
 ## Renderer choice
 
 **First implementation: `unpdf` + `@napi-rs/canvas`.** Reuses the existing dependency, renders
@@ -387,7 +418,8 @@ zero new deps but hacky, slow and unreliable for this purpose.
 ```
 src/insights/
   render.ts          # PDF open / page text / page render (unpdf + @napi-rs/canvas)
-  pixels.ts          # page visual statistics
+  pixels.ts         # page visual statistics
+  caption.ts        # image-box proximity caption (render vs photo)
   keywords.ts        # kind and document priors
   classify.ts        # per-page kind + score + label
   select.ts          # dedupe, caps, ranking
@@ -601,10 +633,11 @@ export FONTCONFIG_FILE=/tmp/pb/fonts.conf
    **Feedback round 1/2/3** sections near the top supersede the original design where they differ.
 2. The work lives on the `docs/insights-plan` branch, in **PR #8**
    (`https://github.com/olane/planbrowser/pull/8`). Check `git branch --show-current` / `git log`.
-3. **Current state (2026-09):** heuristic strategy **v10**; `INSIGHTS_VERSION` 2. The pipeline
+3. **Current state (2026-09):** heuristic strategy **v11**; `INSIGHTS_VERSION` 2. The pipeline
    renders selected pages, persists curated `images` plus the full `found` set and `coverage`, and
    supports a user-triggered `deep` scan. The UI offers Highlights/All-found, page deep links and
-   generation progress. The DAS is prioritised and its mixed-layout figures are picked up.
+   generation progress. The DAS is prioritised and its mixed-layout figures are picked up; appendix
+   figure books are excluded and render-vs-photo is read from the image caption.
 4. Samples are not in the repo (`downloads/` is gitignored). `npm run samples` fetches what is
    missing (cache-first) from `scripts/samples.json`.
 5. **Evaluate, don't guess:** `npm run insights:eval` runs the heuristic over the curated
