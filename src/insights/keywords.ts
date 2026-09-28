@@ -133,6 +133,18 @@ export function isDesignAndAccess(
   return /design (and|&) access/.test(normalise([doc.documentType, doc.description, doc.localFilename].join(' ')));
 }
 
+// A document that legitimately contains design visuals of the proposal (a
+// render, photomontage or figure of the scheme). This is the positive evidence
+// that lets a mystery embedded image be called a render: an appendix of maps or
+// a report's diagram is not a design visual, so it must not be promoted.
+export function isDesignVisualDoc(
+  doc: Pick<DocumentMeta, 'documentType' | 'description' | 'localFilename'>
+): boolean {
+  return /design (and|&) access|design (?:statement|code)|landscape and visual|visual impact|photomontage|artist s? impression|render|visuali[sz]|master ?plan|illustrat|exhibition|street scene|palette|aerial/.test(
+    normalise([doc.documentType, doc.description, doc.localFilename].filter(Boolean).join(' '))
+  );
+}
+
 // A document-level prior used to choose which files to open first. Positive
 // means "likely to contain a visual worth showing"; comment/correspondence
 // documents are pushed down.

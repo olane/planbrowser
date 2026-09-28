@@ -1,5 +1,5 @@
 import type { DocumentMeta, InsightImageKind } from '../types.js';
-import { kindFromText, isSuperseded, normalise, type DocumentPrior } from './keywords.js';
+import { kindFromText, isDesignVisualDoc, isSuperseded, normalise, type DocumentPrior } from './keywords.js';
 import type { PagePixelStats } from './pixels.js';
 
 export interface PageClassification {
@@ -121,24 +121,35 @@ export function classifyPage(
   if (!visual && !drawingType && prose) return { kind: 'other', score: 0, label: docLabel };
 
   let kind: InsightImageKind = keywordKind ?? 'other';
+  // A document that names photos/viewpoints resolves an otherwise-unknown
+  // visual to `photo`; a design/statement document to `render`.
+  const docVisual: 'photo' | undefined = /photo|viewpoint|avr/.test(docHay) ? 'photo' : undefined;
+  const visualStatement = isDesignVisualDoc(doc);
 
   if (photographic) {
+    // A photographic page (a broad-toned image filling the frame) is a
+    // render/photo even with no keyword; this is the only reliable signal for
+    // image-based drawings whose text was converted to curves.
     if (fullBleed) {
       // A full-bleed image is a render/photo even if the page text mentions a
       // plan word (a render page captioned "the masterplan").
-      kind = /photo|viewpoint|avr/.test(docHay) ? 'photo' : 'render';
+      kind = docVisual ?? 'render';
     } else if (keywordKind === 'render' || keywordKind === 'photo') {
       kind = keywordKind;
     } else if (!keywordKind || keywordKind === 'other') {
-      kind = /photo|viewpoint|avr/.test(docHay) ? 'photo' : 'render';
+      kind = docVisual ?? 'render';
     }
     // An explicit plan/map/elevation/section keyword is kept even if the page is
     // photographic: a rendered elevation is still an elevation, and a coloured
     // site plan is still a plan.
   } else if (visual && kind === 'other') {
-    // An embedded figure with no drawing keyword is a render (design visuals in
-    // a statement); a document that names photos/viewpoints is the exception.
-    kind = /photo|viewpoint|avr/.test(docHay) ? 'photo' : 'render';
+    // A non-photographic embedded figure (large image, few tones) is only a
+    // render when the document is a design/statement one that legitimately
+    // holds scheme visuals. An appendix of maps or a report diagram is not: drop
+    // it rather than let it masquerade as a render.
+    const inferred = docVisual ?? (visualStatement ? 'render' : undefined);
+    if (!inferred) return { kind: 'other', score: 0, label: docLabel };
+    kind = inferred;
   }
 
   const existing = /\bexisting\b/.test(docHay) || /\bexisting\b/.test(textHay);

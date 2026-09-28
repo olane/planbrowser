@@ -176,6 +176,18 @@ describe('classifyPage', () => {
     expect(result.score).toBeGreaterThan(100);
   });
 
+  it('drops an appendix-of-figures diagram instead of calling it a render', () => {
+    const diagram = stats({ inkRatio: 0.71, colorfulness: 0.1, distinctColors: 69, dominantColorRatio: 0.29, grayscale: 0.6, edgeDensity: 0.043 });
+    const result = classifyPage(
+      { documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' },
+      '',
+      diagram,
+      { score: 6 },
+      { hasLargeImage: true }
+    );
+    expect(result.score).toBe(0);
+  });
+
   it('keeps a statement figure (large embedded image) that is not full-bleed', () => {
     const figure = stats({ inkRatio: 0.35, colorfulness: 0.03, distinctColors: 80, dominantColorRatio: 0.6, grayscale: 0.8, edgeDensity: 0.1 });
     const kept = classifyPage(

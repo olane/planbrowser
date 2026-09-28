@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { documentPrior, isSuperseded, kindFromText, normalise } from './keywords.js';
+import { documentPrior, isDesignVisualDoc, isSuperseded, kindFromText, normalise } from './keywords.js';
 
 describe('kindFromText', () => {
   it('recognises a site plan as a plan', () => {
@@ -44,6 +44,17 @@ describe('isSuperseded', () => {
   it('flags superseded documents', () => {
     expect(isSuperseded({ documentType: 'Drawings', description: 'SUPERSEDED SITE PLAN' })).toBe(true);
     expect(isSuperseded({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' })).toBe(false);
+  });
+});
+
+describe('isDesignVisualDoc', () => {
+  it('accepts design statements and visual documents', () => {
+    expect(isDesignVisualDoc({ documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' })).toBe(true);
+    expect(isDesignVisualDoc({ documentType: 'Application Information', description: 'LANDSCAPE AND VISUAL IMPACT ASSESSMENT' })).toBe(true);
+  });
+  it('rejects appendix/figure/report volumes', () => {
+    expect(isDesignVisualDoc({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' })).toBe(false);
+    expect(isDesignVisualDoc({ documentType: 'Application Survey / Assessment / Statement', description: 'TRANSPORT ASSESSMENT' })).toBe(false);
   });
 });
 
