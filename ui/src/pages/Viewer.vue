@@ -129,7 +129,7 @@
             <template v-else-if="insights">
               <div v-if="insightsStatus === 'running'" :class="$style.insightsRunning">
                 <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                Scanning more documents — existing results stay visible.
+                Updating insights…
               </div>
               <p v-else-if="insightsStatus === 'error'" :class="$style.errorText">
                 {{ insightsError }}
@@ -167,12 +167,13 @@
                 </div>
               </div>
 
+              <p v-if="insights.coverage" :class="$style.insightsCoverage">
+                Scanned {{ insights.coverage.documentsAnalysed }} of
+                {{ insights.coverage.documentsTotal }} documents.
+              </p>
+
               <p v-if="insights.coverage?.partial" :class="$style.insightsPartial">
-                <span>
-                  Analysis was capped after {{ insights.coverage.documentsAnalysed }} of
-                  {{ insights.coverage.documentsTotal }} documents, so some documents weren't
-                  scanned.
-                </span>
+                <span>Analysis was capped, so some documents weren't scanned.</span>
                 <span :class="$style.insightsPartialActions">
                   <button v-if="insights.depth !== 'deep'" @click="scanMoreInsights()" :class="$style.insightLinkButton">Scan more</button>
                   <button @click="activeTab = 'documents'" :class="$style.insightLinkButton">Browse all documents</button>
@@ -1608,6 +1609,12 @@ onMounted(async () => {
   color: var(--color-gray-500);
   font-size: 0.75rem;
   font-weight: 400;
+}
+
+.insightsCoverage {
+  margin: 0 0 1rem;
+  color: var(--color-gray-500);
+  font-size: 0.8125rem;
 }
 
 .insightsPartial {

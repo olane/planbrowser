@@ -314,9 +314,10 @@ Because the pipeline is capped, "found" means *found in the analysed pages*. `co
   `available` is a lower bound and some documents were never scanned.
 - `documentsAnalysed` / `documentsTotal`, and `depth` (`quick` or `deep`).
 
-The UI surfaces this rather than implying completeness: a per-group "showing N of M found" note
-when caps cut a kind, and an application-level banner when `partial`. Both link to the Documents
-tab, which is the unfiltered ground truth.
+The UI surfaces this rather than implying completeness: the Overview always shows
+"Scanned X of Y documents", a per-group "showing N of M found" note when caps cut a kind, and an
+application-level banner when `partial`. The group note and banner link to the Documents tab,
+which is the unfiltered ground truth.
 
 ## Feedback round 2 (2026-09) — render discovery
 
