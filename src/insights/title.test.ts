@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isDrawingRegister, pageTitleScore, titleCandidates, titleFromText, type PageLine } from './title.js';
+import { isDrawingRegister, pageTitleScore, titleCandidates, type PageLine } from './title.js';
 
 const lines = (...strs: string[]): PageLine[] => strs.map((str) => ({ str, size: 0 }));
 
@@ -23,7 +23,7 @@ describe('titleCandidates', () => {
   });
 
   it('keeps compass-named elevations', () => {
-    expect(titleFromText('PROPOSED NORTH ELEVATION')).toBe('PROPOSED NORTH ELEVATION');
+    expect(titleCandidates(lines('PROPOSED NORTH ELEVATION'))[0]?.text).toBe('PROPOSED NORTH ELEVATION');
   });
 });
 

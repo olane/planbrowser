@@ -1,4 +1,5 @@
 import type { DocumentMeta, InsightImageKind } from '../types.js';
+import { KIND_PRIOR_WEIGHT } from './kinds.js';
 
 // Keyword-driven, deterministic priors. Names and portal tags are deliberately
 // treated as weak evidence (see docs/insights.md): they rank candidates, they do
@@ -142,16 +143,6 @@ export function kindsFromText(text: string): InsightImageKind[] {
   return KIND_MATCHERS.filter(({ patterns }) => patterns.some((re) => re.test(hay))).map(({ kind }) => kind);
 }
 
-const KIND_WEIGHT: Record<InsightImageKind, number> = {
-  render: 5,
-  map: 4,
-  elevation: 4,
-  plan: 3.5,
-  section: 3,
-  photo: 2,
-  other: 0
-};
-
 // The normalised name haystack for a document: type, description and filename.
 export function documentHaystack(doc: NamedDocument): string {
   return normalise([doc.documentType, doc.description, doc.localFilename].filter(Boolean).join(' '));
@@ -246,7 +237,7 @@ function priorFromProfile(p: Omit<DocumentProfile, 'prior'>): DocumentPrior {
   const kind = p.kinds[0];
 
   let score = 0;
-  if (kind) score += KIND_WEIGHT[kind];
+  if (kind) score += KIND_PRIOR_WEIGHT[kind];
 
   if (/drawing/.test(p.type)) score += 4;
   else if (/photograph/.test(p.type)) score += 3;
@@ -256,6 +247,11 @@ function priorFromProfile(p: Omit<DocumentProfile, 'prior'>): DocumentPrior {
   else if (/comment|correspondence|notification|attachment summary|officer/.test(p.type)) score -= 3;
 
   if (p.namesRender) score += 2;
+
+  // A visual-sounding name with no kind (an "Image Board", "Exhibition Panels")
+  // still deserves a page scan; without this the `prior.score > 0` filter would
+  // drop it before the pre-scan that was written for exactly these files.
+  if (!kind && p.visualName) score += 1;
 
   // Prioritise the Design & Access Statement regardless of how the portal typed
   // it (it is sometimes filed under Drawings).
@@ -274,6 +270,3 @@ function priorFromProfile(p: Omit<DocumentProfile, 'prior'>): DocumentPrior {
   return prior;
 }
 
-export function documentPrior(doc: NamedDocument): DocumentPrior {
-  return profileDocument(doc).prior;
-}

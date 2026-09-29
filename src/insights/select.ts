@@ -1,17 +1,6 @@
 import type { InsightImage, InsightImageKind } from '../types.js';
+import { DEFAULT_KIND_CAPS, KIND_ORDER } from './kinds.js';
 import { hammingDistance } from './pixels.js';
-
-export const KIND_ORDER: InsightImageKind[] = ['render', 'map', 'elevation', 'plan', 'section', 'photo', 'other'];
-
-export const DEFAULT_KIND_CAPS: Record<InsightImageKind, number> = {
-  render: 8,
-  map: 4,
-  elevation: 6,
-  plan: 8,
-  section: 4,
-  photo: 6,
-  other: 3
-};
 
 export const DEFAULT_TOTAL_CAP = 24;
 

@@ -18,6 +18,17 @@ export function labelsAvailable(): boolean {
   return fs.existsSync(truthFile());
 }
 
+// Whether the review/dev endpoints are enabled. Off explicitly with
+// INSIGHTS_REVIEW=0 (packaged builds), on explicitly with INSIGHTS_REVIEW=1
+// (tests or a dev server outside a checkout), and otherwise on when the repo's
+// ground-truth file is present. The review tool writes that file, so it must
+// never be reachable outside a development checkout.
+export function reviewEnabled(): boolean {
+  if (process.env.INSIGHTS_REVIEW === '0') return false;
+  if (process.env.INSIGHTS_REVIEW === '1') return true;
+  return labelsAvailable();
+}
+
 const KINDS: InsightImageKind[] = ['render', 'plan', 'elevation', 'section', 'map', 'photo', 'other'];
 
 interface TruthSample {

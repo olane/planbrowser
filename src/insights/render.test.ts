@@ -36,13 +36,12 @@ describe('pdf extraction', () => {
     ]);
   });
 
-  it('reads image size and coverage from the operator list', async () => {
+  it('reads image size from the operator list', async () => {
     const doc = await getDocumentProxy(new Uint8Array(pdf));
-    expect(await scanPage(doc, 1, 1)).toEqual({ imageCount: 0, largestImageArea: 0, largestImageCoverage: 0, caption: '' });
+    expect(await scanPage(doc, 1, 1)).toEqual({ imageCount: 0, largestImageArea: 0, caption: '' });
     const scan = await scanPage(doc, 2, 1);
     expect(scan.imageCount).toBe(1);
     expect(scan.largestImageArea).toBe(1200 * 800);
-    expect(scan.largestImageCoverage).toBeCloseTo(0.5, 2);
     // Text beside the image is its caption; text far from it is not.
     expect(scan.caption).not.toContain('far away');
   });

@@ -67,13 +67,6 @@ export function isDrawingRegister(candidates: TitleCandidate[]): boolean {
   return candidates.length > REGISTER_TITLES;
 }
 
-// Pull a readable title out of a page's (often title-block) text, so pages of a
-// mixed document don't all share the document's generic description.
-export function titleFromText(text: string | PageLine[]): string | undefined {
-  const lines = typeof text === 'string' ? linesFromText(text) : text;
-  return titleCandidates(lines)[0]?.text;
-}
-
 // How strongly a page's own text says it is a drawing, for choosing which pages
 // of a long drawing pack to render: 2 = a proposed/existing title, 1 = a plain
 // title, 0 = none (or a drawing register listing every title).

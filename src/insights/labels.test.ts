@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { labelsAvailable, mergeLabels, readLabels, sanitizeLabels } from './labels.js';
+import { labelsAvailable, mergeLabels, readLabels, reviewEnabled, sanitizeLabels } from './labels.js';
 
 let dir: string;
 let file: string;
@@ -19,6 +19,7 @@ beforeEach(() => {
 
 afterEach(() => {
   delete process.env.INSIGHTS_TRUTH;
+  delete process.env.INSIGHTS_REVIEW;
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
@@ -27,6 +28,15 @@ describe('insight labels', () => {
     expect(labelsAvailable()).toBe(true);
     process.env.INSIGHTS_TRUTH = path.join(dir, 'missing.json');
     expect(labelsAvailable()).toBe(false);
+  });
+
+  it('gates review on the explicit env flag first', () => {
+    process.env.INSIGHTS_REVIEW = '0';
+    expect(reviewEnabled()).toBe(false);
+    process.env.INSIGHTS_REVIEW = '1';
+    expect(reviewEnabled()).toBe(true);
+    delete process.env.INSIGHTS_REVIEW;
+    expect(reviewEnabled()).toBe(true);
   });
 
   it('merges labels, replacing a prior verdict for the same page', () => {

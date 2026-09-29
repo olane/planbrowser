@@ -12,6 +12,7 @@ import { SEARCH_FILTER_KEYS, SORT_FIELDS } from './types.js';
 import { selectSyncApps } from './decision.js';
 import { documentSearchRouter } from './search/routes.js';
 import { insightsRouter } from './insights/routes.js';
+import { reviewRouter } from './insights/routes.review.js';
 import { listSavedSearches, getSavedSearch, saveSearch, deleteSavedSearch, recordSearchRun } from './savedSearches.js';
 import type { SearchFilters, SortSpec, ApplicationFlags, DocumentFlags, QueueItem, ApplicationMeta } from './types.js';
 
@@ -278,6 +279,8 @@ export function createApp(): express.Express {
 
   // Automatically-derived summary + most relevant images/plans/renders
   app.use(insightsRouter);
+  // Local-development review tooling; each route 404s unless enabled.
+  app.use(reviewRouter);
 
   // Serve static documents
   app.use('/api/documents', express.static(getDownloadsDir()));

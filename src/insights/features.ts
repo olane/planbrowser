@@ -165,7 +165,7 @@ export class DocumentHandle {
     const pdf = await this.open();
     const scan = pdf
       ? await scanPage(pdf, page, this.policy.captionMinArea)
-      : { imageCount: 0, largestImageArea: 0, largestImageCoverage: 0, caption: '' };
+      : { imageCount: 0, largestImageArea: 0, caption: '' };
     this.store.work.scanned++;
     this.entry.scans[String(page)] = scan;
     this.store.markDirty();

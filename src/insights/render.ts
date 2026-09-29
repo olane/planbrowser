@@ -101,8 +101,6 @@ export interface PageScan {
   // Largest embedded image by pixel area. A full-bleed render is one huge
   // image; a vector plan has many tiny symbol/hatch images (or none at all).
   largestImageArea: number;
-  // Fraction of the page covered by the largest placed image (0-1).
-  largestImageCoverage: number;
   // Text nearest the largest placed image (its caption), when the page carries
   // an image of at least `captionMinArea` pixels; '' otherwise.
   caption: string;
@@ -130,7 +128,7 @@ function resolvedOps(): Promise<ImageOps> {
   return cachedOps;
 }
 
-const EMPTY_SCAN: PageScan = { imageCount: 0, largestImageArea: 0, largestImageCoverage: 0, caption: '' };
+const EMPTY_SCAN: PageScan = { imageCount: 0, largestImageArea: 0, caption: '' };
 
 // One operator-list pass gives both the pre-scan signal (image count and size)
 // and, for pages with a large image, the caption beside it.
@@ -145,8 +143,6 @@ export async function scanPage(pdf: PdfDocument, page: number, captionMinArea: n
     for (const placement of placements) if (boxArea(placement.box) > boxArea(largest!.box)) largest = placement;
 
     const viewport = pdfPage.getViewport({ scale: 1 });
-    const pageArea = viewport.width * viewport.height;
-    const coverage = largest && pageArea > 0 ? Math.min(1, boxArea(largest.box) / pageArea) : 0;
 
     let caption = '';
     if (largest && largestImageArea >= captionMinArea) {
@@ -156,7 +152,6 @@ export async function scanPage(pdf: PdfDocument, page: number, captionMinArea: n
     return {
       imageCount: images.length,
       largestImageArea,
-      largestImageCoverage: Math.round(coverage * 1000) / 1000,
       caption
     };
   } catch {

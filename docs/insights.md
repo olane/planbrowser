@@ -1,11 +1,16 @@
 # Application insights: design plan
 
-> **Status: implemented and iterated on real samples.** The sections below are the original design;
-> the four **Feedback round** sections and the [Review](#review-2026-09--page-facts-evidence-eval)
-> section record what changed in practice (detection fixes, coverage + deep scan, Design & Access
-> Statement handling, render/photo captions, the page-facts cache, evidence-based classification
-> and the precision/recall eval). Current strategy is **v12**.
-> Start with [Resuming in a new session](#resuming-in-a-new-session) at the end.
+> **Status: design implemented; tuned on a small sample, not yet measured.** Strategy **v13**,
+> insights cache format 2, page-facts format 1. The original design is above; the **Feedback
+> round 1–4** and **Review/Cleanup** sections below are the *history* of what changed against
+> real samples, not the current spec — where they disagree with the code, the code wins and this
+> doc should be updated.
+>
+> The heuristic was iterated on two applications and the `labels` in
+> `scripts/samples.expected.json` are still **empty**, so its precision/recall has not been
+> measured on labelled data. Treat any further classifier tuning as unverified until
+> `npm run insights:eval` and the `/review` tool have been run (see
+> [Resuming in a new session](#resuming-in-a-new-session)).
 
 The goal is to automatically surface, for a downloaded planning application:
 
@@ -360,7 +365,7 @@ photos and the proposal photomontages. Two causes: the DAS is typed `Design and 
 so its pages were not treated as drawing-like; and its figures are **not full-bleed** (a render or
 photo inset beside body copy), so `isPhotographic` missed them. Strategy now at **10**.
 
-- **DAS prioritisation.** `documentPrior` gives a strong bonus (+5) to any document matching
+- **DAS prioritisation.** The document prior gives a strong bonus (+5) to any document matching
   "design and access" regardless of how the portal typed it, and `isDesignAndAccess` gives the DAS
   its own, larger page budget (`DAS_PAGES`, 14 quick / 20 deep). The DAS is usually the closest
   thing to a human summary of the scheme.
@@ -451,9 +456,35 @@ tooling that makes tuning cheap and safe. Strategy now at **12**.
   tests (`pipeline.test.ts`) including cold-vs-warm equivalence.
 
 **Not yet verified on the real samples** (the sandbox this was written in could not reach the
-planning portal): run `npm run insights:eval` and look at the contact sheet before trusting v12.
+planning portal): run `npm run insights:eval` and look at the review tool before trusting v12+.
 The three `highlight: true` flags added to `samples.expected.json` are the intended behaviour and
 may fail at first.
+
+## Cleanup (2026-09) — v13
+
+A code review of v12 removed dead/duplicated code and fixed one coverage gap. Strategy now at
+**13** (the document prior changed, so cached insights refresh).
+
+- **Visual-named documents are no longer skipped.** `priorFromProfile` gave nothing to a
+  visual-sounding name with no drawing kind, so documents like "Image Board" or "Exhibition
+  Panels" scored 0 and were dropped by the `prior.score > 0` filter *before* the page pre-scan
+  written for them could run. A visual name with no kind now adds a small prior.
+- **One source of kind metadata** (`kinds.ts`): `KIND_ORDER`, `KIND_BASE`, `KIND_PRIOR_WEIGHT`
+  and `DEFAULT_KIND_CAPS` used to live in `select.ts`, `classify.ts` and `keywords.ts` and could
+  drift. They are imported from one module now.
+- **Dead code removed.** `PageScan.largestImageCoverage` was computed, cached and tested but never
+  read; the test-only `documentPrior` and `titleFromText` helpers are gone. `FEATURES_VERSION` is
+  unchanged: the removed scan field was unused, so cached facts stay valid.
+- **One labels implementation.** `scripts/insights-labels.mjs` now calls `mergeLabels`/`readLabels`
+  in `src/insights/labels.ts` instead of duplicating the merge and the JSON reformatting.
+- **Review endpoints split out.** The dev-only label and rejected-page routes moved to
+  `routes.review.ts`, gated by `reviewEnabled()` (`INSIGHTS_REVIEW=0|1`, otherwise the presence of
+  the ground-truth file). The production router no longer carries review code.
+- **`coverage.partial` no longer false-positives.** It fired when a run happened to use its last
+  page even though nothing was left to scan. A generation now records whether a budget actually
+  cut work off.
+- **`generateInsights` is readable.** The per-document step (page choice, pre-scan, classify,
+  collect) moved into `analyseDocument`, with a `RunCounters` object holding budget state.
 
 ## Renderer choice
 
@@ -475,6 +506,7 @@ src/insights/
   features.ts        # page-facts store (features.json), lazy PDF opening
   pixels.ts          # page visual statistics + perceptual hash
   caption.ts         # image placements and nearest-text caption (pure)
+  kinds.ts           # kind order, base scores, prior weights and caps (one source)
   keywords.ts        # kind matchers, DocumentProfile, document prior
   title.ts           # page title candidates, drawing registers, page title score
   classify.ts        # per-page evidence → kind + score + label + reason
@@ -485,6 +517,8 @@ src/insights/
   generate.ts        # the pipeline
   jobs.ts            # background generation + API state
   routes.ts          # insights endpoints
+  routes.review.ts   # dev-only review endpoints (labels + rejected-page render)
+  labels.ts          # ground-truth labels: read/merge/validate (shared with scripts/)
   __fixtures__/pdf.ts # test-only synthetic PDF builder
 scripts/insights-truth.mjs    # ground-truth format + scoring (shared)
 scripts/insights-eval.mjs     # hard assertions + precision/recall
@@ -546,10 +580,11 @@ Because this is a ranking problem, do not tune it blind.
   straight into `scripts/samples.expected.json` via a dev-only endpoint, so `npm run insights:eval`
   sees it immediately. Marking a *rejected* page good is how false negatives are flagged (the eval
   counts it as a missed good page). Rejected-page thumbnails were pruned from the gallery, so the
-  review endpoint re-renders them on demand. The route is only registered under `vite dev` and the
-  endpoint 404s unless the ground-truth file exists, so packaged builds never expose it. This
-  supersedes the contact sheet for labelling `found` and rejected pages; the contact sheet remains
-  useful for a whole-corpus side-by-side.
+  review endpoint re-renders them on demand. The UI route is only registered under `vite dev`, and
+  the server endpoints (`routes.review.ts`) 404 unless `reviewEnabled()` — `INSIGHTS_REVIEW=0`
+  forces them off, `INSIGHTS_REVIEW=1` forces them on, and otherwise they need the ground-truth
+  file (a development checkout). This supersedes the contact sheet for labelling `found` and
+  rejected pages; the contact sheet remains useful for a whole-corpus side-by-side.
 - **Ground truth + eval** (`scripts/samples.expected.json`, `npm run insights:eval`; format in
   `scripts/insights-truth.mjs`). Hard assertions — `expect` (doc substring + optional
   page/kind, optionally `highlight: true`), `expectAbsent`, `expectEmpty` — fail the run. Labels
@@ -703,10 +738,11 @@ export FONTCONFIG_FILE=/tmp/pb/fonts.conf
 ## Resuming in a new session
 
 1. Read this document first; it is the source of truth for the plan and decisions. The
-   **Feedback round 1–4** and **Review** sections supersede the original design where they differ.
+   **Feedback round 1–4**, **Review** and **Cleanup** sections are the history; the status block
+   at the top is the current state, and the code wins where they disagree.
 2. Check `git branch --show-current` / `git log` for where the work currently lives (it started on
    `docs/insights-plan`, PR #8).
-3. **Current state (2026-09):** heuristic strategy **v12**; `INSIGHTS_VERSION` 2;
+3. **Current state (2026-09):** heuristic strategy **v13**; `INSIGHTS_VERSION` 2;
    `FEATURES_VERSION` 1. Page facts are cached, so re-interpretation is cheap. The pipeline
    persists curated `images` (with a `reason` each) plus the full `found` set and `coverage`, and
    supports a user-triggered `deep` scan. Page titles beat document names; the DAS is prioritised;
@@ -714,13 +750,15 @@ export FONTCONFIG_FILE=/tmp/pb/fonts.conf
 4. Samples are not in the repo (`downloads/` is gitignored). `npm run samples` fetches what is
    missing (cache-first) from `scripts/samples.json`.
 5. **Evaluate, don't guess:** `npm run insights:eval` checks the hard assertions (non-zero on a
-   miss) and reports label precision/recall. `npm run insights:report` writes the contact sheet,
-   which is also where labels are made.
+   miss) and reports label precision/recall. Use the `/review` tool (or `npm run insights:report`)
+   to label pages; `scripts/samples.expected.json` still has **no labels**, so the metrics are
+   currently empty.
 6. **Versions:** bump `STRATEGY.version` (`generate.ts`) for interpretation changes (old caches
    auto-refresh in the background, reusing page facts); `FEATURES_VERSION` (`features.ts`) for
    extraction changes (re-extracts everything); `INSIGHTS_VERSION` (`cache.ts`) only for a schema
    change (old caches read as absent, i.e. a manual regenerate).
-7. **Likely next work:** run the eval on real samples to validate v12; label the six unlabelled
-   samples and some from another authority; then ranking within a kind, revision collapse,
-   the richer summary option, and Electron/Docker packaging checks.
+7. **Likely next work:** run the eval on real samples to validate v13; label the samples and add
+   one from another authority; then the **vision pass** (see
+   [Known gaps](#known-gaps--future-slices)) to replace the render/photo rule churn, the richer
+   summary, ranking within a kind, revision collapse, and Electron/Docker packaging checks.
 8. Where this doc and the code disagree, update the doc — it should not silently rot.

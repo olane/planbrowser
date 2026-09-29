@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
-  documentPrior,
   kindFromText,
   kindsFromText,
   profileDocument,
   normalise,
   visualKindFromText
 } from './keywords.js';
+
+const priorOf = (doc: { documentType?: string; description?: string; localFilename?: string }) =>
+  profileDocument(doc).prior;
 
 describe('kindFromText', () => {
   it('recognises a site plan as a plan', () => {
@@ -92,37 +94,40 @@ describe('profileDocument.referenceVolume', () => {
   });
 });
 
-describe('documentPrior', () => {
+describe('document prior', () => {
   it('ranks drawings highly', () => {
-    const prior = documentPrior({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' });
+    const prior = priorOf({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' });
     expect(prior.score).toBeGreaterThan(0);
     expect(prior.kind).toBe('plan');
   });
   it('pushes comments down', () => {
-    const comment = documentPrior({ documentType: 'Consultee Comments', description: 'Environment Agency' });
-    const drawing = documentPrior({ documentType: 'Drawings', description: 'PROPOSED ELEVATIONS' });
+    const comment = priorOf({ documentType: 'Consultee Comments', description: 'Environment Agency' });
+    const drawing = priorOf({ documentType: 'Drawings', description: 'PROPOSED ELEVATIONS' });
     expect(comment.score).toBeLessThan(drawing.score);
   });
   it('does not boost an appendix of figures as if it were a visual', () => {
-    const appendix = documentPrior({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' });
-    const drawing = documentPrior({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' });
+    const appendix = priorOf({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' });
+    const drawing = priorOf({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' });
     expect(appendix.score).toBeLessThan(drawing.score);
   });
   it('keeps the kind when a reference volume names photos', () => {
-    const photos = documentPrior({ documentType: 'Photographs', description: 'APPENDIX 03-PHOTOS AND AVRS (VP10-12)' });
+    const photos = priorOf({ documentType: 'Photographs', description: 'APPENDIX 03-PHOTOS AND AVRS (VP10-12)' });
     expect(photos.kind).toBe('photo');
   });
   it('penalises superseded documents hard', () => {
-    const superseded = documentPrior({ documentType: 'Drawings', description: 'SUPERSEDED PROPOSED SITE PLAN' });
-    const current = documentPrior({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' });
+    const superseded = priorOf({ documentType: 'Drawings', description: 'SUPERSEDED PROPOSED SITE PLAN' });
+    const current = priorOf({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' });
     expect(superseded.score).toBeLessThan(current.score - 5);
+  });
+  it('opens a visual-sounding document that names no kind', () => {
+    expect(priorOf({ documentType: 'Application Information', description: 'Image Board' }).score).toBeGreaterThan(0);
   });
 });
 
 describe('keyword fixes', () => {
   it("matches artist's impression after normalisation", () => {
     expect(kindFromText("Artist's impression of the square")).toBe('render');
-    expect(documentPrior({ documentType: 'Supporting Documents', description: "Artist's Impression" }).score).toBeGreaterThan(0);
+    expect(priorOf({ documentType: 'Supporting Documents', description: "Artist's Impression" }).score).toBeGreaterThan(0);
   });
   it('matches plural photos', () => {
     expect(kindFromText('Site Photos')).toBe('photo');

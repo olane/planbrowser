@@ -1,5 +1,6 @@
 import type { InsightImageKind } from '../types.js';
 import { kindFromText, normalise, visualKindFromText, type DocumentProfile } from './keywords.js';
+import { KIND_BASE } from './kinds.js';
 import type { PagePixelStats } from './pixels.js';
 import { linesFromText, linesToText, titleCandidates, type PageLine, type TitleCandidate } from './title.js';
 
@@ -11,16 +12,6 @@ export interface PageClassification {
   // eval output. Not shown to end users.
   reason: string;
 }
-
-const KIND_BASE: Record<InsightImageKind, number> = {
-  render: 100,
-  map: 90,
-  elevation: 82,
-  plan: 78,
-  section: 62,
-  photo: 55,
-  other: 25
-};
 
 // A photographic page fills the frame with broad tones; a line drawing is mostly
 // white with thin strokes. Coloured flat-fill plans sit in between, so this is

@@ -16,7 +16,7 @@
     "samples": "npm run build && node scripts/fetch-samples.mjs",
     "insights:report": "npm run build && node scripts/insights-report.mjs",
     "insights:eval": "npm run build && node scripts/insights-eval.mjs",
-    "insights:labels": "node scripts/insights-labels.mjs"
+    "insights:labels": "npm run build && node scripts/insights-labels.mjs"
   },
   "keywords": [],
   "author": {

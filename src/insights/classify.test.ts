@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { classifyPage, isFlatGraphic, isFullBleed, isPhotographic, isProsePage } from './classify.js';
 import { profileDocument } from './keywords.js';
-import { titleFromText } from './title.js';
+import { linesFromText, titleCandidates } from './title.js';
 import type { PagePixelStats } from './pixels.js';
+
+// The production path keeps only the ranked title candidates; this mirrors the
+// old `titleFromText` helper for these tests.
+const titleFromText = (text: string): string | undefined => titleCandidates(linesFromText(text))[0]?.text;
 
 function stats(overrides: Partial<PagePixelStats>): PagePixelStats {
   return {
