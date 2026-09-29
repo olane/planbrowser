@@ -1,6 +1,6 @@
 # Application insights: design plan
 
-> **Status: design implemented; tuned on a small sample, not yet measured.** Strategy **v13**,
+> **Status: design implemented; tuned on a small sample, not yet measured.** Strategy **v14**,
 > insights cache format 2, page-facts format 1. The original design is above; the **Feedback
 > round 1–4** and **Review/Cleanup** sections below are the *history* of what changed against
 > real samples, not the current spec — where they disagree with the code, the code wins and this
@@ -460,15 +460,20 @@ planning portal): run `npm run insights:eval` and look at the review tool before
 The three `highlight: true` flags added to `samples.expected.json` are the intended behaviour and
 may fail at first.
 
-## Cleanup (2026-09) — v13
+## Cleanup and DAS ranking (2026-09) — v14
 
-A code review of v12 removed dead/duplicated code and fixed one coverage gap. Strategy now at
-**13** (the document prior changed, so cached insights refresh).
+A code review of v12 removed dead/duplicated code and fixed one coverage gap; the Design & Access
+Statement now leads the document ranking. Strategy now at **14** (the document prior/order
+changed, so cached insights refresh).
 
 - **Visual-named documents are no longer skipped.** `priorFromProfile` gave nothing to a
   visual-sounding name with no drawing kind, so documents like "Image Board" or "Exhibition
   Panels" scored 0 and were dropped by the `prior.score > 0` filter *before* the page pre-scan
   written for them could run. A visual name with no kind now adds a small prior.
+- **The Design & Access Statement leads the ranking.** `rankDocuments` sorts it ahead of every
+  other document (then by the usual name prior), so it always clears `maxDocs` and its larger
+  `dasPages` budget is spent even when a render or plan name would outrank it on the weak prior.
+  The DAS is the closest thing to a human summary of the scheme, so it is scanned first.
 - **One source of kind metadata** (`kinds.ts`): `KIND_ORDER`, `KIND_BASE`, `KIND_PRIOR_WEIGHT`
   and `DEFAULT_KIND_CAPS` used to live in `select.ts`, `classify.ts` and `keywords.ts` and could
   drift. They are imported from one module now.
@@ -742,7 +747,7 @@ export FONTCONFIG_FILE=/tmp/pb/fonts.conf
    at the top is the current state, and the code wins where they disagree.
 2. Check `git branch --show-current` / `git log` for where the work currently lives (it started on
    `docs/insights-plan`, PR #8).
-3. **Current state (2026-09):** heuristic strategy **v13**; `INSIGHTS_VERSION` 2;
+3. **Current state (2026-09):** heuristic strategy **v14**; `INSIGHTS_VERSION` 2;
    `FEATURES_VERSION` 1. Page facts are cached, so re-interpretation is cheap. The pipeline
    persists curated `images` (with a `reason` each) plus the full `found` set and `coverage`, and
    supports a user-triggered `deep` scan. Page titles beat document names; the DAS is prioritised;
@@ -757,7 +762,7 @@ export FONTCONFIG_FILE=/tmp/pb/fonts.conf
    auto-refresh in the background, reusing page facts); `FEATURES_VERSION` (`features.ts`) for
    extraction changes (re-extracts everything); `INSIGHTS_VERSION` (`cache.ts`) only for a schema
    change (old caches read as absent, i.e. a manual regenerate).
-7. **Likely next work:** run the eval on real samples to validate v13; label the samples and add
+7. **Likely next work:** run the eval on real samples to validate v14; label the samples and add
    one from another authority; then the **vision pass** (see
    [Known gaps](#known-gaps--future-slices)) to replace the render/photo rule churn, the richer
    summary, ranking within a kind, revision collapse, and Electron/Docker packaging checks.

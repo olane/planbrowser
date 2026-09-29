@@ -20,7 +20,7 @@ import { INSIGHTS_VERSION, assetPath, pruneAssets, readInsights, writeInsights }
 
 // Bump when interpretation changes (classify/select/page choice); cached
 // insights then refresh in the background, reusing all cached page facts.
-export const STRATEGY = { id: 'heuristic', version: 13 };
+export const STRATEGY = { id: 'heuristic', version: 14 };
 
 export const THUMB_WIDTH = 1400;
 
@@ -142,6 +142,21 @@ function documentRole(profile: DocumentProfile): DocumentRole {
     frontPages: Boolean(profile.prior.kind) || (profile.drawing && !profile.visualName),
     isPhotoDoc: profile.prior.kind === 'photo'
   };
+}
+
+// Rank the documents worth opening, best first. The Design & Access Statement
+// leads regardless of its name-based prior: it is the closest thing to a human
+// summary of the scheme and carries its own figures, so it must clear maxDocs.
+// Everything else follows the weak name/type prior.
+export function rankDocuments(docs: DocumentMeta[]): { doc: DocumentMeta; profile: DocumentProfile }[] {
+  return docs
+    .map((doc) => ({ doc, profile: profileDocument(doc) }))
+    .filter((entry) => entry.profile.prior.score > 0)
+    .sort(
+      (a, b) =>
+        Number(b.profile.designAndAccess) - Number(a.profile.designAndAccess) ||
+        b.profile.prior.score - a.profile.prior.score
+    );
 }
 
 // Pre-scan a document's pages for the embedded-image signal without rasterising
@@ -312,10 +327,7 @@ export async function generateInsights(
 
   const store = new FeatureStore(dir, { captionMinArea: LARGE_IMAGE_AREA });
 
-  const rankedAll: { doc: DocumentMeta; profile: DocumentProfile }[] = docs
-    .map((doc) => ({ doc, profile: profileDocument(doc) }))
-    .filter((x) => x.profile.prior.score > 0)
-    .sort((a, b) => b.profile.prior.score - a.profile.prior.score);
+  const rankedAll = rankDocuments(docs);
   const ranked = rankedAll.slice(0, budget.maxDocs);
 
   const counters: RunCounters = {

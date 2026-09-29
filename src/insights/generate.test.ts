@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { generateInsights } from './generate.js';
+import { generateInsights, rankDocuments } from './generate.js';
 import { getInsightsState, startInsights } from './jobs.js';
-import type { ApplicationMeta } from '../types.js';
+import type { ApplicationMeta, DocumentMeta } from '../types.js';
 
 const REFERENCE = '24/00001/FUL';
 let root: string;
@@ -59,6 +59,32 @@ describe('generateInsights caching', () => {
 
     const deep = await generateInsights(REFERENCE, undefined, { force: true, deep: true });
     expect(deep?.depth).toBe('deep');
+  });
+});
+
+describe('rankDocuments', () => {
+  const doc = (localFilename: string, documentType: string, description: string): DocumentMeta => ({
+    localFilename,
+    datePublished: '',
+    documentType,
+    description
+  });
+
+  it('opens the Design & Access Statement first, ahead of renders and plans', () => {
+    const ranked = rankDocuments([
+      doc('render.pdf', 'Drawings', 'ARTIST IMPRESSION OF THE SCHEME'),
+      doc('plan.pdf', 'Drawings', 'PROPOSED SITE PLAN'),
+      doc('das.pdf', 'Design and Access Statement', 'DESIGN AND ACCESS STATEMENT')
+    ]);
+    expect(ranked.map((entry) => entry.doc.localFilename)).toEqual(['das.pdf', 'render.pdf', 'plan.pdf']);
+  });
+
+  it('falls back to the name prior for everything else', () => {
+    const ranked = rankDocuments([
+      doc('plan.pdf', 'Drawings', 'PROPOSED SITE PLAN'),
+      doc('report.pdf', 'Application Survey / Assessment / Statement', 'TRANSPORT ASSESSMENT')
+    ]);
+    expect(ranked.map((entry) => entry.doc.localFilename)).toEqual(['plan.pdf', 'report.pdf']);
   });
 });
 
