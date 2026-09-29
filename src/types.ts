@@ -251,6 +251,28 @@ export interface InsightImage {
   reason?: string;
 }
 
+// A page-level verdict made in the review UI (docs/insights.md). The eval's
+// ground truth stores these; `kind` is only meaningful for a good verdict.
+export interface InsightLabel {
+  file: string;
+  page: number;
+  verdict: 'good' | 'bad';
+  kind?: InsightImageKind;
+}
+
+// One interpreted page, accepted or rejected, with the classifier's reason. The
+// review UI uses these to surface pages the heuristic dropped (false negatives).
+export interface InsightPage {
+  localFilename: string;
+  page: number;
+  kind: InsightImageKind;
+  score: number;
+  reason: string;
+  // Content hash of the page's thumbnail at generation time; the asset may since
+  // have been pruned, in which case the review endpoint re-renders it on demand.
+  imageFile: string;
+}
+
 export interface InsightSummary {
   headline: string;
   points: string[];
@@ -302,4 +324,7 @@ export interface ApplicationInsights {
   comments: InsightCommentTally;
   // Optional for caches written before coverage tracking.
   coverage?: InsightsCoverage;
+  // Every page the interpreter rendered, accepted or rejected. Optional for
+  // caches written before it existed; the review UI regenerates to get it.
+  pages?: InsightPage[];
 }

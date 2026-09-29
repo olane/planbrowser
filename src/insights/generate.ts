@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { ApplicationInsights, Comment, DocumentMeta, InsightImage } from '../types.js';
+import type { ApplicationInsights, Comment, DocumentMeta, InsightImage, InsightPage } from '../types.js';
 import { resolveApplicationMeta } from '../storage.js';
 import { profileDocument, type DocumentProfile } from './keywords.js';
 import { classifyPage } from './classify.js';
@@ -21,7 +21,7 @@ import { INSIGHTS_VERSION, assetPath, pruneAssets, readInsights, writeInsights }
 // insights then refresh in the background, reusing all cached page facts.
 export const STRATEGY = { id: 'heuristic', version: 12 };
 
-const THUMB_WIDTH = 1400;
+export const THUMB_WIDTH = 1400;
 
 // Cost caps: analysis is expensive on a cold cache. Documents are ranked by
 // prior, then pages are chosen per document (a cheap embedded-image pre-scan
@@ -71,14 +71,7 @@ const DEEP_BUDGET: Budget = {
 
 // One interpreted page, for tooling (contact sheet, eval): accepted and
 // rejected pages alike, with the classifier's reason.
-export interface PageTrace {
-  localFilename: string;
-  page: number;
-  kind: InsightImage['kind'];
-  score: number;
-  reason: string;
-  imageFile: string;
-}
+export type PageTrace = InsightPage;
 
 export interface GenerateOptions {
   force?: boolean;
@@ -189,6 +182,9 @@ export async function generateInsights(
   const ranked = rankedAll.slice(0, budget.maxDocs);
 
   const candidates: InsightImage[] = [];
+  // Every rendered/interpreted page (accepted or rejected), saved for the review
+  // UI so it can surface false negatives.
+  const interpreted: InsightPage[] = [];
   let pagesRendered = 0;
   let photoPagesRendered = 0;
   let documentsAnalysed = 0;
@@ -263,14 +259,16 @@ export async function generateInsights(
           // photo when the document name does not.
           caption: hasLargeImage ? scan?.caption : ''
         });
-        opts.trace?.({
+        const entry: InsightPage = {
           localFilename: doc.localFilename,
           page,
           kind: classification.kind,
           score: Math.round(classification.score),
           reason: classification.reason,
           imageFile: render.imageFile
-        });
+        };
+        interpreted.push(entry);
+        opts.trace?.(entry);
         if (classification.score <= 0) continue;
 
         docImages++;
@@ -328,6 +326,8 @@ export async function generateInsights(
     found,
     depth,
     comments: tallyComments(readComments(dir)),
+    // Accepted and rejected pages alike, for the review UI (false negatives).
+    pages: interpreted,
     coverage: {
       images: KIND_ORDER.map((kind) => ({
         kind,

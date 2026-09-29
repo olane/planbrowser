@@ -1,4 +1,4 @@
-import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags, DocumentSearchHit, SavedSearch, PlanItRecord, SortSpec, ApplicationInsights } from '../../src/types.js';
+import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags, DocumentSearchHit, SavedSearch, PlanItRecord, SortSpec, ApplicationInsights, InsightLabel } from '../../src/types.js';
 import type { SyncScope } from '../../src/decision.js';
 import { DEFAULT_AUTHORITY_ID } from '../../src/authorities.js';
 import { safeReference } from '../../src/refs.js';
@@ -217,4 +217,40 @@ export async function startInsights(reference: string, authorityId?: string, dee
 export function insightImageUrl(reference: string, authorityId: string | undefined, imageFile: string): string {
   const params = authorityId ? `?authority=${encodeURIComponent(authorityId)}` : '';
   return `/api/applications/${encodeURIComponent(reference)}/insights/images/${encodeURIComponent(imageFile)}${params}`;
+}
+
+// Review labels (local development only; the endpoint 404s in a packaged build).
+export async function fetchInsightLabels(reference: string, authorityId?: string): Promise<InsightLabel[]> {
+  const params = new URLSearchParams();
+  if (authorityId) params.set('authority', authorityId);
+  const qs = params.toString();
+  const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/insights/labels${qs ? `?${qs}` : ''}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to load labels');
+  }
+  const data = await res.json();
+  return data.labels ?? [];
+}
+
+export async function saveInsightLabels(reference: string, labels: InsightLabel[], authorityId?: string): Promise<InsightLabel[]> {
+  const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/insights/labels`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ authority: authorityId, labels })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to save labels');
+  }
+  const data = await res.json();
+  return data.labels ?? [];
+}
+
+// A page thumbnail for the review tool, re-rendered on demand if its asset was
+// pruned (rejected pages are not kept in the gallery).
+export function reviewImageUrl(reference: string, authorityId: string | undefined, file: string, page: number): string {
+  const params = new URLSearchParams({ file, page: String(page) });
+  if (authorityId) params.set('authority', authorityId);
+  return `/api/applications/${encodeURIComponent(reference)}/insights/review/image?${params.toString()}`;
 }

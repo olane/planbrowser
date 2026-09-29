@@ -4,6 +4,7 @@ import os from 'os';
 import path from 'path';
 import type { ApplicationMeta } from '../types.js';
 import { buildPdf, photoFill, type TestPage } from './__fixtures__/pdf.js';
+import type { PageTrace } from './generate.js';
 
 // Count PDF opens so the test can prove a warm feature cache avoids them.
 const opens = vi.hoisted(() => ({ count: 0 }));
@@ -70,10 +71,15 @@ function writeApplication(): void {
     image: { x: 60, y: 120, w: 720, h: 420, pxW: 1200, pxH: 800, fill: (x, y) => photoFill(x + shift * (y > 400 ? 3 : 1), y * shift) },
     texts: [{ x: 60, y: 100, size: 10, str: caption }]
   });
+  // A full-bleed flat brand panel: selected for review, then rejected.
+  const flat: TestPage = {
+    image: { x: 60, y: 80, w: 720, h: 440, pxW: 1200, pxH: 800, fill: () => [210, 225, 240] }
+  };
   const das = buildPdf([
     { texts: prose },
     figure("Artist's impression of the new square", 1),
-    figure('Existing view along Mill Road - site photograph', 7)
+    figure('Existing view along Mill Road - site photograph', 7),
+    flat
   ]);
   fs.writeFileSync(path.join(dir, 'pack.pdf'), pack);
   // A drawing whose portal name is just a drawing number.
@@ -175,5 +181,17 @@ describe('insights pipeline on synthetic documents', () => {
     // with more pages than the cap.
     expect(traces.filter((t) => t.localFilename === 'pack.pdf').map((t) => t.page)).toEqual([2, 4, 5, 6]);
     expect(traces.every((t) => t.reason.length > 0)).toBe(true);
+  });
+
+  it('persists every interpreted page, including rejected ones', async () => {
+    const traces: PageTrace[] = [];
+    const insights = await generateInsights(REFERENCE, undefined, { force: true, trace: (entry) => traces.push(entry) });
+    // What the contact sheet sees is exactly what is saved for the review tool.
+    expect(insights?.pages).toEqual(traces);
+    const rejected = insights?.pages?.find((p) => p.localFilename === 'das.pdf' && p.page === 4);
+    expect(rejected?.score).toBe(0);
+    expect(rejected?.reason).toMatch(/^rejected/);
+    const foundKeys = new Set((insights?.found ?? []).map((i) => `${i.localFilename}#${i.page}`));
+    expect(rejected && foundKeys.has(`${rejected.localFilename}#${rejected.page}`)).toBe(false);
   });
 });

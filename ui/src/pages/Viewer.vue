@@ -342,10 +342,11 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch, useCssModule } from 'vue'
+import { ref, onMounted, computed, watch, useCssModule } from 'vue'
 import { timeAgo, progressText, isKeyDocument } from '../utils'
 import type { ApplicationMeta, ApplicationInsights, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet } from '../../../src/types.js'
 import * as api from '../api'
+import { useInsights } from '../composables/useInsights'
 import DocumentList from '../components/DocumentList.vue'
 import Highlight from '../components/Highlight.vue'
 import { useRoute } from 'vue-router'
@@ -360,12 +361,17 @@ const loading = ref(true)
 const syncError = ref('')
 
 // Automatically-derived summary and the most relevant images/plans/renders.
-const insights = ref<ApplicationInsights | null>(null)
-const insightsStatus = ref<'loading' | 'none' | 'running' | 'ready' | 'error'>('loading')
-const insightsError = ref('')
+// State and polling live in the shared composable (also used by the review tool).
+const {
+  insights,
+  status: insightsStatus,
+  error: insightsError,
+  load: loadInsights,
+  generate: generateInsights,
+  reset: resetInsights
+} = useInsights(() => app.value?.reference ?? '', () => app.value?.authorityId)
 // 'highlights' = the curated, capped set; 'all' = every distinct candidate found.
 const insightView = ref<'highlights' | 'all'>('highlights')
-let insightsPoll: ReturnType<typeof setTimeout> | null = null
 const syncMessage = ref('')
 const error = ref('')
 const syncing = ref(false)
@@ -717,69 +723,6 @@ const loadComments = async () => {
 }
 
 let fetchInFlight = false
-const stopInsightsPoll = () => {
-  if (insightsPoll) {
-    clearTimeout(insightsPoll)
-    insightsPoll = null
-  }
-}
-
-const scheduleInsightsPoll = () => {
-  stopInsightsPoll()
-  insightsPoll = setTimeout(() => { void loadInsights() }, 3000)
-}
-
-const loadInsights = async () => {
-  if (!app.value) return
-  const reference = app.value.reference
-  try {
-    const res = await api.fetchInsights(reference, app.value.authorityId)
-    if (refParam.value !== reference) return
-    if (res.status === 'ready' && res.insights) {
-      insights.value = res.insights
-      insightsStatus.value = 'ready'
-      insightsError.value = ''
-    } else if (res.status === 'running') {
-      // A deep scan or background refresh reports `running` but may carry the
-      // previous result; keep it on screen and keep polling.
-      if (res.insights) insights.value = res.insights
-      insightsStatus.value = 'running'
-      insightsError.value = ''
-      scheduleInsightsPoll()
-    } else if (res.status === 'error') {
-      insightsStatus.value = 'error'
-      insightsError.value = res.error || 'Failed to generate insights'
-    } else {
-      insightsStatus.value = 'none'
-      insightsError.value = ''
-    }
-  } catch (e: any) {
-    if (refParam.value !== reference) return
-    insightsError.value = e.message || 'Failed to load insights'
-    insightsStatus.value = 'none'
-  }
-}
-
-const generateInsights = async (deep = false) => {
-  if (!app.value) return
-  const reference = app.value.reference
-  insightsError.value = ''
-  insightsStatus.value = 'running'
-  try {
-    const res = await api.startInsights(reference, app.value.authorityId, deep)
-    if (refParam.value !== reference) return
-    if (res.status === 'ready' && res.insights) {
-      insights.value = res.insights
-      insightsStatus.value = 'ready'
-      return
-    }
-    scheduleInsightsPoll()
-  } catch (e: any) {
-    if (refParam.value !== reference) return
-    insightsError.value = e.message || 'Failed to generate insights'
-    insightsStatus.value = 'error'
-  }
-}
 
 const scanMoreInsights = () => {
   insightView.value = 'highlights'
@@ -837,11 +780,8 @@ watch(queueItems, async () => {
 // viewer, reset and load the new reference rather than showing stale content.
 watch(refParam, () => {
   if (!refParam.value) return
-  stopInsightsPoll()
+  resetInsights()
   app.value = null
-  insights.value = null
-  insightsStatus.value = 'loading'
-  insightsError.value = ''
   insightView.value = 'highlights'
   error.value = ''
   commentsList.value = []
@@ -852,10 +792,6 @@ watch(refParam, () => {
   lastWasDownloading = false
   loading.value = true
   fetchApp()
-})
-
-onUnmounted(() => {
-  stopInsightsPoll()
 })
 
 onMounted(async () => {

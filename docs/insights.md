@@ -539,6 +539,17 @@ Because this is a ranking problem, do not tune it blind.
   highlights, other found, rejected — with its kind, reason and score. It is also the labelling
   tool: mark tiles good/bad (and fix the kind), *Download labels*, then
   `npm run insights:labels -- labels.json`.
+- **Review tool** (local dev only): open `/review/<ref>`, e.g.
+  `http://localhost:5173/review/25-04484-FUL` (run `npm run dev`). It lists every page the
+  interpreter rendered — highlights, the rest of `found`, and the rejected pages — with the
+  classifier's reason and score. Mark each good/bad and correct its kind; each change saves
+  straight into `scripts/samples.expected.json` via a dev-only endpoint, so `npm run insights:eval`
+  sees it immediately. Marking a *rejected* page good is how false negatives are flagged (the eval
+  counts it as a missed good page). Rejected-page thumbnails were pruned from the gallery, so the
+  review endpoint re-renders them on demand. The route is only registered under `vite dev` and the
+  endpoint 404s unless the ground-truth file exists, so packaged builds never expose it. This
+  supersedes the contact sheet for labelling `found` and rejected pages; the contact sheet remains
+  useful for a whole-corpus side-by-side.
 - **Ground truth + eval** (`scripts/samples.expected.json`, `npm run insights:eval`; format in
   `scripts/insights-truth.mjs`). Hard assertions — `expect` (doc substring + optional
   page/kind, optionally `highlight: true`), `expectAbsent`, `expectEmpty` — fail the run. Labels
