@@ -110,6 +110,7 @@ for (const { meta, dir } of apps) {
     const kind = image?.kind ?? t.kind;
     const label = labels.get(key);
     const labelKind = label?.kind ?? kind;
+    const labelRank = label?.rank ?? '';
     const src = `${path.basename(appOut)}/${t.imageFile}`;
     const caption = escape(`${image?.label ?? ''} — ${t.localFilename} p${t.page}`);
     tiles[group].push(`<figure class="tile ${label?.verdict ?? ''}" data-ref="${escape(meta.reference)}" data-file="${escape(t.localFilename)}" data-page="${t.page}">
@@ -118,7 +119,12 @@ for (const { meta, dir } of apps) {
   <div class="controls">
     <label><input type="radio" name="${escape(key)}" value="good"${label?.verdict === 'good' ? ' checked' : ''}> good</label>
     <label><input type="radio" name="${escape(key)}" value="bad"${label?.verdict === 'bad' ? ' checked' : ''}> bad</label>
-    <select>${KINDS.map((k) => `<option${k === labelKind ? ' selected' : ''}>${k}</option>`).join('')}</select>
+    <select class="kind">${KINDS.map((k) => `<option${k === labelKind ? ' selected' : ''}>${k}</option>`).join('')}</select>
+    <select class="rank">
+      <option value=""${labelRank === '' ? ' selected' : ''}>rank: —</option>
+      <option value="high"${labelRank === 'high' ? ' selected' : ''}>rank: high</option>
+      <option value="low"${labelRank === 'low' ? ' selected' : ''}>rank: low</option>
+    </select>
   </div></figcaption>
 </figure>`);
   }
@@ -167,7 +173,11 @@ document.getElementById('download').addEventListener('click', () => {
     const verdict = tile.querySelector('input:checked')?.value;
     if (!verdict) continue;
     const label = { file: tile.dataset.file, page: Number(tile.dataset.page), verdict };
-    if (verdict === 'good') label.kind = tile.querySelector('select').value;
+    if (verdict === 'good') {
+      label.kind = tile.querySelector('select.kind').value;
+      const rank = tile.querySelector('select.rank').value;
+      if (rank) label.rank = rank;
+    }
     (samples[tile.dataset.ref] ??= []).push(label);
   }
   const blob = new Blob([JSON.stringify({ samples }, null, 2)], { type: 'application/json' });

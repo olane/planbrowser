@@ -1,5 +1,5 @@
 {
-  "//": "Human-curated ground truth for scripts/insights-eval.mjs; the format is documented in scripts/insights-truth.mjs. `expect`/`expectAbsent`/`expectEmpty` are hard assertions (`doc` is a normalised substring of filename+label; `page`/`kind` optional; `highlight: true` means it must be in the curated highlights, not just found). `labels` are per-page good/bad verdicts made in the contact sheet (`npm run insights:report`, then `npm run insights:labels -- labels.json`) and drive the precision/recall metrics. Not auto-generated.",
+  "//": "Human-curated ground truth for scripts/insights-eval.mjs; the format is documented in scripts/insights-truth.mjs. `expect`/`expectAbsent`/`expectEmpty` are hard assertions (`doc` is a normalised substring of filename+label; `page`/`kind` optional; `highlight: true` means it must be in the curated highlights, not just found). `labels` are per-page good/bad verdicts made in the review tool (`/review/<ref>`, or the contact sheet `npm run insights:report`), optionally with a `kind` and a `rank` (`high`/`low` priority on a good page), and drive the precision/recall and rank metrics. Not auto-generated.",
   "samples": {
     "25/04484/FUL": {
       "expect": [

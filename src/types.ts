@@ -252,13 +252,19 @@ export interface InsightImage {
 }
 
 // A page-level verdict made in the review UI (docs/insights.md). The eval's
-// ground truth stores these; `kind` is only meaningful for a good verdict.
+// ground truth stores these; `kind` and `rank` are only meaningful for a good
+// verdict. `rank` is the reviewer's priority for a page that should be shown:
+// `high` should lead the gallery, `low` is shown but deprioritised, and absent
+// means no opinion.
 export interface InsightLabel {
   file: string;
   page: number;
   verdict: 'good' | 'bad';
   kind?: InsightImageKind;
+  rank?: InsightRank;
 }
+
+export type InsightRank = 'high' | 'low';
 
 // One interpreted page, accepted or rejected, with the classifier's reason. The
 // review UI uses these to surface pages the heuristic dropped (false negatives).

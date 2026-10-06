@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { InsightImageKind, InsightLabel } from '../types.js';
+import type { InsightImageKind, InsightLabel, InsightRank } from '../types.js';
 import { atomicWrite } from './cache.js';
 
 // The review UI (a special URL on the viewer) writes page verdicts into the
@@ -30,6 +30,7 @@ export function reviewEnabled(): boolean {
 }
 
 const KINDS: InsightImageKind[] = ['render', 'plan', 'elevation', 'section', 'map', 'photo', 'other'];
+const RANKS: InsightRank[] = ['high', 'low'];
 
 interface TruthSample {
   labels?: InsightLabel[];
@@ -50,14 +51,19 @@ export function sanitizeLabels(input: unknown): InsightLabel[] | null {
   const out: InsightLabel[] = [];
   for (const entry of input) {
     if (!entry || typeof entry !== 'object') continue;
-    const { file, page, verdict, kind } = entry as Record<string, unknown>;
+    const { file, page, verdict, kind, rank } = entry as Record<string, unknown>;
     if (typeof file !== 'string' || !file) continue;
     if (typeof page !== 'number' || !Number.isInteger(page) || page < 1) continue;
     if (verdict !== 'good' && verdict !== 'bad') continue;
     const label: InsightLabel = { file, page, verdict };
-    // A kind only makes sense for a page judged worth showing.
-    if (verdict === 'good' && typeof kind === 'string' && (KINDS as string[]).includes(kind)) {
-      label.kind = kind as InsightImageKind;
+    // A kind and a rank only make sense for a page judged worth showing.
+    if (verdict === 'good') {
+      if (typeof kind === 'string' && (KINDS as string[]).includes(kind)) {
+        label.kind = kind as InsightImageKind;
+      }
+      if (typeof rank === 'string' && (RANKS as string[]).includes(rank)) {
+        label.rank = rank as InsightRank;
+      }
     }
     out.push(label);
   }

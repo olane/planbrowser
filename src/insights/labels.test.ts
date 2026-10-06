@@ -90,15 +90,19 @@ describe('insight labels', () => {
     expect(sanitizeLabels('nope')).toBeNull();
     expect(
       sanitizeLabels([
-        { file: 'a.pdf', page: 1, verdict: 'good', kind: 'render' },
+        { file: 'a.pdf', page: 1, verdict: 'good', kind: 'render', rank: 'high' },
         { file: 'a.pdf', page: 0, verdict: 'good' },
         { file: 'a.pdf', page: 2, verdict: 'maybe' },
         { file: '', page: 3, verdict: 'bad' },
-        { file: 'a.pdf', page: 4, verdict: 'bad', kind: 'bogus' }
+        { file: 'a.pdf', page: 4, verdict: 'bad', kind: 'bogus' },
+        { file: 'a.pdf', page: 5, verdict: 'good', kind: 'plan', rank: 'bogus' },
+        { file: 'a.pdf', page: 6, verdict: 'bad', rank: 'high' }
       ])
     ).toEqual([
-      { file: 'a.pdf', page: 1, verdict: 'good', kind: 'render' },
-      { file: 'a.pdf', page: 4, verdict: 'bad' }
+      { file: 'a.pdf', page: 1, verdict: 'good', kind: 'render', rank: 'high' },
+      { file: 'a.pdf', page: 4, verdict: 'bad' },
+      { file: 'a.pdf', page: 5, verdict: 'good', kind: 'plan' },
+      { file: 'a.pdf', page: 6, verdict: 'bad' }
     ]);
   });
 });

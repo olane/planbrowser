@@ -81,6 +81,16 @@
                 <select :class="$style.select" :value="pageKind(page)" @change="setKind(page, $event)">
                   <option v-for="kind in KINDS" :key="kind" :value="kind">{{ kindLabel(kind) }}</option>
                 </select>
+                <select
+                  :class="[$style.select, pageRank(page) === 'high' ? $style.rankHigh : pageRank(page) === 'low' ? $style.rankLow : '']"
+                  :value="pageRank(page) ?? ''"
+                  title="Priority: should this page lead the gallery?"
+                  @change="setRank(page, $event)"
+                >
+                  <option value="">Rank: —</option>
+                  <option value="high">Rank: high</option>
+                  <option value="low">Rank: low</option>
+                </select>
               </div>
             </figcaption>
           </figure>
@@ -93,7 +103,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import type { ApplicationMeta, ApplicationInsights, InsightImageKind, InsightLabel, InsightPage } from '../../../src/types.js'
+import type { ApplicationMeta, ApplicationInsights, InsightImageKind, InsightRank, InsightLabel, InsightPage } from '../../../src/types.js'
 import * as api from '../api'
 import { useInsights } from '../composables/useInsights'
 
@@ -123,7 +133,7 @@ const pageKey = (page: { localFilename: string; page: number }) => `${page.local
 const shortName = (name: string) =>
   name.replace(/\.pdf$/i, '').replace(/^\d{1,2}\s+\w{3}\s+\d{4}\s*-\s*[^-]+-\s*/, '')
 
-type ReviewLabel = { verdict: 'good' | 'bad'; kind?: InsightImageKind }
+type ReviewLabel = { verdict: 'good' | 'bad'; kind?: InsightImageKind; rank?: InsightRank }
 const labels = ref<Record<string, ReviewLabel>>({})
 const saveState = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
 const saveError = ref('')
@@ -132,6 +142,7 @@ const hideLabelled = ref(false)
 const labelledCount = computed(() => Object.keys(labels.value).length)
 const pageVerdict = (page: InsightPage) => labels.value[pageKey(page)]?.verdict
 const pageKind = (page: InsightPage): InsightImageKind => labels.value[pageKey(page)]?.kind ?? page.kind
+const pageRank = (page: InsightPage): InsightRank | undefined => labels.value[pageKey(page)]?.rank
 
 const keysOf = (images: ApplicationInsights['images'] | undefined): Set<string> =>
   new Set((images ?? []).map((image) => `${image.localFilename}#${image.page}`))
@@ -186,7 +197,11 @@ const loadLabels = async () => {
     const incoming = await api.fetchInsightLabels(refParam.value, app.value?.authorityId)
     const map: Record<string, ReviewLabel> = {}
     for (const label of incoming) {
-      map[`${label.file}#${label.page}`] = { verdict: label.verdict, ...(label.kind ? { kind: label.kind } : {}) }
+      map[`${label.file}#${label.page}`] = {
+        verdict: label.verdict,
+        ...(label.kind ? { kind: label.kind } : {}),
+        ...(label.rank ? { rank: label.rank } : {})
+      }
     }
     labels.value = map
   } catch {
@@ -201,7 +216,8 @@ const persist = async (page: InsightPage) => {
     file: page.localFilename,
     page: page.page,
     verdict: entry.verdict,
-    ...(entry.verdict === 'good' && entry.kind ? { kind: entry.kind } : {})
+    ...(entry.verdict === 'good' && entry.kind ? { kind: entry.kind } : {}),
+    ...(entry.verdict === 'good' && entry.rank ? { rank: entry.rank } : {})
   }
   saveState.value = 'saving'
   try {
@@ -234,15 +250,39 @@ const rate = (page: InsightPage, verdict: 'good' | 'bad') => {
     void clear(page)
     return
   }
-  const kind = labels.value[key]?.kind ?? page.kind
-  labels.value[key] = verdict === 'good' ? { verdict, kind } : { verdict }
+  const current = labels.value[key]
+  labels.value[key] =
+    verdict === 'good'
+      ? { verdict, kind: current?.kind ?? page.kind, ...(current?.rank ? { rank: current.rank } : {}) }
+      : { verdict }
   void persist(page)
 }
 
 const setKind = (page: InsightPage, event: Event) => {
   const kind = (event.target as HTMLSelectElement).value as InsightImageKind
-  const verdict = labels.value[pageKey(page)]?.verdict ?? 'good'
-  labels.value[pageKey(page)] = { verdict, kind }
+  const current = labels.value[pageKey(page)]
+  labels.value[pageKey(page)] = {
+    verdict: current?.verdict ?? 'good',
+    kind,
+    ...(current?.rank ? { rank: current.rank } : {})
+  }
+  void persist(page)
+}
+
+const setRank = (page: InsightPage, event: Event) => {
+  const value = (event.target as HTMLSelectElement).value
+  const key = pageKey(page)
+  const current = labels.value[key]
+  if (!value && !current) return
+  if (!value) {
+    // "No opinion": keep the verdict and kind, drop only the rank.
+    labels.value[key] = {
+      verdict: current!.verdict,
+      ...(current!.verdict === 'good' ? { kind: current!.kind ?? page.kind } : {})
+    }
+  } else {
+    labels.value[key] = { verdict: 'good', kind: current?.kind ?? page.kind, rank: value as InsightRank }
+  }
   void persist(page)
 }
 
@@ -457,6 +497,7 @@ onMounted(async () => {
 
 .controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
   align-items: center;
   margin-top: 0.25rem;
@@ -493,5 +534,16 @@ onMounted(async () => {
   background: #fff;
   color: var(--color-gray-700);
   font-size: 0.6875rem;
+}
+
+.rankHigh {
+  border-color: var(--color-green-600, #16a34a);
+  color: var(--color-green-700, #15803d);
+  font-weight: 600;
+}
+
+.rankLow {
+  border-color: var(--color-gray-400, #9ca3af);
+  color: var(--color-gray-500);
 }
 </style>

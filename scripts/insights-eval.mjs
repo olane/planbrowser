@@ -24,7 +24,7 @@ const filters = args.filter((a) => !a.startsWith('--'));
 const { samples: truth } = loadTruth();
 const references = filters.length ? filters : Object.keys(truth);
 let failed = false;
-const totals = { good: 0, bad: 0, hGood: 0, hBad: 0, labelledGood: 0, missedGood: 0 };
+const totals = { good: 0, bad: 0, hGood: 0, hBad: 0, labelledGood: 0, missedGood: 0, highTotal: 0, highHighlights: 0, lowTotal: 0, lowHighlights: 0 };
 
 for (const reference of references) {
   const spec = truth[reference];
@@ -67,6 +67,16 @@ for (const reference of references) {
     totals.hBad += l.highlightTally.bad;
     totals.labelledGood += l.good;
     totals.missedGood += l.missedGood.length;
+    totals.highTotal += l.rank.highTotal;
+    totals.highHighlights += l.rank.highlightsHigh;
+    totals.lowTotal += l.rank.lowTotal;
+    totals.lowHighlights += l.rank.highlightsLow;
+  }
+  if (l.rank && (l.rank.highTotal || l.rank.lowTotal)) {
+    console.log(
+      `    rank: high in highlights ${l.rank.highlightsHigh}/${l.rank.highTotal} · ` +
+        `low in highlights ${l.rank.highlightsLow}/${l.rank.lowTotal}`
+    );
   }
   for (const e of s.misses) console.log(`    MISS  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''}${e.note ? ` — ${e.note}` : ''}`);
   for (const e of s.notHighlighted) console.log(`    NOT IN HIGHLIGHTS  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''}`);
@@ -80,6 +90,12 @@ if (totals.good + totals.bad) {
   console.log(
     `\nAll labelled samples: precision highlights ${pct(totals.hGood / (totals.hGood + totals.hBad || 1))}, ` +
       `found ${pct(totals.good / (totals.good + totals.bad))} · recall found ${pct((totals.labelledGood - totals.missedGood) / (totals.labelledGood || 1))}`
+  );
+}
+if (totals.highTotal || totals.lowTotal) {
+  console.log(
+    `Rank: high in highlights ${pct(totals.highHighlights / (totals.highTotal || 1))} (${totals.highHighlights}/${totals.highTotal}) · ` +
+      `low in highlights ${pct(totals.lowHighlights / (totals.lowTotal || 1))} (${totals.lowHighlights}/${totals.lowTotal})`
   );
 }
 

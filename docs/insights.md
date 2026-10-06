@@ -582,7 +582,10 @@ Because this is a ranking problem, do not tune it blind.
   `http://localhost:5173/review/25-04484-FUL` (run `npm run dev`). It lists every page the
   interpreter rendered — highlights, the rest of `found`, and the rejected pages — with the
   classifier's reason and score. Mark each good/bad and correct its kind; clicking the active
-  rating again clears it, returning the page to unlabelled. Each change saves straight into
+  rating again clears it, returning the page to unlabelled. A good page can also be given a
+  priority — **high**, **low**, or no opinion (the default) — which feeds a ranking metric: a
+  `high` page is expected to reach the highlights, a `low` one may be capped away without
+  penalty. Each change saves straight into
   `scripts/samples.expected.json` via a dev-only endpoint, so `npm run insights:eval`
   sees it immediately. Marking a *rejected* page good is how false negatives are flagged (the eval
   counts it as a missed good page). Rejected-page thumbnails were pruned from the gallery, so the

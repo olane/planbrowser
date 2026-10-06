@@ -6,10 +6,12 @@
 //   as a normalised substring of the image's filename + label; `page` and `kind`
 //   are optional. An `expect` entry with `"highlight": true` must be in the
 //   curated highlights, not just somewhere in `found`.
-// - `labels`: per-page verdicts made in the contact sheet
-//   (`{ file, page, verdict: "good" | "bad", kind? }`, `file` = exact
+// - `labels`: per-page verdicts made in the review tool
+//   (`{ file, page, verdict: "good" | "bad", kind?, rank? }`, `file` = exact
 //   localFilename). They drive the soft metrics: precision, recall and kind
-//   accuracy, for both the highlights and everything found.
+//   accuracy, for both the highlights and everything found. `rank` is an
+//   optional `"high"`/`"low"` priority on a good page; the rank metric reports
+//   how many high/low pages reached the highlights.
 
 import fs from 'fs';
 import path from 'path';
@@ -100,6 +102,18 @@ export function scoreSample(insights, spec) {
   const inSet = (set) => (l) => set.some((i) => i.localFilename === l.file && i.page === l.page);
   const missedGood = goodLabels.filter((l) => !inSet(found)(l));
 
+  // Rank labels are a reviewer's priority among good pages: a `high` page should
+  // reach the highlights, a `low` one may be capped away without penalty.
+  const highTotal = goodLabels.filter((l) => l.rank === 'high').length;
+  const lowTotal = goodLabels.filter((l) => l.rank === 'low').length;
+  const ranks = (set) => {
+    const inSetLabels = goodLabels.filter(inSet(set));
+    return {
+      high: inSetLabels.filter((l) => l.rank === 'high').length,
+      low: inSetLabels.filter((l) => l.rank === 'low').length
+    };
+  };
+
   return {
     found: found.length,
     highlights: images.length,
@@ -119,7 +133,15 @@ export function scoreSample(insights, spec) {
       recallFound: ratio(goodLabels.length - missedGood.length, goodLabels.length),
       recallHighlights: ratio(goodLabels.filter(inSet(images)).length, goodLabels.length),
       missedGood,
-      badHighlights: images.filter((i) => labelOf(i)?.verdict === 'bad')
+      badHighlights: images.filter((i) => labelOf(i)?.verdict === 'bad'),
+      rank: {
+        highTotal,
+        lowTotal,
+        highlightsHigh: ranks(images).high,
+        highlightsLow: ranks(images).low,
+        foundHigh: ranks(found).high,
+        foundLow: ranks(found).low
+      }
     }
   };
 }
