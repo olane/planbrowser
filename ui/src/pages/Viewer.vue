@@ -416,7 +416,7 @@ const tabClass = (tab: string) => (activeTab.value === tab ? styles.tabActive : 
 const KIND_GROUP_ORDER = ['render', 'map', 'elevation', 'plan', 'section', 'photo', 'other']
 const KIND_GROUP_LABELS: Record<string, string> = {
   render: 'Renders',
-  map: 'Location plans',
+  map: 'Location maps',
   elevation: 'Elevations',
   plan: 'Plans',
   section: 'Sections',
@@ -425,7 +425,7 @@ const KIND_GROUP_LABELS: Record<string, string> = {
 }
 const KIND_LABELS: Record<string, string> = {
   render: 'Render',
-  map: 'Location plan',
+  map: 'Location map',
   elevation: 'Elevation',
   plan: 'Plan',
   section: 'Section',

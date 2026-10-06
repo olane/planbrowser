@@ -102,7 +102,7 @@ strictly:
 - **`render` / `photo`** — unchanged; `render` outranks `photo`.
 
 So a "PROPOSED SITE PLAN" is a `plan`, while an "EXISTING SITE LOCATION PLAN" is a `map`. The UI
-surfaces friendly labels ("Plans", "Location plans") and groups the gallery by kind, which is
+surfaces friendly labels ("Plans", "Location maps") and groups the gallery by kind, which is
 where the distinction is actually explained to the user.
 
 ### Proposal summary (deterministic)

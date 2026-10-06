@@ -110,7 +110,7 @@ const { insights, status, error, load, generate, reset } = useInsights(
 const KINDS: InsightImageKind[] = ['render', 'map', 'elevation', 'plan', 'section', 'photo', 'other']
 const KIND_LABELS: Record<string, string> = {
   render: 'Render',
-  map: 'Location plan',
+  map: 'Location map',
   elevation: 'Elevation',
   plan: 'Plan',
   section: 'Section',
