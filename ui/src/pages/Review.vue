@@ -9,8 +9,8 @@
       </p>
       <p :class="$style.intro">
         Rate each page the heuristic interpreted — including the ones it <b>rejected</b> — so missed
-        pages can be flagged as false negatives. Labels save to <code>scripts/samples.expected.json</code>
-        for <code>npm run insights:eval</code>.
+        pages can be flagged as false negatives. Click the active rating again to clear it. Labels
+        save to <code>scripts/samples.expected.json</code> for <code>npm run insights:eval</code>.
       </p>
     </header>
 
@@ -214,9 +214,28 @@ const persist = async (page: InsightPage) => {
   }
 }
 
+const clear = async (page: InsightPage) => {
+  saveState.value = 'saving'
+  try {
+    await api.removeInsightLabels(refParam.value, [{ file: page.localFilename, page: page.page }], app.value?.authorityId)
+    saveState.value = 'saved'
+    saveError.value = ''
+  } catch (e: any) {
+    saveState.value = 'error'
+    saveError.value = e.message || 'Failed to remove label'
+  }
+}
+
 const rate = (page: InsightPage, verdict: 'good' | 'bad') => {
-  const kind = labels.value[pageKey(page)]?.kind ?? page.kind
-  labels.value[pageKey(page)] = verdict === 'good' ? { verdict, kind } : { verdict }
+  const key = pageKey(page)
+  // Clicking the active rating clears it, so a page can be returned to unlabelled.
+  if (labels.value[key]?.verdict === verdict) {
+    delete labels.value[key]
+    void clear(page)
+    return
+  }
+  const kind = labels.value[key]?.kind ?? page.kind
+  labels.value[key] = verdict === 'good' ? { verdict, kind } : { verdict }
   void persist(page)
 }
 

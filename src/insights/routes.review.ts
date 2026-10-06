@@ -3,7 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { resolveApplicationMeta } from '../storage.js';
 import { insightsDir, writeAsset } from './cache.js';
-import { mergeLabels, readLabels, reviewEnabled, sanitizeLabels } from './labels.js';
+import { mergeLabels, readLabels, removeLabels, reviewEnabled, sanitizeLabels, sanitizePageRefs } from './labels.js';
 import { closePdf, openPdf, renderPageToPng } from './render.js';
 import { THUMB_WIDTH } from './generate.js';
 import { resolveAuthorityId } from './routes.js';
@@ -43,16 +43,20 @@ reviewRouter.post('/api/applications/:ref/insights/labels', (req, res) => {
     res.status(404).json({ error: 'Application not found' });
     return;
   }
-  const parsed = sanitizeLabels(req.body?.labels);
-  if (!parsed) {
-    res.status(400).json({ error: 'labels must be an array' });
+  const parsed = sanitizeLabels(req.body?.labels ?? []);
+  const removals = sanitizePageRefs(req.body?.remove ?? []);
+  if (!parsed || !removals) {
+    res.status(400).json({ error: 'labels and remove must be arrays' });
     return;
   }
   // Only this application's own documents, matching the image endpoint.
   const known = new Set((found.meta.documents ?? []).map((doc) => doc.localFilename));
   const labels = parsed.filter((label) => known.has(label.file));
+  const remove = removals.filter((ref) => known.has(ref.file));
   try {
-    res.json({ labels: mergeLabels(found.meta.reference, labels) });
+    if (remove.length) removeLabels(found.meta.reference, remove);
+    const remaining = labels.length ? mergeLabels(found.meta.reference, labels) : readLabels(found.meta.reference);
+    res.json({ labels: remaining });
   } catch {
     res.status(500).json({ error: 'Ground-truth file is unreadable' });
   }

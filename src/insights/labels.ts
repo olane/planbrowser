@@ -64,6 +64,20 @@ export function sanitizeLabels(input: unknown): InsightLabel[] | null {
   return out;
 }
 
+// Validate untrusted request input into page references for a removal.
+export function sanitizePageRefs(input: unknown): { file: string; page: number }[] | null {
+  if (!Array.isArray(input)) return null;
+  const out: { file: string; page: number }[] = [];
+  for (const entry of input) {
+    if (!entry || typeof entry !== 'object') continue;
+    const { file, page } = entry as Record<string, unknown>;
+    if (typeof file !== 'string' || !file) continue;
+    if (typeof page !== 'number' || !Number.isInteger(page) || page < 1) continue;
+    out.push({ file, page });
+  }
+  return out;
+}
+
 export function readLabels(reference: string): InsightLabel[] {
   try {
     const truth = JSON.parse(fs.readFileSync(truthFile(), 'utf-8')) as TruthFile;
@@ -81,6 +95,20 @@ export function mergeLabels(reference: string, incoming: InsightLabel[]): Insigh
   const byKey = new Map((spec.labels ?? []).map((label) => [pageKey(label), label]));
   for (const label of incoming) byKey.set(pageKey(label), label);
   spec.labels = [...byKey.values()].sort((a, b) => a.file.localeCompare(b.file) || a.page - b.page);
+  atomicWrite(truthFile(), `${formatTruth(truth)}\n`);
+  return spec.labels;
+}
+
+// Drop the verdicts for the given pages, e.g. when a reviewer unselects a rating.
+export function removeLabels(
+  reference: string,
+  pages: { file: string; page: number }[]
+): InsightLabel[] {
+  const truth = JSON.parse(fs.readFileSync(truthFile(), 'utf-8')) as TruthFile;
+  const samples = (truth.samples ??= {});
+  const spec = (samples[reference] ??= {});
+  const drop = new Set(pages.map(pageKey));
+  spec.labels = (spec.labels ?? []).filter((label) => !drop.has(pageKey(label)));
   atomicWrite(truthFile(), `${formatTruth(truth)}\n`);
   return spec.labels;
 }

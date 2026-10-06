@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { labelsAvailable, mergeLabels, readLabels, reviewEnabled, sanitizeLabels } from './labels.js';
+import { labelsAvailable, mergeLabels, readLabels, removeLabels, reviewEnabled, sanitizeLabels, sanitizePageRefs } from './labels.js';
 
 let dir: string;
 let file: string;
@@ -61,6 +61,29 @@ describe('insight labels', () => {
   it('creates a sample entry that is not present yet', () => {
     mergeLabels('B/2', [{ file: 'x.pdf', page: 1, verdict: 'good', kind: 'photo' }]);
     expect(readLabels('B/2')).toEqual([{ file: 'x.pdf', page: 1, verdict: 'good', kind: 'photo' }]);
+  });
+
+  it('removes a verdict without touching the others', () => {
+    mergeLabels('A/1', [
+      { file: 'd.pdf', page: 1, verdict: 'good', kind: 'plan' },
+      { file: 'd.pdf', page: 2, verdict: 'bad' }
+    ]);
+    expect(removeLabels('A/1', [{ file: 'd.pdf', page: 1 }])).toEqual([
+      { file: 'd.pdf', page: 2, verdict: 'bad' }
+    ]);
+    expect(readLabels('A/1')).toEqual([{ file: 'd.pdf', page: 2, verdict: 'bad' }]);
+  });
+
+  it('sanitizes untrusted page references', () => {
+    expect(sanitizePageRefs('nope')).toBeNull();
+    expect(
+      sanitizePageRefs([
+        { file: 'a.pdf', page: 1, verdict: 'good' },
+        { file: 'a.pdf', page: 0 },
+        { file: '', page: 3 },
+        { file: 'a.pdf', page: 2.5 }
+      ])
+    ).toEqual([{ file: 'a.pdf', page: 1 }]);
   });
 
   it('sanitizes untrusted labels', () => {

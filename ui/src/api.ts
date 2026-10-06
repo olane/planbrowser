@@ -247,6 +247,24 @@ export async function saveInsightLabels(reference: string, labels: InsightLabel[
   return data.labels ?? [];
 }
 
+export async function removeInsightLabels(
+  reference: string,
+  pages: { file: string; page: number }[],
+  authorityId?: string
+): Promise<InsightLabel[]> {
+  const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/insights/labels`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ authority: authorityId, remove: pages })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to remove labels');
+  }
+  const data = await res.json();
+  return data.labels ?? [];
+}
+
 // A page thumbnail for the review tool, re-rendered on demand if its asset was
 // pruned (rejected pages are not kept in the gallery).
 export function reviewImageUrl(reference: string, authorityId: string | undefined, file: string, page: number): string {
