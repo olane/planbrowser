@@ -228,3 +228,118 @@ export interface SavedSearch {
   lastRunAt?: string;
   lastReferences?: string[];
 }
+
+// --- Application insights -------------------------------------------------
+// Automatically-derived summary and the most relevant images/plans/renders
+// for an application. Produced by a strategy (see src/insights/) and cached
+// on disk next to metadata.json as insights.json.
+
+export type InsightImageKind =
+  | 'render'
+  | 'plan'
+  | 'elevation'
+  | 'section'
+  | 'map'
+  | 'photo'
+  | 'other';
+
+export interface InsightImage {
+  // Content hash of the stored thumbnail; also the asset's filename stem.
+  id: string;
+  kind: InsightImageKind;
+  label: string;
+  localFilename: string;
+  page: number;
+  imageFile: string;
+  width: number;
+  height: number;
+  score: number;
+  // Difference hash of the page, for collapsing near-duplicate images.
+  phash?: string;
+  // Why the classifier chose this kind (debug; shown in the contact sheet).
+  reason?: string;
+}
+
+// A page-level verdict made in the review UI (docs/insights.md). The eval's
+// ground truth stores these; `kind` and `rank` are only meaningful for a good
+// verdict. `rank` is the reviewer's priority for a page that should be shown:
+// `high` should lead the gallery, `low` is shown but deprioritised, and absent
+// means no opinion.
+export interface InsightLabel {
+  file: string;
+  page: number;
+  verdict: 'good' | 'bad';
+  kind?: InsightImageKind;
+  rank?: InsightRank;
+}
+
+export type InsightRank = 'high' | 'low';
+
+// One interpreted page, accepted or rejected, with the classifier's reason. The
+// review UI uses these to surface pages the heuristic dropped (false negatives).
+export interface InsightPage {
+  localFilename: string;
+  page: number;
+  kind: InsightImageKind;
+  score: number;
+  reason: string;
+  // Content hash of the page's thumbnail at generation time; the asset may since
+  // have been pruned, in which case the review endpoint re-renders it on demand.
+  imageFile: string;
+}
+
+export interface InsightSummary {
+  headline: string;
+  points: string[];
+  metrics: Record<string, string>;
+}
+
+export interface InsightCommentTally {
+  support: number;
+  object: number;
+  neutral: number;
+  total: number;
+}
+
+export interface InsightKindSummary {
+  kind: InsightImageKind;
+  // How many images of this kind were kept in `images`.
+  selected: number;
+  // Distinct candidates of this kind after dedupe but before the selection caps,
+  // i.e. how many were "found" in the analysed pages.
+  available: number;
+}
+
+export interface InsightsCoverage {
+  // Per-kind selected vs available, so the UI can say "showing 6 of 11".
+  images: InsightKindSummary[];
+  // True when analysis itself was capped (document/page render budget), so even
+  // `available` is a lower bound and not every document was scanned.
+  partial: boolean;
+  documentsAnalysed: number;
+  documentsTotal: number;
+}
+
+export interface ApplicationInsights {
+  version: number;
+  // Which strategy produced this, so changing strategy/version invalidates the
+  // cached insights without touching the (reusable) rendered artifacts.
+  strategy: { id: string; version: number };
+  generatedAt: string;
+  // mtime/size of each source document at generation time, for cache validity.
+  source: { filename: string; mtimeMs: number; size: number }[];
+  summary: InsightSummary;
+  // Curated highlights (capped, diverse) shown by default.
+  images: InsightImage[];
+  // Every distinct candidate found in the analysed pages, before the selection
+  // caps. Lets the UI offer "show all found". Optional for older caches.
+  found?: InsightImage[];
+  // Which budget the generation used. `deep` scans more documents/pages.
+  depth?: 'quick' | 'deep';
+  comments: InsightCommentTally;
+  // Optional for caches written before coverage tracking.
+  coverage?: InsightsCoverage;
+  // Every page the interpreter rendered, accepted or rejected. Optional for
+  // caches written before it existed; the review UI regenerates to get it.
+  pages?: InsightPage[];
+}

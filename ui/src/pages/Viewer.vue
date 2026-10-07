@@ -113,10 +113,129 @@
             <button v-if="app.location" @click="activeTab = 'location'" :class="[tabClass('location'), $style.tab]">
               Location
             </button>
+            <button @click="activeTab = 'insights'" :class="[tabClass('insights'), $style.tab]">
+              Insights (beta)
+            </button>
           </nav>
         </div>
 
         <div :class="$style.tabContent">
+          <div v-show="activeTab === 'insights'">
+            <div v-if="insightsStatus === 'loading'" :class="$style.muted">Loading insights…</div>
+            <div v-else-if="insightsStatus === 'error' && !insights">
+              <p :class="$style.errorText">{{ insightsError }}</p>
+              <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Retry</button>
+            </div>
+            <template v-else-if="insights">
+              <div v-if="insightsStatus === 'running'" :class="$style.insightsRunning">
+                <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                Updating insights…
+              </div>
+              <p v-else-if="insightsStatus === 'error'" :class="$style.errorText">
+                {{ insightsError }}
+                <button @click="generateInsights()" :class="$style.insightLinkButton">Retry</button>
+              </p>
+              <div :class="$style.insightsSummary">
+                <p v-if="insights.summary.headline && insights.summary.headline !== app.description" :class="$style.insightsHeadline">{{ insights.summary.headline }}</p>
+                <div v-if="Object.keys(insights.summary.metrics).length" :class="$style.metricChips">
+                  <span v-for="(value, key) in insights.summary.metrics" :key="key" :class="$style.metricChip">
+                    <span :class="$style.metricKey">{{ key }}</span> {{ value }}
+                  </span>
+                </div>
+                <div v-if="insights.summary.points.length" :class="$style.insightPointsWrap">
+                  <span :class="$style.insightPointsLabel">Included</span>
+                  <ul :class="$style.insightPoints">
+                    <li v-for="point in insights.summary.points" :key="point">{{ point }}</li>
+                  </ul>
+                </div>
+                <p v-if="insights.comments.total > 0" :class="$style.commentTally">
+                  Comments: {{ insights.comments.support }} support ·
+                  {{ insights.comments.object }} object ·
+                  {{ insights.comments.neutral }} neutral
+                  ({{ insights.comments.total }} total)
+                </p>
+                <div :class="$style.insightsActions">
+                  <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Regenerate</button>
+                  <button
+                    v-if="insights.depth !== 'deep'"
+                    @click="scanMoreInsights()"
+                    :class="[ui.btn, ui.btnOutline]"
+                    title="Scan more documents and pages — slower, but finds more visuals"
+                  >
+                    Scan more documents
+                  </button>
+                </div>
+              </div>
+
+              <p v-if="insights.coverage" :class="$style.insightsCoverage">
+                Scanned {{ insights.coverage.documentsAnalysed }} of
+                {{ insights.coverage.documentsTotal }} documents.
+              </p>
+
+              <p v-if="insights.coverage?.partial" :class="$style.insightsPartial">
+                <span>Analysis was capped, so some documents weren't scanned.</span>
+                <span :class="$style.insightsPartialActions">
+                  <button v-if="insights.depth !== 'deep'" @click="scanMoreInsights()" :class="$style.insightLinkButton">Scan more</button>
+                  <button @click="activeTab = 'documents'" :class="$style.insightLinkButton">Browse all documents</button>
+                </span>
+              </p>
+
+              <div v-if="insights.found?.length" :class="$style.insightToolbar">
+                <div :class="$style.insightViewToggle">
+                  <button
+                    :class="[insightView === 'highlights' ? $style.viewActive : $style.viewInactive]"
+                    @click="insightView = 'highlights'"
+                  >
+                    Highlights ({{ insights.images.length }})
+                  </button>
+                  <button
+                    v-if="hasAllFound"
+                    :class="[insightView === 'all' ? $style.viewActive : $style.viewInactive]"
+                    @click="insightView = 'all'"
+                  >
+                    All found ({{ insights.found.length }})
+                  </button>
+                </div>
+                <span v-if="insights.depth === 'deep'" :class="$style.insightDepth">Deep scan</span>
+              </div>
+
+              <div v-if="insightSourceImages.length" :class="$style.insightGroups">
+                <section v-for="group in insightGroups" :key="group.kind" :class="$style.insightGroup">
+                  <h3 :class="$style.insightGroupTitle">
+                    {{ group.label }} <span :class="$style.insightGroupCount">{{ group.images.length }}</span>
+                    <span v-if="group.truncated" :class="$style.insightGroupNote">
+                      showing {{ group.selected }} of {{ group.available }} found ·
+                      <button @click="activeTab = 'documents'" :class="$style.insightLinkButton">view documents</button>
+                    </span>
+                  </h3>
+                  <div :class="$style.insightsGrid">
+                    <figure v-for="image in group.images" :key="image.id" :class="$style.insightFigure">
+                      <a :href="api.documentPageUrl(app.reference, app.authorityId, image.localFilename, image.page)" target="_blank" rel="noopener" :class="$style.insightLink" :title="`Open ${image.localFilename} at page ${image.page}`">
+                        <img :src="api.insightImageUrl(app.reference, app.authorityId, image.imageFile)" :alt="image.label" loading="lazy" :class="$style.insightImage" />
+                      </a>
+                      <figcaption :class="$style.insightCaption">
+                        <span :class="$style.insightKind">{{ kindLabel(image.kind) }}</span>
+                        <span :class="$style.insightLabel">{{ image.label }}</span>
+                        <a :href="api.documentPageUrl(app.reference, app.authorityId, image.localFilename, image.page)" target="_blank" rel="noopener" :class="$style.insightSource">
+                          Page {{ image.page }} · {{ shortDocumentName(image.localFilename) }}
+                        </a>
+                      </figcaption>
+                    </figure>
+                  </div>
+                </section>
+              </div>
+              <p v-else :class="$style.muted">No relevant images, plans or renders were found.</p>
+            </template>
+            <div v-else-if="insightsStatus === 'running'" :class="$style.insightsRunning">
+              <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+              Generating insights — this can take a minute for large applications.
+            </div>
+            <div v-else-if="insightsStatus === 'none'">
+              <p :class="$style.muted">No insights have been generated for this application yet.</p>
+              <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Generate insights</button>
+            </div>
+          </div>
+
           <div v-show="activeTab === 'key-documents'" v-if="keyDocs.length > 0">
             <DocumentList :docs="keyDocs" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged" />
           </div>
@@ -220,8 +339,9 @@ import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick, useCssModul
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { timeAgo, progressText, isKeyDocument } from '../utils'
-import type { ApplicationMeta, ApplicationLocation, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet } from '../../../src/types.js'
+import type { ApplicationMeta, ApplicationInsights, ApplicationLocation, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet } from '../../../src/types.js'
 import * as api from '../api'
+import { useInsights } from '../composables/useInsights'
 import DocumentList from '../components/DocumentList.vue'
 import Highlight from '../components/Highlight.vue'
 import { useRoute } from 'vue-router'
@@ -234,6 +354,19 @@ const refParam = computed(() => route.params.ref as string)
 const app = ref<ApplicationMeta | null>(null)
 const loading = ref(true)
 const syncError = ref('')
+
+// Automatically-derived summary and the most relevant images/plans/renders.
+// State and polling live in the shared composable (also used by the review tool).
+const {
+  insights,
+  status: insightsStatus,
+  error: insightsError,
+  load: loadInsights,
+  generate: generateInsights,
+  reset: resetInsights
+} = useInsights(() => app.value?.reference ?? '', () => app.value?.authorityId)
+// 'highlights' = the curated, capped set; 'all' = every distinct candidate found.
+const insightView = ref<'highlights' | 'all'>('highlights')
 const syncMessage = ref('')
 const error = ref('')
 const syncing = ref(false)
@@ -274,6 +407,69 @@ const selectedDocType = ref('All')
 const docFilterActive = computed(() => docSearch.value.trim() !== '' || selectedDocType.value !== 'All')
 
 const tabClass = (tab: string) => (activeTab.value === tab ? styles.tabActive : styles.tabInactive)
+
+const KIND_GROUP_ORDER = ['render', 'map', 'elevation', 'plan', 'section', 'photo', 'other']
+const KIND_GROUP_LABELS: Record<string, string> = {
+  render: 'Renders',
+  map: 'Location maps',
+  elevation: 'Elevations',
+  plan: 'Plans',
+  section: 'Sections',
+  photo: 'Photos',
+  other: 'Other'
+}
+const KIND_LABELS: Record<string, string> = {
+  render: 'Render',
+  map: 'Location map',
+  elevation: 'Elevation',
+  plan: 'Plan',
+  section: 'Section',
+  photo: 'Photo',
+  other: 'Other'
+}
+const kindLabel = (kind: string) => KIND_LABELS[kind] ?? kind
+
+// The image list currently on show: the curated highlights, or every distinct
+// candidate found before the selection caps.
+const insightSourceImages = computed<ApplicationInsights['images']>(() => {
+  if (!insights.value) return []
+  if (insightView.value === 'all') return insights.value.found ?? insights.value.images
+  return insights.value.images
+})
+
+// Group the flat insights image list by kind for a clearer gallery, in a stable
+// order rather than by score. `available` is how many of that kind were found
+// before the selection caps, so we can flag when the group is truncated.
+const insightGroups = computed(() => {
+  if (!insights.value) return []
+  const availableByKind: Record<string, number> = {}
+  for (const entry of insights.value.coverage?.images ?? []) availableByKind[entry.kind] = entry.available
+  const groups = new Map<string, ApplicationInsights['images']>()
+  for (const image of insightSourceImages.value) {
+    const list = groups.get(image.kind) ?? []
+    list.push(image)
+    groups.set(image.kind, list)
+  }
+  return [...groups.entries()]
+    .map(([kind, images]) => {
+      const available = availableByKind[kind] ?? images.length
+      return {
+        kind,
+        label: KIND_GROUP_LABELS[kind] ?? kind,
+        images,
+        selected: images.length,
+        available,
+        truncated: images.length < available
+      }
+    })
+    .sort((a, b) => KIND_GROUP_ORDER.indexOf(a.kind) - KIND_GROUP_ORDER.indexOf(b.kind))
+})
+
+const hasAllFound = computed(() => (insights.value?.found?.length ?? 0) > (insights.value?.images.length ?? 0))
+
+// "13 Jan 2026 - Drawings - PROPOSED SITE PLAN.pdf" -> "PROPOSED SITE PLAN"
+const shortDocumentName = (name: string) =>
+  name.replace(/\.pdf$/i, '').replace(/^\d{1,2}\s+\w{3}\s+\d{4}\s*-\s*[^-]+-\s*/, '')
 
 const locationNote = computed(() => {
   const loc = app.value?.location
@@ -564,6 +760,12 @@ const loadComments = async () => {
 }
 
 let fetchInFlight = false
+
+const scanMoreInsights = () => {
+  insightView.value = 'highlights'
+  return generateInsights(true)
+}
+
 const fetchApp = async () => {
   const refNow = refParam.value
   if (fetchInFlight || !refNow) return
@@ -575,6 +777,7 @@ const fetchApp = async () => {
     error.value = ''
     document.title = `PlanBrowser | ${fresh.reference}`
     await loadComments()
+    await loadInsights()
     if (firstLoad && keyDocs.value.length > 0 && activeTab.value === 'documents') {
       activeTab.value = 'key-documents'
     }
@@ -609,7 +812,9 @@ watch(queueItems, async () => {
 // viewer, reset and load the new reference rather than showing stale content.
 watch(refParam, () => {
   if (!refParam.value) return
+  resetInsights()
   app.value = null
+  insightView.value = 'highlights'
   error.value = ''
   commentsList.value = []
   commentsError.value = ''
@@ -1205,5 +1410,270 @@ onMounted(async () => {
   font-size: 0.875rem;
   line-height: 1.25rem;
   color: var(--color-red-600);
+}
+
+.insightsRunning {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-gray-600);
+  font-size: 0.875rem;
+}
+
+.insightsSummary {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.insightsHeadline {
+  max-width: 70ch;
+  color: var(--color-gray-800);
+}
+
+.metricChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.75rem;
+}
+
+.metricChip {
+  display: inline-flex;
+  gap: 0.3rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-md);
+  background: var(--color-blue-50);
+  border: 1px solid var(--color-blue-200);
+  color: var(--color-blue-700);
+  font-size: 0.75rem;
+}
+
+.metricKey {
+  color: var(--color-blue-500);
+}
+
+.insightPointsWrap {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.insightPointsLabel {
+  color: var(--color-gray-500);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.insightPoints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.insightPoints li {
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-md);
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
+  font-size: 0.75rem;
+}
+
+.commentTally {
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-gray-600);
+}
+
+.regenerateButton {
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.insightsActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.insightsActions button {
+  font-size: 0.75rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.insightToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.insightViewToggle {
+  display: inline-flex;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.insightViewToggle button {
+  padding: 0.25rem 0.75rem;
+  border: none;
+  background: #fff;
+  color: var(--color-gray-600);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.viewActive {
+  background: var(--color-blue-600) !important;
+  color: #fff !important;
+}
+
+.viewInactive:hover {
+  background: var(--color-gray-100);
+}
+
+.insightDepth {
+  color: var(--color-gray-500);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.insightGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.insightGroupTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  color: var(--color-gray-700);
+}
+
+.insightGroupCount {
+  padding: 0.0625rem 0.4375rem;
+  border-radius: 999px;
+  background: var(--color-gray-100);
+  color: var(--color-gray-600);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.insightGroupNote {
+  color: var(--color-gray-500);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.insightsCoverage {
+  margin: 0 0 1rem;
+  color: var(--color-gray-500);
+  font-size: 0.8125rem;
+}
+
+.insightsPartial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem 1rem;
+  margin: 0 0 1.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-amber-200, #fde68a);
+  border-radius: var(--radius-md);
+  background: var(--color-amber-50, #fffbeb);
+  color: var(--color-gray-700);
+  font-size: 0.8125rem;
+}
+
+.insightsPartialActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.insightLinkButton {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-blue-600);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.insightsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+.insightFigure {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.insightLink {
+  display: block;
+}
+
+.insightImage {
+  width: 100%;
+  height: 280px;
+  object-fit: contain;
+  background: var(--color-gray-50);
+}
+
+.insightCaption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.insightKind {
+  align-self: flex-start;
+  padding: 0.0625rem 0.375rem;
+  border-radius: var(--radius-md);
+  background: var(--color-gray-100);
+  color: var(--color-gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.625rem;
+}
+
+.insightLabel {
+  color: var(--color-gray-800);
+  line-height: 1.2;
+}
+
+.insightSource {
+  margin-top: 0.125rem;
+  color: var(--color-blue-600);
+  font-size: 0.6875rem;
+  text-decoration: none;
+}
+
+.insightSource:hover {
+  text-decoration: underline;
 }
 </style>

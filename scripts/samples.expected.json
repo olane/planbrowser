@@ -1,0 +1,170 @@
+{
+  "//": "Human-curated ground truth for scripts/insights-eval.mjs; the format is documented in scripts/insights-truth.mjs. `expect`/`expectAbsent`/`expectEmpty` are hard assertions (`doc` is a normalised substring of filename+label; `page`/`kind` optional; `highlight: true` means it must be in the curated highlights, not just found). `labels` are per-page good/bad verdicts made in the review tool (`/review/<ref>`, or the contact sheet `npm run insights:report`), optionally with a `kind` and a `rank` (`high`/`low` priority on a good page), and drive the precision/recall and rank metrics. Not auto-generated.",
+  "samples": {
+    "25/04484/FUL": {
+      "expect": [
+        { "doc": "DESIGN  ACCESS STATEMENT", "page": 5, "kind": "render", "note": "streetscape / context photos" },
+        { "doc": "DESIGN  ACCESS STATEMENT", "page": 9, "kind": "render", "highlight": true, "note": "proposal photomontage" },
+        { "doc": "DESIGN  ACCESS STATEMENT", "page": 15, "kind": "render" },
+        { "doc": "PROPOSED SITE PLAN", "kind": "plan", "highlight": true },
+        { "doc": "PROPOSED GROUND FLOOR PLAN", "kind": "plan" },
+        { "doc": "PROPOSED ELEVATIONS SHEET 1 OF 3", "kind": "elevation" },
+        { "doc": "EXISTING SITE LOCATION PLAN", "kind": "map" }
+      ],
+      "expectAbsent": [
+        { "doc": "COLLEGES ESTATE MASTERPLAN VISION", "reason": "prose slides, background only, not part of the application" }
+      ]
+    },
+    "26/01872/OUT": {
+      "expect": [
+        { "doc": "DESIGN AND ACCESS STATEMENTPART 4", "page": 12, "kind": "render", "highlight": true, "note": "hero render 'Opening the Park to the City'" },
+        { "doc": "DESIGN AND ACCESS STATEMENTPART 4", "page": 13, "kind": "render" },
+        { "doc": "FRAMEWORK PARAMETER PLAN", "kind": "plan" },
+        { "doc": "SITE LOCATION PLAN EXISTING", "kind": "map" },
+        { "doc": "APPENDIX 03-PHOTOS AND AVRS VP10-12", "kind": "photo" }
+      ],
+      "expectAbsent": [
+        { "doc": "APPENDIX 03-PHOTOSHEETS AND AVRS VP30-34", "page": 1, "reason": "flat brand cover" },
+        { "doc": "APPENDIX 02-FIGURES", "reason": "appendix of maps/diagrams, not the scheme's renders" },
+        { "doc": "LVIA-APPENDIX-02-FIGURES", "reason": "landscape figure book, not the scheme's renders" }
+      ]
+    },
+    "26/00067/HFUL": {
+      "expect": [
+        { "doc": "SIDE ELEVATION WITH FENCE AS PROPOSED", "kind": "elevation" },
+        { "doc": "SECTION THROUGH REAR EXTENSION", "kind": "section" },
+        { "doc": "LOCATION PLAN", "kind": "map" }
+      ]
+    },
+    "26/03475/LBC": {
+      "expect": [
+        { "doc": "LOCATION PLAN  BLOCK PLAN", "kind": "map" },
+        { "doc": "PROPOSED ELEVATIONS", "kind": "elevation" },
+        { "doc": "PROPOSED BASEMENT  GROUND FLOOR PLANS", "kind": "plan" }
+      ]
+    },
+    "26/1078/TTCA": {
+      "expect": [
+        { "doc": "LOCATION PLAN", "kind": "map" },
+        { "doc": "TREE PHOTO", "kind": "photo" }
+      ]
+    },
+    "26/03455/ADV": {
+      "expect": [
+        { "doc": "LOCATION PLAN", "kind": "map" }
+      ]
+    },
+    "26/03623/HFUL": {
+      "expect": [
+        { "doc": "SITE LOCATION PLANS AND BLOCK PLAN", "kind": "map" }
+      ]
+    },
+    "26/01599/CONDF": { "expectEmpty": true, "note": "discharge of condition — thin, no visuals; must not invent a gallery" },
+    "26/03198/FUL": {
+      "labels": [
+        { "file": "24 Aug 2026 - Application Survey - Assessment - Statement - TOWNSCAPE AND VISUAL IMPACT ASSESSMENT.pdf", "page": 22, "verdict": "good", "kind": "map" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 3 CONSULTATION  DESIGN DEVELOPMEN.pdf", "page": 2, "verdict": "bad" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 3 CONSULTATION  DESIGN DEVELOPMEN.pdf", "page": 4, "verdict": "bad" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 3 CONSULTATION  DESIGN DEVELOPMEN.pdf", "page": 5, "verdict": "bad" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 3 CONSULTATION  DESIGN DEVELOPMEN.pdf", "page": 6, "verdict": "bad" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 3 CONSULTATION  DESIGN DEVELOPMEN.pdf", "page": 7, "verdict": "bad" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 3 CONSULTATION  DESIGN DEVELOPMEN.pdf", "page": 9, "verdict": "bad" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 3 CONSULTATION  DESIGN DEVELOPMEN.pdf", "page": 10, "verdict": "bad" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 4 THE PROPOSALS SITE WIDE STRATEGIES.pdf", "page": 10, "verdict": "good", "kind": "map", "rank": "low" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 4 THE PROPOSALS SITE WIDE STRATEGIES.pdf", "page": 11, "verdict": "good", "kind": "map" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 5 THE PROPOSALS MERTON HOUSE COURT.pdf", "page": 6, "verdict": "good", "kind": "render", "rank": "high" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 5 THE PROPOSALS MERTON HOUSE COURT.pdf", "page": 20, "verdict": "good", "kind": "render" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 5 THE PROPOSALS MERTON HOUSE COURT.pdf", "page": 30, "verdict": "good", "kind": "render" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 6 THE PROPOSALS LANDSCAPE.pdf", "page": 3, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 6 THE PROPOSALS LANDSCAPE.pdf", "page": 5, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 6 THE PROPOSALS LANDSCAPE.pdf", "page": 11, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 6 THE PROPOSALS LANDSCAPE.pdf", "page": 17, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 6 THE PROPOSALS LANDSCAPE.pdf", "page": 20, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 6 THE PROPOSALS LANDSCAPE.pdf", "page": 22, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 6 THE PROPOSALS LANDSCAPE.pdf", "page": 23, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 6 THE PROPOSALS LANDSCAPE.pdf", "page": 25, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Design and Access Statement - CHAPTER 6 THE PROPOSALS LANDSCAPE.pdf", "page": 34, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - BALCONY PLANTERS -LEVEL 1 AND 2.pdf", "page": 1, "verdict": "good", "kind": "other" },
+        { "file": "24 Aug 2026 - Drawings - ENERGY CENTRE - CROSS SECTIONS.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - ENERGY CENTRE - GEA AND GIA PLANS AND TABLES.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - ENERGY CENTRE - GROUND FLOOR GA PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - ENERGY CENTRE - PROPOSED ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - ENERGY CENTRE - ROOF GA PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - EXISTING LOCATION PLAN.pdf", "page": 1, "verdict": "good", "kind": "map" },
+        { "file": "24 Aug 2026 - Drawings - EXISTING SITE PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - EXISTING SITE.pdf", "page": 1, "verdict": "good", "kind": "map" },
+        { "file": "24 Aug 2026 - Drawings - LANDSCAPE MASTERPLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - LANDSCAPE SECTIONS 12.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - LANDSCAPE SECTIONS 22.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE - DEMOLITION ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE - EXISTING ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE - EXISTING SECTIONS.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE - GEA PLANS AND TABLES.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE - GIA PLANS AND TABLES.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE - PROPOSED DEMOLITIONS SECTIONS.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE - PROPOSED ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE - PROPOSED SECTIONS.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE DEMOLITION FIRST FLOOR AND ROOF PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE DEMOLITION GROUND FLOOR AND BASEMENT PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE EXISTING FIRST FLOOR AND ROOF PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE EXISTING GROUND FLOOR AND BASEMENT PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE PROPOSED FIRST FLOOR AND ROOF PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON COTTAGE PROPOSED GROUND FLOOR AND BASEMENT PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - DEMOLITIONS EAST AND WEST ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - DEMOLITIONS GROUND AND FIRST FLOOR PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - DEMOLITIONS LOWER GROUND FLOOR PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - DEMOLITIONS NORTH AND SOUTH ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - DEMOLITIONS SECOND FLOOR AND ROOF PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - EXISTING EAST AND WEST ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - EXISTING GROUND AND FIRST FLOOR PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - EXISTING LOWER GROUND FLOOR PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - EXISTING NORTH AND SOUTH ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - EXISTING SECOND AND ROOF PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - EXISTING SECTIONS.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - GEA PLANS AND TABLES.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - GIA PLANS AND TABLES.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - PROPOSED DEMOLITION SECTIONS.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - PROPOSED EAST AND WEST ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - PROPOSED GROUND AND FIRST FLOOR PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - PROPOSED LOWER GROUND FLOOR PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - PROPOSED NORTH AND SOUTH ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - PROPOSED SECOND FLOOR AND ROOF PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE - PROPOSED SECTIONS.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE AND NORTHAMPTON STREET GATE - DEMOLITION ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE AND NORTHAMPTON STREET GATE - PROPOSED ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - FIRST FLOOR GA PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - GEA PLANS AND TABLE.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - GIA PLANS AND TABLE.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - GROUND FLOOR GA PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - MASTERPLAN SECTION A-A M-M K-K.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - MASTERPLAN SECTIONS F-F J-J AND EAST ELEVATION.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - NIA PLANS AND TABLE.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - NORTH AND EAST ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - ROOF LEVEL GA PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - SECOND FLOOR GA PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - SECTIONS A-A B-B.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - SECTIONS C-C D-D.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - SECTIONS E-E F-F.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - SECTIONS G-G H-H J-J K-K.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - SECTIONS M-M N-N.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - SOUTH ELEVATION.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - MERTON HOUSE COURT - WEST ELEVATION.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - NO 32-38 NORTHAMPTON STREET OUTBUILDINGS - EXISTING SECTIONS.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - NO32-38 NORTHAMPTON STREET OUTBUILDINGS - DEMOLITIONS ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - NO32-38 NORTHAMPTON STREET OUTBUILDINGS - DEMOLITIONS PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - NO32-38 NORTHAMPTON STREET OUTBUILDINGS - EXISTING NORTH AND SOUTH ELEVATIONS.pdf", "page": 1, "verdict": "good", "kind": "elevation" },
+        { "file": "24 Aug 2026 - Drawings - NO32-38 NORTHAMPTON STREET OUTBUILDINGS - EXISTING PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - NO32-38 NORTHAMPTON STREET OUTBUILDINGS - PROPOSED DEMOLITION SECTIONS.pdf", "page": 1, "verdict": "good", "kind": "section" },
+        { "file": "24 Aug 2026 - Drawings - OTHER PROPOSED GROUND FLOOR BELOW GROUND SERVICES STRATEGY.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - PROPOSED GROUND FLOOR BELOW GROUND DRAINAGE STRATEGY.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - PROPOSED LOCATION PLAN.pdf", "page": 1, "verdict": "good", "kind": "map" },
+        { "file": "24 Aug 2026 - Drawings - PROPOSED MASTERPLAN FIRST FLOOR GA.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - PROPOSED MASTERPLAN GROUND FLOOR GA TREES REMOVED.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - PROPOSED MASTERPLAN GROUND FLOOR GA TREES RETAINED.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - PROPOSED MASTERPLAN GROUND FLOOR GA.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - PROPOSED MASTERPLAN SECOND FLOOR GA.pdf", "page": 1, "verdict": "good", "kind": "plan" },
+        { "file": "24 Aug 2026 - Drawings - PROPOSED SITE PLAN.pdf", "page": 1, "verdict": "good", "kind": "plan" }
+      ]
+    }
+  }
+}
