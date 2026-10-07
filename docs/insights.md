@@ -709,6 +709,10 @@ householder / tree / advertisement / amendment / LBC / conditions cases:
 | `24/04593/NMA1` | Non-material amendment (11 docs) |
 | `26/01599/CONDF` | Discharge of condition — thin, no visuals (10 docs) |
 | `26/03475/LBC` | Listed building consent, air source heat pumps (21 docs) |
+| `26/03198/FUL` | Mixed-use heritage redevelopment, split DAS (150 docs) |
+
+> `26/03198/FUL` is the first labelled sample (see `scripts/samples.expected.json`); it is also
+> the largest by document count, so the quick budget (40 docs) scans under a third of it.
 
 Workflow:
 
@@ -735,14 +739,39 @@ curl localhost:3000/api/queue           # downloads run sequentially, 5s apart
 ```
 
 **This sandbox note:** the Playwright browser needs an extracted dependency tree and a
-fontconfig file, or Chromium crashes on navigation (`libglib-2.0.so.0` missing, then a Skia
-`SkFontMgr_FontConfigInterface` FATAL). The working environment was:
+fontconfig file, or Chromium crashes on launch (`libglib-2.0.so.0: cannot open shared object
+file`, then a Skia `SkFontMgr_FontConfigInterface` FATAL). If you have root, the usual
+`npx playwright install-deps chromium` handles it. In a minimal, non-root sandbox (uid 1000, no
+`sudo`, no installed apt lists) build the tree into a workspace-writable prefix yourself. The
+browser libs are only needed by the *scraper*; insights generation uses `@napi-rs/canvas` and
+does not need them, though the fontconfig file helps page rendering.
 
 ```bash
-export LD_LIBRARY_PATH="/tmp/pw-deps/lib/x86_64-linux-gnu:/tmp/pw-deps/usr/lib/x86_64-linux-gnu:/tmp/pw-deps/usr/lib/x86_64-linux-gnu/dri:/tmp/pw-deps/usr/lib/x86_64-linux-gnu/gio/modules"
-# /tmp/pb/fonts.conf contains <dir>/tmp/pw-deps/usr/share/fonts</dir> + a writable cachedir
-export FONTCONFIG_FILE=/tmp/pb/fonts.conf
+P="$PWD/.paseo-tmp/pw"                       # any prefix the user can write (not /tmp/opencode)
+# 1. The exact apt package list Playwright wants — printed even when it cannot install:
+npx playwright install-deps --dry-run chromium 2>&1 | sed -n 's/^E: Unable to locate package //p'
+# 2. Populate a private apt state (avoids root) and download the deps:
+mkdir -p "$P/lists/partial" "$P/cache/archives/partial"
+printf 'deb http://deb.debian.org/debian bookworm main\n' > "$P/sources.list"
+APT_OPTS="-o Dir::State::Lists=$P/lists -o Dir::Cache=$P/cache \
+  -o Dir::State::status=/var/lib/dpkg/status -o Dir::Etc::sourcelist=$P/sources.list \
+  -o Dir::Etc::sourceparts=/dev/null -o APT::Sandbox::User= -o Debug::NoLocking=1"
+apt-get $APT_OPTS update
+apt-get $APT_OPTS --download-only --reinstall -y install <packages from step 1>
+# 3. Extract into the prefix and point the browser at it:
+for f in "$P"/cache/archives/*.deb; do dpkg-deb -x "$f" "$P/root"; done
+export LD_LIBRARY_PATH="$P/root/usr/lib/x86_64-linux-gnu:$P/root/usr/lib/x86_64-linux-gnu/dri:$P/root/usr/lib/x86_64-linux-gnu/gio/modules:$P/root/lib/x86_64-linux-gnu"
+# fonts.conf: <dir>$P/root/usr/share/fonts</dir> and a writable <cachedir>$P/fontcache</cachedir>
+export FONTCONFIG_FILE="$P/fonts.conf"
+node scripts/fetch-samples.mjs <REF>         # or npm run samples
 ```
+
+With root, the equivalent is just a one-line exported `LD_LIBRARY_PATH`/`FONTCONFIG_FILE` against
+a system-installed tree, e.g. `/tmp/pw-deps` + `/tmp/pb/fonts.conf` as used previously.
+
+Note the portal host matters if you are probing by hand: it is
+`applications.greatercambridgeplanning.org` (`src/authorities.ts`), **not**
+`publicaccess.cambridge.gov.uk` — a DNS miss on the latter looks like "no network" but is not.
 
 ## Resuming in a new session
 

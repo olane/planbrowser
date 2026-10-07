@@ -12,5 +12,6 @@
   { "reference": "26/03455/ADV", "authorityId": "cambridge", "shape": "Advertisement (12 docs)" },
   { "reference": "24/04593/NMA1", "authorityId": "cambridge", "shape": "Non-material amendment (11 docs)" },
   { "reference": "26/01599/CONDF", "authorityId": "cambridge", "shape": "Discharge of condition — thin, no visuals (10 docs)" },
-  { "reference": "26/03475/LBC", "authorityId": "cambridge", "shape": "Listed building consent, air source heat pumps (21 docs)" }
+  { "reference": "26/03475/LBC", "authorityId": "cambridge", "shape": "Listed building consent, air source heat pumps (21 docs)" },
+  { "reference": "26/03198/FUL", "authorityId": "cambridge", "shape": "Mixed-use heritage redevelopment (Merton House Court)" }
 ]
