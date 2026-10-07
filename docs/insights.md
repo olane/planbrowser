@@ -1,15 +1,15 @@
 # Application insights: design plan
 
-> **Status: design implemented; tuned on a small sample, not yet measured.** Strategy **v14**,
-> insights cache format 2, page-facts format 1. The original design is above; the **Feedback
-> round 1–4** and **Review/Cleanup** sections below are the *history* of what changed against
-> real samples, not the current spec — where they disagree with the code, the code wins and this
-> doc should be updated.
+> **Status: design implemented; first labelled measurement done.** Strategy **v14**, insights
+> cache format 2, page-facts format 1. The original design is above; where it disagrees with the
+> code, the code wins and this doc should be updated. The tuning history (the feedback rounds and
+> the v12/v14 reviews) lives in the git log, not here.
 >
-> The heuristic was iterated on two applications and the `labels` in
-> `scripts/samples.expected.json` are still **empty**, so its precision/recall has not been
-> measured on labelled data. Treat any further classifier tuning as unverified until
-> `npm run insights:eval` and the `/review` tool have been run (see
+> `scripts/samples.expected.json` now carries labels for one sample (`26/03198/FUL`, 102 pages):
+> quick mode scores precision 77% (highlights) / 72% (found) and recall 19%, rising to 86% / 92%
+> and 82% on a deep scan. The shortfall is coverage — the quick budget scans 40 of 150 documents
+> — not classification. The classifier has **not** been retuned against these labels, so treat
+> further tuning as verified only by `npm run insights:eval` (see
 > [Resuming in a new session](#resuming-in-a-new-session)).
 
 The goal is to automatically surface, for a downloaded planning application:
@@ -89,8 +89,7 @@ application is shaped.
 
 ### Kind taxonomy (`plan` vs `map`)
 
-Feedback round 1 flagged that `map` and `plan` were coming out interchangeably. They are now split
-strictly:
+`map` and `plan` are split strictly:
 
 - **`map`** — *location/context only*: location plan, site location plan, block plan, boundary
   plan, OS extract, constraints/designations map, key diagram. It answers "where is the site and
@@ -108,7 +107,7 @@ where the distinction is actually explained to the user.
 ### Proposal summary (deterministic)
 
 - Headline from `meta.description` (the formal proposal — authoritative). The viewer already
-  shows the description above, so it is **hidden in the Overview when it is identical** to avoid
+  shows the description above, so it is **hidden in the Insights tab when it is identical** to avoid
   restating it.
 - Anchored regex extraction of metrics: number of dwellings, storeys/height, floorspace (m²),
   site area, parking, affordable units/%, use class, materials.
@@ -224,7 +223,8 @@ Added to `src/app.ts` (or a small router under `src/insights/`, mirroring
 
 ## UI
 
-- New **Overview** tab in `ui/src/pages/Viewer.vue`, before Key Documents.
+- New **Insights (beta)** tab in `ui/src/pages/Viewer.vue`, placed after Location (last). It does
+  not auto-open: first load lands on Key Documents/Documents as before.
 - Proposal summary: headline, key points, metric chips, support/object/neutral tally.
 - Image grid grouped by kind (hero render, plans, elevations, maps). Each tile links to its
   source document/page using the existing document URL scheme in `Viewer.vue`.
@@ -272,224 +272,86 @@ advertisement, LBC, amendment and conditions examples). See
   20–30 MB and page renders take ~0.2–7 s each at scale 1. Rendering *every* page is not viable —
   only candidate pages, downscaled, cached.
 
-## Feedback round 1 (2026-09) — changes
-
-First real use of the first cut surfaced concrete failures. Fixes landed against the same
-heuristic (strategy now at **3**, insights cache format at **2**):
-
-- **Text/prose pages were being promoted to drawings.** A document whose *name* mentions
-  "masterplan" (e.g. a Design & Access appendix) forced every one of its pages to `plan`,
-  including cover, contents and table slides. A document's name/kind is now only trusted for
-  documents typed `Drawings`/`Photographs` (or with no type at all), and prose pages (several
-  long text lines with weak line structure) are rejected outright.
-- **Cover pages were being classified as `photo`.** Appendix cover sheets are a flat brand
-  colour; they now fail a **flat-graphic** test (most of the page in one colour bucket, very few
-  distinct colours) and are dropped.
-- **The same cover appeared four times.** Exact content hashing could not catch pages that differ
-  only by a title. Each page now carries a 64-bit **difference hash** (`phash`); candidates
-  within 6 bits of an already-selected image are collapsed. Distinct drawings sit far above this
-  threshold.
-- **`map` vs `plan` were interchangeable** — see [Kind taxonomy](#kind-taxonomy-plan-vs-map).
-  "Site plan"/"site layout" are now `plan`; only location/context drawings are `map`.
-- **Repeated metadata in the summary** — see
-  [Proposal summary](#proposal-summary-deterministic).
-- **Page links and thumbnail size** — the gallery caption shows the source page and links with
-  `#page=N` so the browser PDF viewer opens at that page; thumbnails are larger and grouped by
-  kind with friendly labels.
-- **The gallery looked exhaustive but wasn't.** It is a ranked top-K: only a render budget of
-  documents/pages is analysed, then caps and dedupe apply. `selectImages` now returns per-kind
-  `selected` vs `available` counts and a `truncated` flag, persisted as
-  `ApplicationInsights.coverage`. The UI shows "showing 6 of 13 found" per group and a banner when
-  the analysis itself was capped, with a link into the Documents tab — see
-  [Coverage and truncation](#coverage-and-truncation).
-
-Verified on `25/04484/FUL` (cover/prose noise gone; 14 relevant drawings) and `26/01872/OUT`
-(4 duplicate covers collapsed to none; 8 parameter/site plans + 1 location plan + 6 AVR views
-instead of 17 mixed images).
-
-### Coverage and truncation
+## Coverage and truncation
 
 Because the pipeline is capped, "found" means *found in the analysed pages*. `coverage` records:
 
 - `images[]`: per kind, `selected` (in the gallery) and `available` (distinct candidates after
   dedupe, before caps).
-- `found`: the full ranked candidate list that `images` is a subset of; the Overview's "All found"
+- `found`: the full ranked candidate list that `images` is a subset of; the Insights tab's "All found"
   view shows it.
 - `partial`: true when the render/document budget was reached (`MAX_PAGES`/`MAX_DOCS`), so even
   `available` is a lower bound and some documents were never scanned.
 - `documentsAnalysed` / `documentsTotal`, and `depth` (`quick` or `deep`).
 
-The UI surfaces this rather than implying completeness: the Overview always shows
+The UI surfaces this rather than implying completeness: the Insights tab always shows
 "Scanned X of Y documents", a per-group "showing N of M found" note when caps cut a kind, and an
 application-level banner when `partial`. The group note and banner link to the Documents tab,
 which is the unfiltered ground truth.
 
-## Feedback round 2 (2026-09) — render discovery
+## Classification, evidence and evaluation
 
-`26/01872/OUT` surfaced a structural miss: the best renders (Design & Access Statement CGIs) were
-never even reached. The render budget was consumed by photo appendices (`MAX_PAGES_PER_DOC = 8`
-each) and pages were sampled **sequentially**, so a render on page 12 of a 29-page statement was
-missed even when the document was opened. Strategy now at **9**.
+How a page gets its kind and how the eval scores it. (The tuning history — feedback rounds 1–4
+and the v12/v14 reviews — is in the git log.)
 
-- **Budget rebalance.** `MAX_PAGES_PER_DOC` dropped 8 → 4, and `photo` documents are capped by a
-  global `PHOTO_PAGE_QUOTA` (8) so visual-impact appendices cannot monopolise the budget. Visual
-  documents (statements/appendices) get a higher 8-page cap. (All budgets now live in
-  `QUICK_BUDGET` / `DEEP_BUDGET` in `generate.ts`.)
-- **Embedded-image pre-scan.** For documents with no name keyword, each page is scanned cheaply
-  with `unpdf` `extractImages` (dimensions only, no rasterisation) and the most image-rich pages
-  are chosen — so a render anywhere in the document is found. The scan is metered
-  (`PRESCAN_PAGES_TOTAL`, `PRESCAN_PAGES_PER_DOC`), skips prose pages, and is gated by
-  `VISUAL_DOC_RE` so transport/geo/environmental reports are not scanned page-by-page.
-- **Muted full-bleed renders.** Dawn/dusk CGI palettes have low colourfulness, so `isPhotographic`
-  now also treats a full-bleed page (ink > 0.82, many tones, no dominant flat colour) as an image.
-  A full-bleed page is a render/photo even if its caption text says "masterplan".
-- **Existing-penalty fix.** The −45 "existing-condition" penalty no longer applies to
-  render/photo pages, so a render that mentions existing trees is not buried.
-- **Progress logging.** `[insights]` logs each document's chosen pages and accepted image count,
-  plus a final summary (`log.ts`), silenced under tests.
-- **Show all found, and scan deeper (user-triggered).** The pipeline now persists `found` — every
-  distinct candidate after dedupe, before the selection caps — and keeps its thumbnails. The
-  Overview has a **Highlights / All found** toggle, so the caps are visible rather than implied.
-  A **Scan more documents** button re-runs generation with a deep budget
-  (120 documents / 120 pages, 6–12 pages/doc, 1500 pre-scan pages) and persists
-  `depth: 'deep'`. Automatic refreshes preserve the depth of the cached result.
-
-Result on `26/01872/OUT`: the gallery went from 0 to 5 renders, including the hero "Opening the
-Park to the City" CGI (DAS p12), alongside 8 plans, 1 location plan and the AVR views. A deep scan
-of the same app finds 38 candidates (vs 26) across 22 documents (vs 15).
-
-## Feedback round 3 (2026-09) — the Design & Access Statement
-
-`25/04484/FUL` pulled nothing from its Design & Access Statement even though it holds the site
-photos and the proposal photomontages. Two causes: the DAS is typed `Design and Access Statement`,
-so its pages were not treated as drawing-like; and its figures are **not full-bleed** (a render or
-photo inset beside body copy), so `isPhotographic` missed them. Strategy now at **10**.
-
-- **DAS prioritisation.** The document prior gives a strong bonus (+5) to any document matching
-  "design and access" regardless of how the portal typed it, and `isDesignAndAccess` gives the DAS
-  its own, larger page budget (`DAS_PAGES`, 14 quick / 20 deep). The DAS is usually the closest
-  thing to a human summary of the scheme.
-- **Embedded-figure pages are visual.** `classifyPage` now takes `hasLargeImage` (from the
-  pre-scan) and treats such a page as visual when it has real tonal content
-  (`distinctColors >= 50`), even beside prose. This catches statement figures without letting flat
-  decorative graphics through, and the pre-scan no longer skips text-heavy pages (a statement mixes
-  body copy with its figures).
-
-Result on `25/04484/FUL`: the DAS now contributes 3 renders (the streetscape photos and the
-proposal photomontages); the app is at 16 highlights with nothing truncated.
-
-## Feedback round 4 (2026-09) — renders vs photos, and appendix figures
-
-`26/01872/OUT` surfaced two related classification errors: appendix figure books were being
-presented as renders, and render-vs-photo leaned on the document name rather than the image's own
-caption. Strategy now at **11**.
-
-- **Positive evidence for `render`.** A non-photographic embedded figure (a large raster with few
-  tones) was unconditionally promoted to `render`, which turned appendix maps and report diagrams
-  into fake renders. It is now only inferred for a design/statement document
-  (`isDesignVisualDoc`: design & access, design code, landscape & visual, masterplan, …); otherwise
-  the page is dropped.
-- **Reference volumes are not renders.** Appendices, figure books and schedules
-  (`isReferenceVolume`) lose their document-prior bonus and are demoted when they carry no visual
-  kind. An unnamed visual in one is never promoted to a render — even when it looks photographic —
-  because it is far more likely to be a map or diagram. A volume that names photos/renders keeps
-  its kind, so the AVR photosheets still surface.
-- **Caption-driven render-vs-photo.** `unpdf`'s positioned text items plus the pdf.js operator
-  list let `caption.ts` find the largest embedded image's bounding box and read the text nearest
-  it. A small lexicon then decides: `artist's impression`/`render`/`CGI`/`photomontage` ⇒ `render`;
-  `photograph`/`existing view`/`viewpoint` and the photosheet apparatus (`season`,
-  `direction of view`, `single image`) ⇒ `photo`. Orientation words alone never decide (a render
-  legend can mention "existing tree groups"), and an explicit plan/map/elevation word still wins.
-  The caption outranks the document name and can supply positive evidence inside a reference
-  volume.
-- **Locked by the eval.** `scripts/samples.expected.json` now marks the `APPENDIX 02-FIGURES` and
-  `LVIA-APPENDIX-02-FIGURES` books as `expectAbsent`.
-
-Result on `26/01872/OUT`: `APPENDIX 02-FIGURES` yields no renders (was four), while the DAS
-renders, parameter plans and AVR photos are unchanged.
-
-## Review (2026-09) — page facts, evidence, eval
-
-A review of rounds 1–4 found that the rules were being tuned on two applications without the
-tooling that makes tuning cheap and safe. Strategy now at **12**.
-
-- **Page-facts cache** (`features.ts`, `insights/features.json`). The "two caches" design had only
-  been half built: page text was cached, but every run re-rendered every candidate page and
-  re-ran the image pre-scan. All page facts are now cached; interpretation reruns from them, so a
-  strategy bump or an eval run re-renders nothing. See [Two caches](#two-caches).
-- **One operator-list pass.** The pre-scan used `unpdf`'s `extractImages`, which copies every
-  embedded image's pixels (a 9933×7017 render is ~280 MB as RGBA) just to read its dimensions, and
-  the caption step then walked the operator list again. `scanPage` reads image sizes from the
-  operator list's arguments and the placement box from the transform matrix, in one pass, and
-  records page coverage as well as pixel area.
-- **Text lines.** `unpdf`'s merged text glues neighbouring title-block cells together ("SITE
-  PLANLocation plan 1:1250"), which broke title detection. `extractPageLines` groups positioned
-  text into lines itself (splitting on large gaps) and keeps each line's font size.
-- **Keyword fixes.** "Artist's impression" never matched (`normalise` turns the apostrophe into a
-  space), so such a document scored 0 and was never opened; "Site Photos" did not match `photo\b`;
-  "Section 106" / "Section 73" read as drawing sections; "Proposed plans (and elevations)" named
-  no plan kind. Drawing-typed documents with a cryptic name (a drawing number) were skipped
-  outright because they had no kind and no "visual" name; they now get front-page selection.
-- **Page content beats the document name** (`title.ts`, `classify.ts`). The kind used to come from
-  the document name first, and otherwise from the first keyword anywhere on the page, so every
-  page of "Proposed plans and elevations" was an elevation and a floor plan with a "LOCATION
-  PLAN" inset was a map. Now, in order: a qualified page title ("PROPOSED FIRST FLOOR PLAN") → the
-  document name when it names one kind → an unqualified page title (preferring one the name also
-  mentions) → the name's first kind → any drawing word on the page. Notes, cross-references and
-  chrome are not titles; a page listing many titles is a drawing register, not a drawing. The
-  label comes from the same title line as the kind. Long drawing packs render their titled sheets
-  rather than just pages 1–4.
+- **Page-facts cache** (`features.ts`, `insights/features.json`). Page text, embedded-image
+  summaries and rendered-thumbnail statistics are all cached; interpretation reruns from them, so
+  a strategy bump or an eval run re-renders nothing. See [Two caches](#two-caches).
+- **One operator-list pass.** `scanPage` reads embedded-image sizes from the pdf.js operator
+  list's arguments and the placement box from the transform matrix, in one pass, recording page
+  coverage as well as pixel area (no pixel copying just to read dimensions).
+- **Text lines.** `extractPageLines` groups positioned text into lines itself (splitting on large
+  gaps) and keeps each line's font size, because `unpdf`'s merged text glues neighbouring
+  title-block cells together ("SITE PLANLocation plan 1:1250").
+- **Keyword fixes.** "Artist's impression" matches despite the apostrophe; "Site Photos" matches
+  `photo\b`; "Section 106"/"Section 73" are not drawing sections; "Proposed plans (and
+  elevations)" names a plan kind; and drawing-typed documents with a cryptic name (a drawing
+  number) get front-page selection.
+- **Page content beats the document name** (`title.ts`, `classify.ts`). In order: a qualified
+  page title ("PROPOSED FIRST FLOOR PLAN") → the document name when it names one kind → an
+  unqualified page title (preferring one the name also mentions) → the name's first kind → any
+  drawing word on the page. Notes, cross-references and chrome are not titles; a page listing many
+  titles is a drawing register, not a drawing. The label comes from the same title line as the
+  kind, and long drawing packs render their titled sheets rather than just pages 1–4.
 - **Evidence and reasons.** `classifyPage` gathers appearance (flat graphic, prose, photographic,
   full-bleed, embedded figure) and evidence (page title, document name, caption, document
   profile) and resolves them by one explicit precedence, returning a `reason` such as `plan from
   qualified page title "PROPOSED GROUND FLOOR PLAN"` or `rejected: prose page`. The reason is
-  stored on each image and shown in the contact sheet. The five overlapping "is this a visual
-  document" regexes became one `DocumentProfile` per document (`profileDocument`).
-- **Eval measures what users see.** It used to check recall against `found` only, so a render
-  dropping out of the gallery still passed. `expect` entries can now require `highlight: true`, and
-  per-page `labels` (good/bad + kind, made in the contact sheet) give precision, recall and kind
-  accuracy for both the highlights and `found`. The contact sheet shows every rendered page
-  (highlights, other found, rejected) with its reason and is the labelling tool; `npm run
-  insights:labels -- labels.json` merges a download into `samples.expected.json`.
+  stored on each image and shown in the review tool. One `DocumentProfile` per document
+  (`profileDocument`) replaces the old overlapping "is this a visual document" regexes.
+- **Eval measures what users see.** `expect` entries can require `highlight: true`, and per-page
+  `labels` (good/bad, kind and an optional high/low rank, made in the `/review` tool) give
+  precision, recall, kind accuracy and a rank metric for both the highlights and `found`. The eval
+  lists bad highlights and missed good pages; `npm run insights:labels -- labels.json` merges a
+  contact-sheet download into `samples.expected.json`.
 - **Structure.** `jobs.ts` holds background runs and API state; `generate.ts` is the pipeline;
   budgets are two objects. A synthetic-PDF fixture (`__fixtures__/pdf.ts`) drives end-to-end
   tests (`pipeline.test.ts`) including cold-vs-warm equivalence.
 
-**Not yet verified on the real samples** (the sandbox this was written in could not reach the
-planning portal): run `npm run insights:eval` and look at the review tool before trusting v12+.
-The three `highlight: true` flags added to `samples.expected.json` are the intended behaviour and
-may fail at first.
+## Document ranking
 
-## Cleanup and DAS ranking (2026-09) — v14
+The Design & Access Statement leads the ranking, and the document prior is built to not throw
+away visual documents.
 
-A code review of v12 removed dead/duplicated code and fixed one coverage gap; the Design & Access
-Statement now leads the document ranking. Strategy now at **14** (the document prior/order
-changed, so cached insights refresh).
-
-- **Visual-named documents are no longer skipped.** `priorFromProfile` gave nothing to a
-  visual-sounding name with no drawing kind, so documents like "Image Board" or "Exhibition
-  Panels" scored 0 and were dropped by the `prior.score > 0` filter *before* the page pre-scan
-  written for them could run. A visual name with no kind now adds a small prior.
 - **The Design & Access Statement leads the ranking.** `rankDocuments` sorts it ahead of every
   other document (then by the usual name prior), so it always clears `maxDocs` and its larger
   `dasPages` budget is spent even when a render or plan name would outrank it on the weak prior.
   The DAS is the closest thing to a human summary of the scheme, so it is scanned first.
+- **Visual-named documents are not skipped.** A name that sounds visual with no drawing kind
+  (e.g. "Image Board", "Exhibition Panels") adds a small prior, so it is not dropped by the
+  `prior.score > 0` filter before its page pre-scan runs.
 - **One source of kind metadata** (`kinds.ts`): `KIND_ORDER`, `KIND_BASE`, `KIND_PRIOR_WEIGHT`
-  and `DEFAULT_KIND_CAPS` used to live in `select.ts`, `classify.ts` and `keywords.ts` and could
-  drift. They are imported from one module now.
-- **Dead code removed.** `PageScan.largestImageCoverage` was computed, cached and tested but never
-  read; the test-only `documentPrior` and `titleFromText` helpers are gone. `FEATURES_VERSION` is
-  unchanged: the removed scan field was unused, so cached facts stay valid.
-- **One labels implementation.** `scripts/insights-labels.mjs` now calls `mergeLabels`/`readLabels`
-  in `src/insights/labels.ts` instead of duplicating the merge and the JSON reformatting.
-- **Review endpoints split out.** The dev-only label and rejected-page routes moved to
+  and `DEFAULT_KIND_CAPS` live in one module rather than `select.ts`, `classify.ts` and
+  `keywords.ts`.
+- **One labels implementation.** `scripts/insights-labels.mjs` calls `mergeLabels`/`readLabels`
+  in `src/insights/labels.ts` rather than duplicating the merge and JSON reformatting.
+- **Review endpoints split out.** The dev-only label and rejected-page routes live in
   `routes.review.ts`, gated by `reviewEnabled()` (`INSIGHTS_REVIEW=0|1`, otherwise the presence of
-  the ground-truth file). The production router no longer carries review code.
-- **`coverage.partial` no longer false-positives.** It fired when a run happened to use its last
-  page even though nothing was left to scan. A generation now records whether a budget actually
-  cut work off.
-- **`generateInsights` is readable.** The per-document step (page choice, pre-scan, classify,
-  collect) moved into `analyseDocument`, with a `RunCounters` object holding budget state.
+  the ground-truth file); the production router does not carry review code.
+- **`coverage.partial` only fires on a real cap.** A generation records whether a budget actually
+  cut work off, so a run that merely used its last page does not report as partial.
+- **`generateInsights` delegates.** The per-document step (page choice, pre-scan, classify,
+  collect) is `analyseDocument`, with a `RunCounters` object holding budget state.
 
 ## Renderer choice
 
@@ -651,7 +513,7 @@ thumbnails (1400 px wide); classify
   (`scrapeTabTable()` in `src/scraper.ts` already generalises to any tab), then resolve the
   parent so a follow-on can point at the primary application's content. This also gives a
   *richness prior* so a follow-on with no drawing-like pages does not pretend to have visuals.
-- **Richer proposal summary (option).** The Overview's "what's proposed" is still just the
+- **Richer proposal summary (option).** The Insights tab's "what's proposed" is still just the
   description, regex metrics and a list of document types present. Two deterministic sources
   would do much better:
   - *The application form.* Where the council publishes it, the standard application form has
@@ -775,28 +637,32 @@ Note the portal host matters if you are probing by hand: it is
 
 ## Resuming in a new session
 
-1. Read this document first; it is the source of truth for the plan and decisions. The
-   **Feedback round 1–4**, **Review** and **Cleanup** sections are the history; the status block
-   at the top is the current state, and the code wins where they disagree.
-2. Check `git branch --show-current` / `git log` for where the work currently lives (it started on
-   `docs/insights-plan`, PR #8).
-3. **Current state (2026-09):** heuristic strategy **v14**; `INSIGHTS_VERSION` 2;
+1. Read this document first; it is the source of truth for the plan and decisions. The status
+   block at the top is the current state; the tuning history is in the git log. Where the doc and
+   the code disagree, the code wins and the doc should be updated.
+2. Check `git branch --show-current` / `git log`: the work lives on `docs/insights-plan` and is
+   merge-ready; do future iteration on a fresh branch.
+3. **Current state (2026-10):** heuristic strategy **v14**; `INSIGHTS_VERSION` 2;
    `FEATURES_VERSION` 1. Page facts are cached, so re-interpretation is cheap. The pipeline
    persists curated `images` (with a `reason` each) plus the full `found` set and `coverage`, and
    supports a user-triggered `deep` scan. Page titles beat document names; the DAS is prioritised;
-   appendix figure books are excluded; render-vs-photo is read from the image caption.
+   appendix figure books are excluded; render-vs-photo is read from the image caption. The UI is a
+   **last, beta "Insights" tab** (no auto-open); the `/review` labelling tool is dev-only.
 4. Samples are not in the repo (`downloads/` is gitignored). `npm run samples` fetches what is
    missing (cache-first) from `scripts/samples.json`.
 5. **Evaluate, don't guess:** `npm run insights:eval` checks the hard assertions (non-zero on a
-   miss) and reports label precision/recall. Use the `/review` tool (or `npm run insights:report`)
-   to label pages; `scripts/samples.expected.json` still has **no labels**, so the metrics are
-   currently empty.
+   miss) and reports label precision/recall/rank. Use the `/review` tool (or
+   `npm run insights:report`) to label pages. `scripts/samples.expected.json` has labels for
+   `26/03198/FUL` only; the other samples are still unlabelled. Note the eval currently **fails**
+   two hard assertions on older samples (`25/04484/FUL` map miss, `26/01872/OUT` highlight miss).
 6. **Versions:** bump `STRATEGY.version` (`generate.ts`) for interpretation changes (old caches
    auto-refresh in the background, reusing page facts); `FEATURES_VERSION` (`features.ts`) for
    extraction changes (re-extracts everything); `INSIGHTS_VERSION` (`cache.ts`) only for a schema
    change (old caches read as absent, i.e. a manual regenerate).
-7. **Likely next work:** run the eval on real samples to validate v14; label the samples and add
-   one from another authority; then the **vision pass** (see
+7. **Likely next work:** label more samples (and one from another authority) so precision/recall
+   is not one application; then tackle the top findings from `26/03198/FUL` — coverage on large
+   applications (quick budget vs deep), the DAS CHAPTER 3 embedded-figure false positives, kind
+   accuracy, and the two failing hard assertions. After that, the **vision pass** (see
    [Known gaps](#known-gaps--future-slices)) to replace the render/photo rule churn, the richer
    summary, ranking within a kind, revision collapse, and Electron/Docker packaging checks.
 8. Where this doc and the code disagree, update the doc — it should not silently rot.

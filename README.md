@@ -19,7 +19,7 @@ A tool to search for and download documents for Cambridgeshire planning applicat
 - **Per-application sync** via an icon on every application card (including on the Archived page) that shows queued/syncing state and doubles as a retry on failure
 - **Activity feed** showing what changed each time a synced application was re-scraped (new documents, status changes, new comments, etc.)
 - **Saved searches** on the search page: save a postcode/radius/filter combination and re-run it later. Each saved search remembers when it was last run and which applications that run returned, so freshly-appeared results are highlighted as new.
-- **Application insights** (Overview tab): a deterministic, on-demand summary of what's proposed — key points, extracted metrics (dwellings, storeys, floorspace, …) and neighbour comment sentiment — alongside a gallery of the most relevant images, plans, elevations, sections and renders found inside the application's documents. Generation is cached per application; see [docs/insights.md](docs/insights.md).
+- **Application insights** (beta, last tab): a deterministic, on-demand summary of what's proposed — key points, extracted metrics (dwellings, storeys, floorspace, …) and neighbour comment sentiment — alongside a gallery of the most relevant images, plans, elevations, sections and renders found inside the application's documents. Generation is cached per application; see [docs/insights.md](docs/insights.md).
 
 ## Requirements
 
