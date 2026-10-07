@@ -5,7 +5,7 @@ import type { ApplicationInsights } from '../../../src/types.js'
 export type InsightsStatus = 'loading' | 'none' | 'running' | 'ready' | 'error'
 
 // Shared insights state: fetch, generate and poll until a generation finishes.
-// Used by the viewer's Overview tab and by the review tool, so neither page
+// Used by the viewer's Insights tab and by the review tool, so neither page
 // reimplements the running/ready/polling dance.
 export function useInsights(reference: () => string, authorityId: () => string | undefined) {
   const insights = ref<ApplicationInsights | null>(null)

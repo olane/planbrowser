@@ -98,9 +98,6 @@
       <div :class="$style.tabsWrap">
         <div :class="$style.tabBar">
           <nav :class="$style.tabs" aria-label="Tabs">
-            <button @click="activeTab = 'overview'" :class="[tabClass('overview'), $style.tab]">
-              Overview
-            </button>
             <button v-if="keyDocs.length > 0" @click="activeTab = 'key-documents'" :class="[tabClass('key-documents'), $style.tab]">
               Key Documents ({{ keyDocs.length }})
             </button>
@@ -116,11 +113,14 @@
             <button v-if="app.location" @click="activeTab = 'location'" :class="[tabClass('location'), $style.tab]">
               Location
             </button>
+            <button @click="activeTab = 'insights'" :class="[tabClass('insights'), $style.tab]">
+              Insights (beta)
+            </button>
           </nav>
         </div>
 
         <div :class="$style.tabContent">
-          <div v-show="activeTab === 'overview'">
+          <div v-show="activeTab === 'insights'">
             <div v-if="insightsStatus === 'loading'" :class="$style.muted">Loading insights…</div>
             <div v-else-if="insightsStatus === 'error' && !insights">
               <p :class="$style.errorText">{{ insightsError }}</p>
@@ -741,13 +741,8 @@ const fetchApp = async () => {
     document.title = `PlanBrowser | ${fresh.reference}`
     await loadComments()
     await loadInsights()
-    if (firstLoad) {
-      activeTab.value =
-        insightsStatus.value === 'ready'
-          ? 'overview'
-          : keyDocs.value.length > 0
-            ? 'key-documents'
-            : 'documents'
+    if (firstLoad && keyDocs.value.length > 0 && activeTab.value === 'documents') {
+      activeTab.value = 'key-documents'
     }
   } catch (e: any) {
     console.error(e)
