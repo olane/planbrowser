@@ -100,6 +100,22 @@ export function createApp(): express.Express {
     res.json({ success: true, item });
   });
 
+  app.post('/api/queue/:id/cancel', (req, res) => {
+    const item = downloadQueue.cancel(req.params.id);
+    if (!item) {
+      return res.status(404).json({ error: 'Cancellable queue item not found' });
+    }
+    res.json({ success: true, item });
+  });
+
+  app.post('/api/queue/:id/requeue', (req, res) => {
+    const item = downloadQueue.requeue(req.params.id);
+    if (!item) {
+      return res.status(404).json({ error: 'Cancelled queue item not found' });
+    }
+    res.json({ success: true, item });
+  });
+
   app.get('/api/applications', (req, res) => {
     try {
       const apps = getApplications();

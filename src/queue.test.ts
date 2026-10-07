@@ -91,4 +91,69 @@ describe('DownloadQueue', () => {
     queue.clearCompleted();
     expect(queue.getQueue().map((i) => i.reference)).toEqual(['24/0003/FUL']);
   });
+
+  it('cancel marks a pending item cancelled and keeps it', () => {
+    const queue = new DownloadQueue({ autoStart: false });
+    const item = queue.enqueue('24/0001/FUL', 'cambridge');
+
+    const cancelled = queue.cancel(item.id);
+    expect(cancelled?.status).toBe('cancelled');
+    expect(cancelled?.cancelledAt).toBeDefined();
+    expect(queue.getQueue()).toHaveLength(1);
+  });
+
+  it('cancel marks an in-progress item cancelled', () => {
+    const queue = new DownloadQueue({ autoStart: false });
+    const item = queue.enqueue('24/0001/FUL', 'cambridge');
+    item.status = 'in_progress';
+
+    const cancelled = queue.cancel(item.id);
+    expect(cancelled?.status).toBe('cancelled');
+  });
+
+  it('cancel ignores missing and finished items', () => {
+    const queue = new DownloadQueue({ autoStart: false });
+    const item = queue.enqueue('24/0001/FUL', 'cambridge');
+    expect(queue.cancel('missing')).toBeUndefined();
+    item.status = 'completed';
+    expect(queue.cancel(item.id)).toBeUndefined();
+  });
+
+  it('requeue resets a cancelled item back to pending', () => {
+    const queue = new DownloadQueue({ autoStart: false });
+    const item = queue.enqueue('24/0001/FUL', 'cambridge');
+    queue.cancel(item.id);
+
+    const requeued = queue.requeue(item.id);
+    expect(requeued?.status).toBe('pending');
+    expect(requeued?.cancelledAt).toBeUndefined();
+  });
+
+  it('requeue ignores missing and non-cancelled items', () => {
+    const queue = new DownloadQueue({ autoStart: false });
+    const item = queue.enqueue('24/0001/FUL', 'cambridge');
+    expect(queue.requeue('missing')).toBeUndefined();
+    expect(queue.requeue(item.id)).toBeUndefined();
+    expect(item.status).toBe('pending');
+  });
+
+  it('enqueue re-queues an existing cancelled item instead of duplicating it', () => {
+    const queue = new DownloadQueue({ autoStart: false });
+    const item = queue.enqueue('24/0001/FUL', 'cambridge');
+    queue.cancel(item.id);
+
+    const again = queue.enqueue('24/0001/FUL', 'cambridge');
+    expect(again.id).toBe(item.id);
+    expect(again.status).toBe('pending');
+    expect(queue.getQueue()).toHaveLength(1);
+  });
+
+  it('clearCompleted removes cancelled items too', () => {
+    const queue = new DownloadQueue({ autoStart: false });
+    const item = queue.enqueue('24/0001/FUL', 'cambridge');
+    queue.cancel(item.id);
+
+    queue.clearCompleted();
+    expect(queue.getQueue()).toHaveLength(0);
+  });
 });

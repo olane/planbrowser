@@ -273,19 +273,12 @@
             <div v-else-if="!searchingContent" :class="$style.emptyCentre">No documents match your search.</div>
           </div>
 
-          <div v-show="activeTab === 'location'" v-if="app.location">
+          <div v-if="activeTab === 'location' && app.location">
             <div :class="$style.mapFrame">
-              <iframe
-                :src="osmEmbedUrl"
-                :class="$style.iframe"
-                style="height: 480px"
-                loading="lazy"
-                referrerpolicy="no-referrer-when-downgrade"
-                title="Application location map"
-              ></iframe>
+              <div ref="locationMapEl" :class="$style.locationMap" title="Application location map"></div>
             </div>
             <p :class="$style.locationNote">
-              Approximate site location. Coordinates: {{ app.location.center.lat.toFixed(6) }}, {{ app.location.center.lon.toFixed(6) }}
+              {{ locationNote }}
               &middot; <a :href="osmLinkUrl" target="_blank" rel="noopener" :class="$style.link">Open in OpenStreetMap</a>
             </p>
           </div>
@@ -342,9 +335,11 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, useCssModule } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick, useCssModule } from 'vue'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { timeAgo, progressText, isKeyDocument } from '../utils'
-import type { ApplicationMeta, ApplicationInsights, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet } from '../../../src/types.js'
+import type { ApplicationMeta, ApplicationInsights, ApplicationLocation, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet } from '../../../src/types.js'
 import * as api from '../api'
 import { useInsights } from '../composables/useInsights'
 import DocumentList from '../components/DocumentList.vue'
@@ -476,30 +471,72 @@ const hasAllFound = computed(() => (insights.value?.found?.length ?? 0) > (insig
 const shortDocumentName = (name: string) =>
   name.replace(/\.pdf$/i, '').replace(/^\d{1,2}\s+\w{3}\s+\d{4}\s*-\s*[^-]+-\s*/, '')
 
-const osmEmbedUrl = computed(() => {
+const locationNote = computed(() => {
   const loc = app.value?.location
   if (!loc) return ''
-  const { center, bbox } = loc
-  let minLon = bbox.minLon
-  let minLat = bbox.minLat
-  let maxLon = bbox.maxLon
-  let maxLat = bbox.maxLat
-  const padLon = (maxLon - minLon) * 0.5 || 0.002
-  const padLat = (maxLat - minLat) * 0.5 || 0.001
-  minLon -= padLon
-  maxLon += padLon
-  minLat -= padLat
-  maxLat += padLat
-  const bboxStr = `${minLon},${minLat},${maxLon},${maxLat}`
-  const marker = `${center.lat},${center.lon}`
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bboxStr)}&layer=mapnik&marker=${encodeURIComponent(marker)}`
+  const kind = loc.polygons?.length
+    ? 'Site boundary'
+    : loc.source === 'wfs'
+      ? 'Site location'
+      : 'Approximate location (postcode centroid)'
+  return `${kind}. Coordinates: ${loc.center.lat.toFixed(6)}, ${loc.center.lon.toFixed(6)}`
 })
+
+const locationMapEl = ref<HTMLDivElement | null>(null)
+let locationMap: L.Map | null = null
+
+// Convert stored [lon, lat] rings into Leaflet's [lat, lon] nested arrays.
+const locationPolygons = (loc: ApplicationLocation): L.LatLngExpression[][][] =>
+  (loc.polygons ?? []).map((poly) => poly.map((ring) => ring.map(([lon, lat]) => [lat, lon] as [number, number])))
+
+const destroyLocationMap = () => {
+  locationMap?.remove()
+  locationMap = null
+}
+
+const buildLocationMap = () => {
+  destroyLocationMap()
+  const loc = app.value?.location
+  if (!locationMapEl.value || !loc) return
+  const map = L.map(locationMapEl.value, { scrollWheelZoom: false })
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map)
+  const bounds = L.latLngBounds([])
+  for (const rings of locationPolygons(loc)) {
+    L.polygon(rings, { color: '#2563eb', weight: 2, fillColor: '#2563eb', fillOpacity: 0.2 }).addTo(map)
+    for (const ring of rings) {
+      for (const latlng of ring) bounds.extend(latlng)
+    }
+  }
+  L.marker([loc.center.lat, loc.center.lon]).addTo(map)
+  bounds.extend([loc.center.lat, loc.center.lon] as L.LatLngExpression)
+  map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17 })
+  locationMap = map
+}
 
 const osmLinkUrl = computed(() => {
   const loc = app.value?.location
   if (!loc) return ''
   return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(loc.center.lat)}&mlon=${encodeURIComponent(loc.center.lon)}#map=17/${encodeURIComponent(loc.center.lat)}/${encodeURIComponent(loc.center.lon)}`
 })
+
+// Leaflet needs a sized, mounted container, so build only while the Location
+// tab is showing and tear the map down when it is hidden or the app changes.
+watch(
+  () => [activeTab.value, app.value?.reference] as const,
+  async ([tab]) => {
+    if (tab !== 'location' || !app.value?.location) {
+      destroyLocationMap()
+      return
+    }
+    await nextTick()
+    buildLocationMap()
+  }
+)
+
+onBeforeUnmount(destroyLocationMap)
 const syncApp = async () => {
   if (!app.value) return
   syncing.value = true
@@ -1239,8 +1276,10 @@ onMounted(async () => {
   border-radius: var(--radius-md);
 }
 
-.iframe {
+.locationMap {
   width: 100%;
+  height: 480px;
+  z-index: 0;
 }
 
 .locationNote {

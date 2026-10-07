@@ -28,10 +28,17 @@
             <span v-else-if="item.status === 'in_progress'" :class="[ui.toneBlue, $style.badge]">Downloading...</span>
             <span v-else-if="item.status === 'completed'" :class="[ui.toneGreen, $style.badge]">Completed</span>
             <span v-else-if="item.status === 'failed'" :class="[ui.toneRed, $style.badge]">Failed</span>
+            <span v-else-if="item.status === 'cancelled'" :class="[ui.toneGray, $style.badge]">Cancelled</span>
             <div v-if="item.status === 'in_progress' && item.progress" :class="$style.progress">{{ progressText(item.progress) }}</div>
             <div v-if="item.error" :class="$style.error" :title="item.error">{{ item.error }}</div>
-            <button v-if="item.status === 'failed'" type="button" :disabled="retryingId === item.id" :class="[ui.btn, ui.btnOutline, $style.retry]" @click="retryItem(item.id)">
-              {{ retryingId === item.id ? 'Retrying...' : 'Retry' }}
+            <button v-if="item.status === 'failed'" type="button" :disabled="busyId === item.id" :class="[ui.btn, ui.btnOutline, $style.action]" @click="retryItem(item.id)">
+              {{ busyId === item.id ? 'Retrying...' : 'Retry' }}
+            </button>
+            <button v-else-if="item.status === 'cancelled'" type="button" :disabled="busyId === item.id" :class="[ui.btn, ui.btnOutline, $style.action]" @click="requeueItem(item.id)">
+              {{ busyId === item.id ? 'Re-queueing...' : 'Re-queue' }}
+            </button>
+            <button v-else-if="item.status === 'pending' || item.status === 'in_progress'" type="button" :disabled="busyId === item.id" :class="[ui.btn, ui.btnOutline, $style.action]" @click="cancelItem(item.id)">
+              {{ busyId === item.id ? 'Cancelling...' : 'Cancel' }}
             </button>
           </div>
         </div>
@@ -48,7 +55,7 @@ import * as api from '../api'
 import { queueItems, refreshQueue } from '../queueStore'
 import ui from '../styles/primitives.module.css'
 
-const retryingId = ref('')
+const busyId = ref('')
 
 const clearCompletedQueue = async () => {
   try {
@@ -59,17 +66,21 @@ const clearCompletedQueue = async () => {
   }
 }
 
-const retryItem = async (id: string) => {
-  retryingId.value = id
+const runAction = async (id: string, action: (id: string) => Promise<void>) => {
+  busyId.value = id
   try {
-    await api.retryQueueItem(id)
+    await action(id)
     await refreshQueue()
   } catch (e) {
     console.error(e)
   } finally {
-    retryingId.value = ''
+    busyId.value = ''
   }
 }
+
+const retryItem = (id: string) => runAction(id, api.retryQueueItem)
+const cancelItem = (id: string) => runAction(id, api.cancelQueueItem)
+const requeueItem = (id: string) => runAction(id, api.requeueQueueItem)
 
 onMounted(() => {
   document.title = 'PlanBrowser | Queue'
@@ -191,7 +202,7 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.retry {
+.action {
   margin-top: 0.5rem;
 }
 </style>
