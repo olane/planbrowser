@@ -32,9 +32,14 @@ insightsRouter.get('/api/applications/:ref/insights', (req, res) => {
     res.json({ status: 'error', error: state.error });
     return;
   }
-  // `running` may carry the previous result so the UI can keep it on screen
-  // while a deep scan or background refresh proceeds.
-  res.json({ status: state.status, ...(state.insights ? { insights: state.insights } : {}) });
+  // `running` may carry the previous result (or the partial snapshot streamed
+  // so far) plus live counters, so the UI can keep images on screen and show
+  // real progress while a deep scan or background refresh proceeds.
+  res.json({
+    status: state.status,
+    ...(state.insights ? { insights: state.insights } : {}),
+    ...(state.progress ? { progress: state.progress } : {})
+  });
 });
 
 // Generation is CPU-heavy (it may render dozens of pages), so this kicks it off

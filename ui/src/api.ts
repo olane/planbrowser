@@ -1,4 +1,4 @@
-import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags, DocumentSearchHit, SavedSearch, PlanItRecord, SortSpec, ApplicationInsights, InsightLabel } from '../../src/types.js';
+import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags, DocumentSearchHit, SavedSearch, PlanItRecord, SortSpec, ApplicationInsights, InsightLabel, InsightsProgress } from '../../src/types.js';
 import type { SyncScope } from '../../src/decision.js';
 import { DEFAULT_AUTHORITY_ID } from '../../src/authorities.js';
 import { safeReference } from '../../src/refs.js';
@@ -202,6 +202,7 @@ export type InsightsStatus = 'none' | 'running' | 'ready' | 'error';
 export interface InsightsResponse {
   status: InsightsStatus;
   insights?: ApplicationInsights;
+  progress?: InsightsProgress;
   error?: string;
 }
 

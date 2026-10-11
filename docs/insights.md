@@ -422,6 +422,14 @@ pre-scanned. Thumbnails are 1400 px wide.
 Notes / known rough edges:
 - A cold generation is CPU-heavy (~1 min for a 94-document application); it runs in the
   background and the UI polls, but there is no cross-process queue. Warm re-runs are near-instant.
+- **Live progress and streaming partials.** While a run is in flight the `GET` reports live
+  counters (`progress`: documents analysed/total, pages rendered) and, when there is no complete
+  result to fall back on, a partial snapshot the pipeline publishes (throttled to ~2 s) via
+  `onSnapshot`. The UI shows a determinate progress bar and fills the gallery as images are found.
+  Partial snapshots are held in memory only and marked `complete: false`; the on-disk cache always
+  holds the last *complete* result, so a refresh keeps the previous result on screen while a first
+  generation streams in, and an interrupted run is refreshed rather than served (`isCurrent`
+  rejects `complete: false`).
 - A stale cache (documents changed on sync, or a strategy bump) is refreshed automatically in the
   background on the next `GET`; a generation failure is surfaced as `status:'error'` for retry.
   While a download is still in progress each poll can see a new file set and start a refresh.
@@ -652,7 +660,9 @@ Note the portal host matters if you are probing by hand: it is
 3. **Current state (2026-10):** heuristic strategy **v14**; `INSIGHTS_VERSION` 2;
    `FEATURES_VERSION` 1. Page facts are cached, so re-interpretation is cheap. The pipeline
    persists curated `images` (with a `reason` each) plus the full `found` set and `coverage`, and
-   supports a user-triggered `deep` scan. Page titles beat document names; the DAS is prioritised;
+   supports a user-triggered `deep` scan. A run reports live progress and streams partial results
+   to the UI (in-memory, `complete: false`) while the on-disk cache holds only complete results.
+   Page titles beat document names; the DAS is prioritised;
    appendix figure books are excluded; render-vs-photo is read from the image caption. The UI is a
    **last, beta "Insights" tab** (no auto-open); the `/review` labelling tool collects verdicts
    into the review store for a later merge into the ground truth.
