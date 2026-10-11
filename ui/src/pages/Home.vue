@@ -36,12 +36,7 @@
         </div>
       </div>
       <div v-if="syncError" :class="$style.syncError">{{ syncError }}</div>
-      <div v-if="showAppsMap && mappedApps.length > 0" :class="$style.mapWrap">
-        <ApplicationsMap :apps="mappedApps" @select="openAppFromMap" />
-        <p v-if="unmappedCount > 0" :class="$style.mapNote">
-          {{ unmappedCount }} {{ unmappedCount === 1 ? 'application has' : 'applications have' }} no location {{ unmappedCount === 1 ? 'and isn\u2019t' : "and aren\u2019t" }} shown on the map.
-        </p>
-      </div>
+      <ApplicationsMapPanel v-if="showAppsMap && mappedApps.length > 0" :apps="mappedApps" :unmapped="unmappedCount" @select="openAppFromMap" />
       <div v-if="loadingApps" :class="$style.muted">Loading...</div>
       <div v-else-if="activeApps.length === 0" :class="$style.muted">No active applications. Archived applications are on the Archived page.</div>
       <div v-else :class="$style.grid">
@@ -52,7 +47,6 @@
 </template>
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
-import type { ApplicationMeta } from '../../../src/types.js'
 import { isAwaitingDecision } from '../../../src/decision.js'
 import type { SyncScope } from '../../../src/decision.js'
 
@@ -69,17 +63,18 @@ const scopeMeta = (key: ScopeKey) => scopeOptions.find((o) => o.key === key)!
 
 const isScopeKey = (v: string | null): v is ScopeKey =>
   v === 'all' || v === 'starred' || v === 'awaitingDecision'
-import { queueItems, refreshQueue, activeQueueCount } from '../queueStore'
+import { refreshQueue, activeQueueCount, getQueueStatus } from '../queueStore'
+import { useApplications } from '../composables/useApplications'
+import { useApplicationsMap } from '../composables/useApplicationsMap'
 import * as api from '../api'
 import { useRouter } from 'vue-router'
-import ApplicationsMap from '../components/ApplicationsMap.vue'
+import ApplicationsMapPanel from '../components/ApplicationsMapPanel.vue'
 import ApplicationCard from '../components/ApplicationCard.vue'
 import ui from '../styles/primitives.module.css'
 
 const router = useRouter()
 
-const downloadedApps = ref<ApplicationMeta[]>([])
-const loadingApps = ref(true)
+const { apps: downloadedApps, loading: loadingApps, fetchApps } = useApplications({ liveUpdates: true })
 
 const activeApps = computed(() =>
   downloadedApps.value
@@ -87,17 +82,9 @@ const activeApps = computed(() =>
     .sort((a, b) => Number(!!b.starred) - Number(!!a.starred))
 )
 
-const showAppsMap = ref(false)
-const mappedApps = computed(() => activeApps.value.filter((a) => a.location))
-const mappedCount = computed(() => mappedApps.value.length)
-const unmappedCount = computed(() => activeApps.value.length - mappedApps.value.length)
-const openAppFromMap = (reference: string) => router.push(`/app/${encodeURIComponent(reference)}`)
+const { showAppsMap, mappedApps, mappedCount, unmappedCount } = useApplicationsMap(activeApps)
 
-// If the last mapped application disappears while the map is open (e.g. it was
-// archived), collapse the map rather than leaving it showing stale content.
-watch(mappedCount, (count) => {
-  if (count === 0) showAppsMap.value = false
-})
+const openAppFromMap = (reference: string) => router.push(`/app/${encodeURIComponent(reference)}`)
 
 const queueing = ref(false)
 const syncError = ref('')
@@ -175,37 +162,6 @@ const runScopeSync = async (scope: SyncScope) => {
 
 const fetchQueue = async () => {
   await refreshQueue()
-}
-
-watch(queueItems, (items, oldItems) => {
-  const previousCompleted = new Set((oldItems ?? []).filter(q => q.status === 'completed').map(q => q.id))
-  const currentCompleted = items.filter(q => q.status === 'completed').map(q => q.id)
-  if (currentCompleted.some(id => !previousCompleted.has(id))) {
-    fetchApps()
-    return
-  }
-  // While anything is queued or in progress, its metadata is being written to
-  // disk progressively, so re-list so partially-downloaded applications (and
-  // their growing document lists) appear as soon as they land.
-  if (activeQueueCount.value > 0) {
-    fetchApps()
-  }
-})
-
-const getQueueStatus = (reference: string) => {
-  const item = queueItems.value.find(q => q.reference === reference && (q.status === 'pending' || q.status === 'in_progress' || q.status === 'failed'))
-  if (item) return item.status
-  return 'none'
-}
-
-const fetchApps = async () => {
-  try {
-    downloadedApps.value = await api.fetchApplications()
-  } catch (e) {
-    console.error(e)
-  } finally {
-    loadingApps.value = false
-  }
 }
 
 onMounted(() => {
@@ -414,17 +370,6 @@ onBeforeUnmount(() => {
   font-size: 0.875rem;
   line-height: 1.25rem;
   color: var(--color-red-700);
-}
-
-.mapWrap {
-  margin-bottom: 1.5rem;
-}
-
-.mapNote {
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
-  line-height: 1rem;
-  color: var(--color-gray-500);
 }
 
 .muted {

@@ -8,12 +8,7 @@
           <span>{{ showAppsMap ? 'Hide map' : 'View map' }}</span>
         </button>
       </div>
-      <div v-if="showAppsMap && mappedApps.length > 0" :class="$style.mapWrap">
-        <ApplicationsMap :apps="mappedApps" @select="openAppFromMap" />
-        <p v-if="unmappedCount > 0" :class="$style.mapNote">
-          {{ unmappedCount }} {{ unmappedCount === 1 ? 'application has' : 'applications have' }} no location {{ unmappedCount === 1 ? 'and isn\u2019t' : "and aren\u2019t" }} shown on the map.
-        </p>
-      </div>
+      <ApplicationsMapPanel v-if="showAppsMap && mappedApps.length > 0" :apps="mappedApps" :unmapped="unmappedCount" @select="openAppFromMap" />
       <div v-if="loading" :class="$style.muted">Loading...</div>
       <div v-else-if="archivedApps.length === 0" :class="$style.muted">No archived applications.</div>
       <div v-else :class="$style.grid">
@@ -24,56 +19,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import type { ApplicationMeta } from '../../../src/types.js'
-import * as api from '../api'
+import { computed, onMounted } from 'vue'
+import { useApplications } from '../composables/useApplications'
+import { useApplicationsMap } from '../composables/useApplicationsMap'
 import ApplicationCard from '../components/ApplicationCard.vue'
-import ApplicationsMap from '../components/ApplicationsMap.vue'
-import { queueItems } from '../queueStore'
+import ApplicationsMapPanel from '../components/ApplicationsMapPanel.vue'
+import { getQueueStatus } from '../queueStore'
 import { useRouter } from 'vue-router'
 import ui from '../styles/primitives.module.css'
 
 const router = useRouter()
-const apps = ref<ApplicationMeta[]>([])
-const loading = ref(true)
+const { apps, loading, fetchApps } = useApplications()
 
 const archivedApps = computed(() => apps.value.filter((a) => a.archived))
 
-const showAppsMap = ref(false)
-const mappedApps = computed(() => archivedApps.value.filter((a) => a.location))
-const mappedCount = computed(() => mappedApps.value.length)
-const unmappedCount = computed(() => archivedApps.value.length - mappedApps.value.length)
+const { showAppsMap, mappedApps, mappedCount, unmappedCount } = useApplicationsMap(archivedApps)
+
 const openAppFromMap = (reference: string) => router.push(`/app/${encodeURIComponent(reference)}`)
-
-// If the last mapped application disappears while the map is open, collapse the
-// map rather than leaving it showing stale content.
-watch(mappedCount, (count) => {
-  if (count === 0) showAppsMap.value = false
-})
-
-const getQueueStatus = (reference: string) => {
-  const item = queueItems.value.find(q => q.reference === reference && (q.status === 'pending' || q.status === 'in_progress' || q.status === 'failed'))
-  if (item) return item.status
-  return 'none'
-}
-
-watch(queueItems, (items, oldItems) => {
-  const previousCompleted = new Set((oldItems ?? []).filter(q => q.status === 'completed').map(q => q.id))
-  const currentCompleted = items.filter(q => q.status === 'completed').map(q => q.id)
-  if (currentCompleted.some(id => !previousCompleted.has(id))) {
-    fetchApps()
-  }
-})
-
-const fetchApps = async () => {
-  try {
-    apps.value = await api.fetchApplications()
-  } catch (e) {
-    console.error(e)
-  } finally {
-    loading.value = false
-  }
-}
 
 onMounted(() => {
   document.title = 'PlanBrowser | Archived'
@@ -111,17 +73,6 @@ onMounted(() => {
 .icon {
   width: 1rem;
   height: 1rem;
-}
-
-.mapWrap {
-  margin-bottom: 1.5rem;
-}
-
-.mapNote {
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
-  line-height: 1rem;
-  color: var(--color-gray-500);
 }
 
 .muted {

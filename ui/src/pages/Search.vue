@@ -201,10 +201,11 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, useCssModule } from 'vue'
+import { ref, onMounted, computed, useCssModule } from 'vue'
 import { timeAgo, progressText } from '../utils'
-import type { ApplicationMeta, PlanItRecord, SearchFilters, SavedSearch, SortField, SortOrder, SortSpec } from '../../../src/types.js'
-import { queueItems, refreshQueue } from '../queueStore'
+import type { PlanItRecord, SearchFilters, SavedSearch, SortField, SortOrder, SortSpec } from '../../../src/types.js'
+import { queueItems, refreshQueue, getQueueStatus } from '../queueStore'
+import { useApplications } from '../composables/useApplications'
 import { AUTHORITIES, DEFAULT_AUTHORITY_ID, isKnownAuthority } from '../../../src/authorities.js'
 import { normalizePostcode } from '../../../src/postcode.js'
 import * as api from '../api'
@@ -259,24 +260,8 @@ const fetchSavedSearches = async () => {
 
 // Track which downloaded applications already exist so results flip between a
 // "Download" button and a "View" link.
-const downloadedApps = ref<ApplicationMeta[]>([])
+const { apps: downloadedApps, fetchApps } = useApplications()
 const isDownloaded = (reference: string) => downloadedApps.value.some(app => app.reference === reference)
-
-const fetchApps = async () => {
-  try {
-    downloadedApps.value = await api.fetchApplications()
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-watch(queueItems, (items, oldItems) => {
-  const previousCompleted = new Set((oldItems ?? []).filter(q => q.status === 'completed').map(q => q.id))
-  const currentCompleted = items.filter(q => q.status === 'completed').map(q => q.id)
-  if (currentCompleted.some(id => !previousCompleted.has(id))) {
-    fetchApps()
-  }
-})
 
 const searchForm = ref({
   postcode: '',
@@ -459,12 +444,6 @@ const lookupMessage = ref('')
 
 const fetchQueue = async () => {
   await refreshQueue()
-}
-
-const getQueueStatus = (reference: string) => {
-  const item = queueItems.value.find(q => q.reference === reference && (q.status === 'pending' || q.status === 'in_progress' || q.status === 'failed'))
-  if (item) return item.status
-  return 'none'
 }
 
 const getQueueStatusText = (reference: string) => {

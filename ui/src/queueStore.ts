@@ -15,3 +15,12 @@ export async function refreshQueue() {
     console.error('Failed to fetch queue', e)
   }
 }
+
+// The live queue status for one application, or 'none' when it is not queued.
+// Failed items are surfaced so a card can offer a retry.
+export function getQueueStatus(reference: string): QueueItem['status'] | 'none' {
+  const item = queueItems.value.find(
+    (q) => q.reference === reference && (q.status === 'pending' || q.status === 'in_progress' || q.status === 'failed')
+  );
+  return item ? item.status : 'none';
+}
