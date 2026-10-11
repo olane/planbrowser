@@ -2,39 +2,53 @@ import { Router } from 'express';
 import path from 'path';
 import crypto from 'crypto';
 import { resolveApplicationMeta } from '../storage.js';
+import type { InsightLabel } from '../types.js';
 import { insightsDir, writeAsset } from './cache.js';
-import { mergeLabels, readLabels, removeLabels, reviewEnabled, sanitizeLabels, sanitizePageRefs } from './labels.js';
+import {
+  mergeReviewLabels,
+  readReviewLabels,
+  readReviewStore,
+  removeReviewLabels,
+  sanitizeLabels,
+  sanitizePageRefs
+} from './labels.js';
 import { closePdf, openPdf, renderPageToPng } from './render.js';
 import { THUMB_WIDTH } from './generate.js';
 import { resolveAuthorityId } from './routes.js';
 
-// Local-development review tooling (docs/insights.md). It writes the eval ground
-// truth and re-renders rejected pages, so every route is gated by
-// `reviewEnabled()` and 404s outside a development checkout.
+// Review tooling (docs/insights.md). It collects page verdicts into the
+// persistent review store and re-renders rejected pages. Reachable only by
+// knowing the URL.
 export const reviewRouter = Router();
 
-reviewRouter.get('/api/applications/:ref/insights/labels', (req, res) => {
-  if (!reviewEnabled()) {
-    res.status(404).json({ error: 'Review labelling is not available' });
-    return;
+// Download every verdict collected so far, in the shape `npm run
+// insights:labels` consumes: `{ samples: { <reference>: InsightLabel[] } }`.
+// Point an agent at this URL to fold live feedback into the eval ground truth.
+reviewRouter.get('/api/insights/reviews', (req, res) => {
+  const samples: Record<string, InsightLabel[]> = {};
+  for (const [reference, spec] of Object.entries(readReviewStore().samples ?? {})) {
+    const labels = spec.labels ?? [];
+    if (labels.length) samples[reference] = labels;
   }
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', 'attachment; filename="insights-reviews.json"');
+  res.send(`${JSON.stringify({ samples }, null, 2)}\n`);
+});
+
+reviewRouter.get('/api/applications/:ref/insights/labels', (req, res) => {
   const found = resolveApplicationMeta(req.params.ref, resolveAuthorityId(req.query.authority));
   if (!found) {
     res.status(404).json({ error: 'Application not found' });
     return;
   }
   try {
-    res.json({ labels: readLabels(found.meta.reference) });
+    res.json({ labels: readReviewLabels(found.meta.reference) });
   } catch {
-    res.status(500).json({ error: 'Ground-truth file is unreadable' });
+    res.status(500).json({ error: 'Review store is unreadable' });
   }
 });
 
 reviewRouter.post('/api/applications/:ref/insights/labels', (req, res) => {
-  if (!reviewEnabled()) {
-    res.status(404).json({ error: 'Review labelling is not available' });
-    return;
-  }
   const found = resolveApplicationMeta(
     req.params.ref,
     resolveAuthorityId(req.body?.authority ?? req.query.authority)
@@ -54,11 +68,13 @@ reviewRouter.post('/api/applications/:ref/insights/labels', (req, res) => {
   const labels = parsed.filter((label) => known.has(label.file));
   const remove = removals.filter((ref) => known.has(ref.file));
   try {
-    if (remove.length) removeLabels(found.meta.reference, remove);
-    const remaining = labels.length ? mergeLabels(found.meta.reference, labels) : readLabels(found.meta.reference);
+    if (remove.length) removeReviewLabels(found.meta.reference, remove);
+    const remaining = labels.length
+      ? mergeReviewLabels(found.meta.reference, labels)
+      : readReviewLabels(found.meta.reference);
     res.json({ labels: remaining });
   } catch {
-    res.status(500).json({ error: 'Ground-truth file is unreadable' });
+    res.status(500).json({ error: 'Review store is unreadable' });
   }
 });
 
@@ -69,10 +85,6 @@ reviewRouter.post('/api/applications/:ref/insights/labels', (req, res) => {
 // review grid requests many images at once, and writing features.json per
 // request would race.
 reviewRouter.get('/api/applications/:ref/insights/review/image', async (req, res) => {
-  if (!reviewEnabled()) {
-    res.status(404).end();
-    return;
-  }
   const found = resolveApplicationMeta(req.params.ref, resolveAuthorityId(req.query.authority));
   if (!found) {
     res.status(404).end();

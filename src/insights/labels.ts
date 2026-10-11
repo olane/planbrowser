@@ -1,43 +1,38 @@
 import fs from 'fs';
 import path from 'path';
+import { getDownloadsDir } from '../config.js';
 import type { InsightImageKind, InsightLabel, InsightRank } from '../types.js';
 import { atomicWrite } from './cache.js';
 
-// The review UI (a special URL on the viewer) writes page verdicts into the
-// eval's hand-curated ground truth (see scripts/insights-truth.mjs), so they
-// feed straight into `npm run insights:eval`. This is a local-development tool:
-// it is only enabled when the repo's ground-truth file exists. A packaged build
-// has no `scripts/`, and an override is available for tests.
+// The review UI collects page verdicts. They used to be written straight into
+// the checked-in eval ground truth; they now land in a separate store
+// (`reviewsFile()`) so a deployed instance can gather feedback without mutating
+// the repo's `scripts/samples.expected.json`. `npm run insights:labels --
+// <download>` folds a downloaded store back into that ground truth, which then
+// feeds `npm run insights:eval`. See scripts/insights-truth.mjs.
 export function truthFile(): string {
   return process.env.INSIGHTS_TRUTH
     ? path.resolve(process.env.INSIGHTS_TRUTH)
     : path.join(process.cwd(), 'scripts', 'samples.expected.json');
 }
 
-export function labelsAvailable(): boolean {
-  return fs.existsSync(truthFile());
-}
-
-// Whether the review/dev endpoints are enabled. Off explicitly with
-// INSIGHTS_REVIEW=0 (packaged builds), on explicitly with INSIGHTS_REVIEW=1
-// (tests or a dev server outside a checkout), and otherwise on when the repo's
-// ground-truth file is present. The review tool writes that file, so it must
-// never be reachable outside a development checkout.
-export function reviewEnabled(): boolean {
-  if (process.env.INSIGHTS_REVIEW === '0') return false;
-  if (process.env.INSIGHTS_REVIEW === '1') return true;
-  return labelsAvailable();
+// Where the review UI persists verdicts. It lives on the persistent downloads
+// volume so feedback survives redeploys; override for tests.
+export function reviewsFile(): string {
+  return process.env.INSIGHTS_REVIEWS
+    ? path.resolve(process.env.INSIGHTS_REVIEWS)
+    : path.join(getDownloadsDir(), 'insights-reviews.json');
 }
 
 const KINDS: InsightImageKind[] = ['render', 'plan', 'elevation', 'section', 'map', 'photo', 'other'];
 const RANKS: InsightRank[] = ['high', 'low'];
 
-interface TruthSample {
+export interface TruthSample {
   labels?: InsightLabel[];
   [key: string]: unknown;
 }
 
-interface TruthFile {
+export interface TruthFile {
   samples?: Record<string, TruthSample>;
   [key: string]: unknown;
 }
@@ -84,39 +79,81 @@ export function sanitizePageRefs(input: unknown): { file: string; page: number }
   return out;
 }
 
-export function readLabels(reference: string): InsightLabel[] {
+function loadStore(file: string): TruthFile {
   try {
-    const truth = JSON.parse(fs.readFileSync(truthFile(), 'utf-8')) as TruthFile;
-    return truth.samples?.[reference]?.labels ?? [];
+    return JSON.parse(fs.readFileSync(file, 'utf-8')) as TruthFile;
   } catch {
-    return [];
+    return { samples: {} };
   }
 }
 
+function readFrom(file: string, reference: string): InsightLabel[] {
+  return loadStore(file).samples?.[reference]?.labels ?? [];
+}
+
 // Merge verdicts for one sample, replacing any prior verdict for the same page.
-export function mergeLabels(reference: string, incoming: InsightLabel[]): InsightLabel[] {
-  const truth = JSON.parse(fs.readFileSync(truthFile(), 'utf-8')) as TruthFile;
+function mergeInto(file: string, reference: string, incoming: InsightLabel[]): InsightLabel[] {
+  const truth = loadStore(file);
   const samples = (truth.samples ??= {});
   const spec = (samples[reference] ??= {});
   const byKey = new Map((spec.labels ?? []).map((label) => [pageKey(label), label]));
   for (const label of incoming) byKey.set(pageKey(label), label);
   spec.labels = [...byKey.values()].sort((a, b) => a.file.localeCompare(b.file) || a.page - b.page);
-  atomicWrite(truthFile(), `${formatTruth(truth)}\n`);
+  atomicWrite(file, `${formatTruth(truth)}\n`);
   return spec.labels;
 }
 
 // Drop the verdicts for the given pages, e.g. when a reviewer unselects a rating.
-export function removeLabels(
+function removeFrom(
+  file: string,
   reference: string,
   pages: { file: string; page: number }[]
 ): InsightLabel[] {
-  const truth = JSON.parse(fs.readFileSync(truthFile(), 'utf-8')) as TruthFile;
+  const truth = loadStore(file);
   const samples = (truth.samples ??= {});
   const spec = (samples[reference] ??= {});
   const drop = new Set(pages.map(pageKey));
   spec.labels = (spec.labels ?? []).filter((label) => !drop.has(pageKey(label)));
-  atomicWrite(truthFile(), `${formatTruth(truth)}\n`);
+  atomicWrite(file, `${formatTruth(truth)}\n`);
   return spec.labels;
+}
+
+// Ground-truth labels (scripts/samples.expected.json), used by the label merger.
+export function readLabels(reference: string): InsightLabel[] {
+  return readFrom(truthFile(), reference);
+}
+
+export function mergeLabels(reference: string, incoming: InsightLabel[]): InsightLabel[] {
+  return mergeInto(truthFile(), reference, incoming);
+}
+
+export function removeLabels(
+  reference: string,
+  pages: { file: string; page: number }[]
+): InsightLabel[] {
+  return removeFrom(truthFile(), reference, pages);
+}
+
+// Labels collected in the review UI (reviewsFile()).
+export function readReviewLabels(reference: string): InsightLabel[] {
+  return readFrom(reviewsFile(), reference);
+}
+
+export function mergeReviewLabels(reference: string, incoming: InsightLabel[]): InsightLabel[] {
+  return mergeInto(reviewsFile(), reference, incoming);
+}
+
+export function removeReviewLabels(
+  reference: string,
+  pages: { file: string; page: number }[]
+): InsightLabel[] {
+  return removeFrom(reviewsFile(), reference, pages);
+}
+
+// The whole review store, for download. Shape matches truthFile(): each sample
+// carries a `labels` array.
+export function readReviewStore(): TruthFile {
+  return loadStore(reviewsFile());
 }
 
 // Keep the file's hand-written style: one line per flat entry.

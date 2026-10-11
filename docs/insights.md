@@ -344,10 +344,12 @@ away visual documents.
   and `DEFAULT_KIND_CAPS` live in one module rather than `select.ts`, `classify.ts` and
   `keywords.ts`.
 - **One labels implementation.** `scripts/insights-labels.mjs` calls `mergeLabels`/`readLabels`
-  in `src/insights/labels.ts` rather than duplicating the merge and JSON reformatting.
-- **Review endpoints split out.** The dev-only label and rejected-page routes live in
-  `routes.review.ts`, gated by `reviewEnabled()` (`INSIGHTS_REVIEW=0|1`, otherwise the presence of
-  the ground-truth file); the production router does not carry review code.
+  in `src/insights/labels.ts` rather than duplicating the merge and JSON reformatting. The review
+  UI writes to a separate store (`reviewsFile()`), so collected feedback never mutates the
+  checked-in ground truth until it is explicitly merged.
+- **Review endpoints split out.** The label and rejected-page routes live in
+  `routes.review.ts`. The UI page and endpoints always ship; access is only by knowing the
+  `/review/<ref>` URL.
 - **`coverage.partial` only fires on a real cap.** A generation records whether a budget actually
   cut work off, so a run that merely used its last page does not report as partial.
 - **`generateInsights` delegates.** The per-document step (page choice, pre-scan, classify,
@@ -384,8 +386,8 @@ src/insights/
   generate.ts        # the pipeline
   jobs.ts            # background generation + API state
   routes.ts          # insights endpoints
-  routes.review.ts   # dev-only review endpoints (labels + rejected-page render)
-  labels.ts          # ground-truth labels: read/merge/validate (shared with scripts/)
+  routes.review.ts   # review endpoints (labels store + rejected-page render + download)
+  labels.ts          # labels: read/merge/validate for the truth file and review store
   __fixtures__/pdf.ts # test-only synthetic PDF builder
 scripts/insights-truth.mjs    # ground-truth format + scoring (shared)
 scripts/insights-eval.mjs     # hard assertions + precision/recall
@@ -440,21 +442,26 @@ Because this is a ranking problem, do not tune it blind.
   highlights, other found, rejected — with its kind, reason and score. It is also the labelling
   tool: mark tiles good/bad (and fix the kind), *Download labels*, then
   `npm run insights:labels -- labels.json`.
-- **Review tool** (local dev only): open `/review/<ref>`, e.g.
-  `http://localhost:5173/review/25-04484-FUL` (run `npm run dev`). It lists every page the
-  interpreter rendered — highlights, the rest of `found`, and the rejected pages — with the
-  classifier's reason and score. Mark each good/bad and correct its kind; clicking the active
+- **Review tool**: open `/review/<ref>`, e.g. `http://localhost:5173/review/25-04484-FUL`
+  (`npm run dev`) or `https://<host>/review/25-04484-FUL` on a deployed instance. It lists every
+  page the interpreter rendered — highlights, the rest of `found`, and the rejected pages — with
+  the classifier's reason and score. Mark each good/bad and correct its kind; clicking the active
   rating again clears it, returning the page to unlabelled. A good page can also be given a
   priority — **high**, **low**, or no opinion (the default) — which feeds a ranking metric: a
   `high` page is expected to reach the highlights, a `low` one may be capped away without
-  penalty. Each change saves straight into
-  `scripts/samples.expected.json` via a dev-only endpoint, so `npm run insights:eval`
-  sees it immediately. Marking a *rejected* page good is how false negatives are flagged (the eval
-  counts it as a missed good page). Rejected-page thumbnails were pruned from the gallery, so the
-  review endpoint re-renders them on demand. The UI route is only registered under `vite dev`, and
-  the server endpoints (`routes.review.ts`) 404 unless `reviewEnabled()` — `INSIGHTS_REVIEW=0`
-  forces them off, `INSIGHTS_REVIEW=1` forces them on, and otherwise they need the ground-truth
-  file (a development checkout). This supersedes the contact sheet for labelling `found` and
+  penalty. Marking a *rejected* page good is how false negatives are flagged (the eval counts it
+  as a missed good page). Rejected-page thumbnails were pruned from the gallery, so the review
+  endpoint re-renders them on demand.
+
+  Each change saves into the review store (`INSIGHTS_REVIEWS`, default
+  `<downloads>/insights-reviews.json`) rather than the ground truth, so a deployed instance
+  collects feedback without touching the checked-in eval file. `GET /api/insights/reviews`
+  downloads the whole store as `{ samples: { <reference>: InsightLabel[] } }`; merge it with
+  `npm run insights:labels -- insights-reviews.json`, which rewrites `scripts/samples.expected.json`
+  for `npm run insights:eval`.
+
+  The UI route and endpoints (`routes.review.ts`) are always registered and reachable only by
+  knowing the `/review/<ref>` URL. This supersedes the contact sheet for labelling `found` and
   rejected pages; the contact sheet remains useful for a whole-corpus side-by-side.
 - **Ground truth + eval** (`scripts/samples.expected.json`, `npm run insights:eval`; format in
   `scripts/insights-truth.mjs`). Hard assertions — `expect` (doc substring + optional
@@ -647,7 +654,8 @@ Note the portal host matters if you are probing by hand: it is
    persists curated `images` (with a `reason` each) plus the full `found` set and `coverage`, and
    supports a user-triggered `deep` scan. Page titles beat document names; the DAS is prioritised;
    appendix figure books are excluded; render-vs-photo is read from the image caption. The UI is a
-   **last, beta "Insights" tab** (no auto-open); the `/review` labelling tool is dev-only.
+   **last, beta "Insights" tab** (no auto-open); the `/review` labelling tool collects verdicts
+   into the review store for a later merge into the ground truth.
 4. Samples are not in the repo (`downloads/` is gitignored). `npm run samples` fetches what is
    missing (cache-first) from `scripts/samples.json`.
 5. **Evaluate, don't guess:** `npm run insights:eval` checks the hard assertions (non-zero on a

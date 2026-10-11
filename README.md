@@ -86,6 +86,7 @@ docker run -d --name planbrowser -p 3000:3000 -v "$PWD/downloads:/app/downloads"
 - All state (downloaded documents, metadata, flags, activity feed) lives in the `downloads/` directory, which must be mounted as a persistent volume.
 - The image runs as a non-root user (`1000:1000`), so the mounted `downloads/` directory must be writable by that uid/gid.
 - Chromium is bundled via `npx playwright install --with-deps chromium`, so no separate browser install is needed on the host.
+- The insights review UI is always available at `/review/<ref>`. Verdicts persist to `<downloads>/insights-reviews.json` and are downloadable from `/api/insights/reviews` for merging into the eval ground truth.
 
 ## Electron (desktop app)
 

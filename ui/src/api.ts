@@ -235,7 +235,7 @@ export function insightImageUrl(reference: string, authorityId: string | undefin
   return `/api/applications/${encodeURIComponent(reference)}/insights/images/${encodeURIComponent(imageFile)}${params}`;
 }
 
-// Review labels (local development only; the endpoint 404s in a packaged build).
+// Review labels (the endpoint 404s unless review is enabled on the server).
 export async function fetchInsightLabels(reference: string, authorityId?: string): Promise<InsightLabel[]> {
   const params = new URLSearchParams();
   if (authorityId) params.set('authority', authorityId);
@@ -279,6 +279,12 @@ export async function removeInsightLabels(
   }
   const data = await res.json();
   return data.labels ?? [];
+}
+
+// Every review verdict collected so far, as a JSON download in the shape
+// `npm run insights:labels` consumes.
+export function reviewsDownloadUrl(): string {
+  return '/api/insights/reviews';
 }
 
 // A page thumbnail for the review tool, re-rendered on demand if its asset was

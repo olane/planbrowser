@@ -36,18 +36,15 @@ const routes: RouteRecordRaw[] = [
     path: '/app/:ref',
     name: 'Viewer',
     component: Viewer
-  }
-]
-
-// The insights review tool is a local development aid (it writes into the eval
-// ground truth), so it is only routed under `vite dev` and never ships.
-if (import.meta.env.DEV) {
-  routes.push({
+  },
+  {
+    // Insights review tool. Reachable by knowing the /review/<ref> URL; its
+    // server endpoints persist feedback to the review store.
     path: '/review/:ref',
     name: 'Review',
     component: () => import('./pages/Review.vue')
-  })
-}
+  }
+]
 
 const router = createRouter({
   history: createWebHistory(),
