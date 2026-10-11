@@ -211,12 +211,13 @@ import * as api from '../api'
 import { useRouter } from 'vue-router'
 import MultiSelect from '../components/MultiSelect.vue'
 import SearchResultsMap from '../components/SearchResultsMap.vue'
+import { APP_TYPE_ORDER } from '../mapColours'
 import ui from '../styles/primitives.module.css'
 
 const router = useRouter()
 const styles = useCssModule()
 
-const APP_TYPES = ['Full', 'Outline', 'Amendment', 'Conditions', 'Heritage', 'Trees', 'Advertising', 'Telecoms', 'Other']
+const APP_TYPES: string[] = [...APP_TYPE_ORDER]
 const APP_STATES = ['Undecided', 'Permitted', 'Conditions', 'Rejected', 'Withdrawn', 'Referred', 'Unresolved', 'Other']
 const APP_SIZES = ['Large', 'Medium', 'Small']
 

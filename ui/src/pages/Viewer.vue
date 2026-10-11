@@ -348,7 +348,7 @@
 import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick, useCssModule } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { timeAgo, progressText, isKeyDocument } from '../utils'
+import { timeAgo, progressText, isKeyDocument, shortDocumentName } from '../utils'
 import type { ApplicationMeta, ApplicationInsights, ApplicationLocation, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet } from '../../../src/types.js'
 import * as api from '../api'
 import { useInsights } from '../composables/useInsights'
@@ -392,8 +392,6 @@ const downloadingItem = computed(() =>
 const isDownloading = computed(() => !!downloadingItem.value)
 const downloadProgress = computed(() => downloadingItem.value?.progress)
 const waitingForDownload = computed(() => !app.value && isDownloading.value)
-
-const docPrefix = computed(() => api.docUrlPrefix(app.value?.authorityId))
 
 const commentsList = ref<Comment[]>([])
 const activeTab = ref('documents')
@@ -489,10 +487,6 @@ const insightGroups = computed(() => {
 })
 
 const hasAllFound = computed(() => (insights.value?.found?.length ?? 0) > (insights.value?.images.length ?? 0))
-
-// "13 Jan 2026 - Drawings - PROPOSED SITE PLAN.pdf" -> "PROPOSED SITE PLAN"
-const shortDocumentName = (name: string) =>
-  name.replace(/\.pdf$/i, '').replace(/^\d{1,2}\s+\w{3}\s+\d{4}\s*-\s*[^-]+-\s*/, '')
 
 const locationNote = computed(() => {
   const loc = app.value?.location
@@ -620,7 +614,7 @@ const enhancedAppDocuments = computed<EnhancedDocument[]>(() => {
   })
   const docs: EnhancedDocument[] = unique.map((d) => ({
     ...d,
-    url: `/api/documents/${docPrefix.value}${encodeURIComponent(app.value!.reference.replace(/\//g, '-'))}/${encodeURIComponent(d.localFilename)}`,
+    url: api.documentUrl(app.value!.reference, app.value!.authorityId, d.localFilename),
     isSuperseded: d.documentType.toLowerCase().includes('superseded'),
     supersededBy: null,
     replaces: []

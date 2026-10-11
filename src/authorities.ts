@@ -250,17 +250,21 @@ export const AUTHORITIES: AuthorityConfig[] = [
   { id: 'south-norfolk-broadland', name: 'South Norfolk Broadland', baseUrl: 'https://info.southnorfolkandbroadland.gov.uk/online-applications' },
 ];
 
-export function resolveAuthority(idOrName: string | undefined | null): AuthorityConfig {
-  if (!idOrName || idOrName.trim() === '') {
-    return getAuthority(DEFAULT_AUTHORITY_ID);
-  }
-  const key = idOrName.trim().toLowerCase();
-  const found = AUTHORITIES.find(
+// Match by id, display name or alias, all case-insensitively on a trimmed key.
+function findAuthority(key: string): AuthorityConfig | undefined {
+  return AUTHORITIES.find(
     (a) =>
       a.id === key ||
       a.name.toLowerCase() === key ||
       (a.aliases ?? []).some((alias) => alias.toLowerCase() === key)
   );
+}
+
+export function resolveAuthority(idOrName: string | undefined | null): AuthorityConfig {
+  if (!idOrName || idOrName.trim() === '') {
+    return getAuthority(DEFAULT_AUTHORITY_ID);
+  }
+  const found = findAuthority(idOrName.trim().toLowerCase());
   if (found) return found;
   throw new Error(
     `Unknown planning authority "${idOrName}". Supported authorities: ${AUTHORITIES.map((a) => a.id).join(', ')}`
@@ -269,13 +273,7 @@ export function resolveAuthority(idOrName: string | undefined | null): Authority
 
 export function isKnownAuthority(idOrName: string | undefined | null): boolean {
   if (!idOrName || idOrName.trim() === '') return false;
-  const key = idOrName.trim().toLowerCase();
-  return AUTHORITIES.some(
-    (a) =>
-      a.id === key ||
-      a.name.toLowerCase() === key ||
-      (a.aliases ?? []).some((alias) => alias.toLowerCase() === key)
-  );
+  return findAuthority(idOrName.trim().toLowerCase()) !== undefined;
 }
 
 export function getAuthority(id: string): AuthorityConfig {
