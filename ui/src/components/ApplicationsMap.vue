@@ -11,6 +11,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { ApplicationMeta, ApplicationLocation } from '../../../src/types.js'
 import { statusLabel, statusBadgeTone } from '../utils'
+import { createMap, escapeHtml, pinIcon, truncate } from '../map'
 import MapLegend from './MapLegend.vue'
 import { useMapColorMode } from '../useMapColorMode'
 import {
@@ -43,15 +44,6 @@ let polygonLayer: L.LayerGroup | null = null
 const locationPolygons = (loc: ApplicationLocation): L.LatLngExpression[][][] =>
   (loc.polygons ?? []).map((poly) => poly.map((ring) => ring.map(([lon, lat]) => [lat, lon] as [number, number])))
 
-const escapeHtml = (s: string) => s.replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;' }[c] as string))
-
-const truncate = (s: string | undefined, words = 8) => {
-  const parts = (s || '').trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return ''
-  const cut = parts.slice(0, words).join(' ')
-  return parts.length > words ? cut + '…' : cut
-}
-
 const locatedApps = () => props.apps.filter((a) => a.location)
 
 const { colorMode, setColorMode } = useMapColorMode('planbrowser.mapColorMode.apps', 'outcome')
@@ -73,13 +65,7 @@ const legendEntries = computed<LegendEntry[]>(() => {
   return legendFor(buckets, OUTCOME_COLORS)
 })
 
-const pinIcon = (color: string) => L.divIcon({
-  className: 'application-pin',
-  html: `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42"><path d="M15 1C7.3 1 1 7.3 1 15c0 9.6 14 26 14 26s14-16.4 14-26C29 7.3 22.7 1 15 1z" fill="${color}" stroke="#1f2937" stroke-width="1"/><circle cx="15" cy="15" r="5.5" fill="#fff"/></svg>`,
-  iconSize: [30, 42],
-  iconAnchor: [15, 42],
-  popupAnchor: [0, -36]
-})
+const PIN_CLASS = 'application-pin'
 
 const toneClass = { red: ui.toneRed, green: ui.toneGreen, blue: ui.toneBlue }
 
@@ -88,7 +74,7 @@ const popupContent = (app: ApplicationMeta) => {
   return `<div class="${styles.popup}">
     <div class="${styles.popupRef}">${escapeHtml(app.reference)}</div>
     <div class="${styles.popupAddress}">${escapeHtml(app.address || '')}</div>
-    <div class="${styles.popupDesc}">${escapeHtml(truncate(app.description))}</div>
+    <div class="${styles.popupDesc}">${escapeHtml(truncate(app.description, 8))}</div>
     <div class="${styles.popupFooter}">
       <span class="${styles.popupBadge} ${toneClass[statusBadgeTone(app)]}">${escapeHtml(statusLabel(app))}</span>
       <button class="open-link ${styles.popupLink}">View</button>
@@ -145,7 +131,7 @@ const renderMarkers = () => {
       polygonsByRef.set(app.reference, list)
     }
     // Always keep the pin too: it carries the status/type colour coding.
-    const marker = L.marker([loc.center.lat, loc.center.lon], { icon: pinIcon(markerFill(app)) }).addTo(markerLayer)
+    const marker = L.marker([loc.center.lat, loc.center.lon], { icon: pinIcon(markerFill(app), PIN_CLASS) }).addTo(markerLayer)
     markersByRef.set(app.reference, marker)
     bindInteractions(marker, app)
   }
@@ -154,11 +140,7 @@ const renderMarkers = () => {
 
 onMounted(() => {
   if (!mapEl.value) return
-  map = L.map(mapEl.value, { scrollWheelZoom: false }).setView([52.2, 0.12], 12)
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map)
+  map = createMap(mapEl.value)
   polygonLayer = L.layerGroup().addTo(map)
   markerLayer = L.layerGroup().addTo(map)
   renderMarkers()
@@ -169,7 +151,7 @@ watch(() => props.apps, () => renderMarkers(), { deep: true })
 // Recolour in place so switching mode doesn't re-fit/reset the current view.
 watch(colorMode, () => {
   for (const app of locatedApps()) {
-    markersByRef.get(app.reference)?.setIcon(pinIcon(markerFill(app)))
+    markersByRef.get(app.reference)?.setIcon(pinIcon(markerFill(app), PIN_CLASS))
     const color = markerFill(app)
     for (const polygon of polygonsByRef.get(app.reference) ?? []) {
       polygon.setStyle({ color, fillColor: color })
