@@ -1,6 +1,6 @@
 import type { ApplicationMeta, ChangeEntry, DocumentMeta } from './types.js';
 
-export interface MetaDiff {
+interface MetaDiff {
   changes: ChangeEntry[];
   message: string;
   newDocuments: DocumentMeta[];

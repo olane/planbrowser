@@ -197,9 +197,9 @@ export async function runSavedSearch(id: string): Promise<{ records: PlanItRecor
   return res.json();
 }
 
-export type InsightsStatus = 'none' | 'running' | 'ready' | 'error';
+type InsightsStatus = 'none' | 'running' | 'ready' | 'error';
 
-export interface InsightsResponse {
+interface InsightsResponse {
   status: InsightsStatus;
   insights?: ApplicationInsights;
   progress?: InsightsProgress;

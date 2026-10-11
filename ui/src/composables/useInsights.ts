@@ -2,7 +2,7 @@ import { ref, onUnmounted } from 'vue'
 import * as api from '../api'
 import type { ApplicationInsights, InsightsProgress } from '../../../src/types.js'
 
-export type InsightsStatus = 'loading' | 'none' | 'running' | 'ready' | 'error'
+type InsightsStatus = 'loading' | 'none' | 'running' | 'ready' | 'error'
 
 // Poll while a generation runs. Short enough that streamed partial snapshots
 // feel live; the server writes them at most every couple of seconds.

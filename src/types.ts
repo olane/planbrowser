@@ -21,7 +21,7 @@ export interface DocumentFlags {
   noteUpdatedAt?: string;
 }
 
-export interface AuthorityMapConfig {
+interface AuthorityMapConfig {
   wfsUrl: string;
   layers: string[];
   refField: string;
@@ -38,11 +38,11 @@ export interface AuthorityConfig {
 // Where an application's location came from. 'wfs' is exact site geometry
 // scraped from an authority's map server; 'postcode' is a centroid resolved from
 // the address postcode, so it is approximate (street/sector level at best).
-export type LocationSource = 'wfs' | 'postcode';
+type LocationSource = 'wfs' | 'postcode';
 
 // A polygon ring in WGS84 as [lon, lat] pairs. The first ring of a polygon is its
 // exterior boundary; any following rings are holes.
-export type LocationRing = Array<[number, number]>;
+type LocationRing = Array<[number, number]>;
 export type LocationPolygon = LocationRing[];
 
 export interface ApplicationLocation {
@@ -143,7 +143,7 @@ export const SEARCH_FILTER_KEYS = [
   'different_end'
 ] as const;
 
-export type SearchFilterKey = (typeof SEARCH_FILTER_KEYS)[number];
+type SearchFilterKey = (typeof SEARCH_FILTER_KEYS)[number];
 
 export type SearchFilters = Partial<Record<SearchFilterKey, string>>;
 
@@ -301,7 +301,7 @@ export interface InsightCommentTally {
   total: number;
 }
 
-export interface InsightKindSummary {
+interface InsightKindSummary {
   kind: InsightImageKind;
   // How many images of this kind were kept in `images`.
   selected: number;
@@ -310,7 +310,7 @@ export interface InsightKindSummary {
   available: number;
 }
 
-export interface InsightsCoverage {
+interface InsightsCoverage {
   // Per-kind selected vs available, so the UI can say "showing 6 of 11".
   images: InsightKindSummary[];
   // True when analysis itself was capped (document/page render budget), so even
