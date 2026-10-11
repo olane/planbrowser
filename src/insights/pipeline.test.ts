@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { ApplicationMeta } from '../types.js';
+import type { ApplicationInsights, ApplicationMeta, InsightsProgress } from '../types.js';
 import { buildPdf, photoFill, type TestPage } from './__fixtures__/pdf.js';
 import type { PageTrace } from './generate.js';
 
@@ -193,5 +193,31 @@ describe('insights pipeline on synthetic documents', () => {
     expect(rejected?.reason).toMatch(/^rejected/);
     const foundKeys = new Set((insights?.found ?? []).map((i) => `${i.localFilename}#${i.page}`));
     expect(rejected && foundKeys.has(`${rejected.localFilename}#${rejected.page}`)).toBe(false);
+  });
+
+  it('streams progress and incomplete snapshots while it runs', async () => {
+    const progress: InsightsProgress[] = [];
+    const snapshots: ApplicationInsights[] = [];
+    const insights = await generateInsights(REFERENCE, undefined, {
+      force: true,
+      onProgress: (p) => progress.push(p),
+      onSnapshot: (s) => snapshots.push(s)
+    });
+
+    // The finished result is marked complete; counters reach the document total.
+    expect(insights?.complete).toBe(true);
+    expect(progress.length).toBeGreaterThanOrEqual(2);
+    expect(progress.at(-1)?.documentsTotal).toBe(3);
+    expect(progress.at(-1)?.documentsAnalysed).toBe(3);
+
+    // Partial snapshots are marked incomplete and only reference thumbnails that
+    // already exist on disk (no broken tiles mid-scan).
+    expect(snapshots.length).toBeGreaterThanOrEqual(1);
+    for (const snapshot of snapshots) {
+      expect(snapshot.complete).toBe(false);
+      for (const image of snapshot.found ?? []) {
+        expect(fs.existsSync(path.join(dir, 'insights', image.imageFile))).toBe(true);
+      }
+    }
   });
 });

@@ -320,6 +320,14 @@ export interface InsightsCoverage {
   documentsTotal: number;
 }
 
+// Live counters reported while a generation is in flight, so the UI can show
+// how far along a scan is instead of an indeterminate spinner.
+export interface InsightsProgress {
+  documentsAnalysed: number;
+  documentsTotal: number;
+  pagesRendered: number;
+}
+
 export interface ApplicationInsights {
   version: number;
   // Which strategy produced this, so changing strategy/version invalidates the
@@ -342,4 +350,11 @@ export interface ApplicationInsights {
   // Every page the interpreter rendered, accepted or rejected. Optional for
   // caches written before it existed; the review UI regenerates to get it.
   pages?: InsightPage[];
+  // Live counters on a partial snapshot published mid-generation. Optional for
+  // finished results, which report the same figures in `coverage`.
+  progress?: InsightsProgress;
+  // False on a snapshot written while a generation is still running. A partial
+  // snapshot is never treated as a valid cache (`isCurrent`), so an interrupted
+  // run is refreshed rather than served as if it were final. Absent means true.
+  complete?: boolean;
 }

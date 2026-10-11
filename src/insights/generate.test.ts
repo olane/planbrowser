@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { generateInsights, rankDocuments } from './generate.js';
+import { generateInsights, isCurrent, rankDocuments, STRATEGY } from './generate.js';
 import { getInsightsState, startInsights } from './jobs.js';
-import type { ApplicationMeta, DocumentMeta } from '../types.js';
+import type { ApplicationInsights, ApplicationMeta, DocumentMeta } from '../types.js';
 
 const REFERENCE = '24/00001/FUL';
 let root: string;
@@ -88,6 +88,28 @@ describe('rankDocuments', () => {
   });
 });
 
+describe('isCurrent', () => {
+  const base = (overrides: Partial<ApplicationInsights> = {}): ApplicationInsights => ({
+    version: 2,
+    strategy: { ...STRATEGY },
+    generatedAt: new Date(0).toISOString(),
+    source: [],
+    summary: { headline: '', points: [], metrics: {} },
+    images: [],
+    comments: { support: 0, object: 0, neutral: 0, total: 0 },
+    ...overrides
+  });
+
+  it('accepts a finished result from the current strategy', () => {
+    expect(isCurrent(base(), [])).toBe(true);
+    expect(isCurrent(base({ complete: true }), [])).toBe(true);
+  });
+
+  it('rejects a partial snapshot so an interrupted run is refreshed', () => {
+    expect(isCurrent(base({ complete: false }), [])).toBe(false);
+  });
+});
+
 describe('getInsightsState', () => {
   it('reports none before generation and ready after', async () => {
     expect(getInsightsState(REFERENCE)?.status).toBe('none');
@@ -103,6 +125,17 @@ describe('getInsightsState', () => {
 
   it('returns null for an unknown application', () => {
     expect(getInsightsState('99/99999/FUL')).toBeNull();
+  });
+
+  it('never serves an incomplete snapshot as ready', async () => {
+    await generateInsights(REFERENCE);
+    const file = path.join(dir, 'insights', 'insights.json');
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf-8')) as ApplicationInsights;
+    fs.writeFileSync(file, JSON.stringify({ ...parsed, complete: false }));
+    // An interrupted run reports as running (and is refreshed), not ready.
+    expect(getInsightsState(REFERENCE)?.status).toBe('running');
+    // Let the background refresh settle before the temp dir is removed.
+    await new Promise((resolve) => setTimeout(resolve, 20));
   });
 
   it('reports running with the cached result while a scan is in flight', async () => {

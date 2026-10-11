@@ -129,7 +129,12 @@
             <template v-else-if="insights">
               <div v-if="insightsStatus === 'running'" :class="$style.insightsRunning">
                 <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                Updating insights…
+                <div :class="$style.insightsProgress">
+                  <span>{{ insightsProgressLabel || 'Updating insights…' }}</span>
+                  <div v-if="insightsProgressPercent !== null" :class="$style.insightsProgressTrack">
+                    <div :class="$style.insightsProgressBar" :style="{ width: insightsProgressPercent + '%' }"></div>
+                  </div>
+                </div>
               </div>
               <p v-else-if="insightsStatus === 'error'" :class="$style.errorText">
                 {{ insightsError }}
@@ -228,7 +233,12 @@
             </template>
             <div v-else-if="insightsStatus === 'running'" :class="$style.insightsRunning">
               <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-              Generating insights — this can take a minute for large applications.
+              <div :class="$style.insightsProgress">
+                <span>{{ insightsProgressLabel ? `${insightsProgressLabel} — this can take a minute for large applications.` : 'Generating insights — this can take a minute for large applications.' }}</span>
+                <div v-if="insightsProgressPercent !== null" :class="$style.insightsProgressTrack">
+                  <div :class="$style.insightsProgressBar" :style="{ width: insightsProgressPercent + '%' }"></div>
+                </div>
+              </div>
             </div>
             <div v-else-if="insightsStatus === 'none'">
               <p :class="$style.muted">No insights have been generated for this application yet.</p>
@@ -359,6 +369,7 @@ const syncError = ref('')
 // State and polling live in the shared composable (also used by the review tool).
 const {
   insights,
+  progress: insightsProgress,
   status: insightsStatus,
   error: insightsError,
   load: loadInsights,
@@ -428,6 +439,18 @@ const KIND_LABELS: Record<string, string> = {
   other: 'Other'
 }
 const kindLabel = (kind: string) => KIND_LABELS[kind] ?? kind
+
+// Live progress text and bar while a scan runs, from the streamed counters.
+const insightsProgressLabel = computed(() => {
+  const p = insightsProgress.value
+  if (!p || p.documentsTotal === 0) return ''
+  return `Scanning ${Math.min(p.documentsAnalysed, p.documentsTotal)} of ${p.documentsTotal} documents`
+})
+const insightsProgressPercent = computed<number | null>(() => {
+  const p = insightsProgress.value
+  if (!p || p.documentsTotal === 0) return null
+  return Math.min(100, Math.round((p.documentsAnalysed / p.documentsTotal) * 100))
+})
 
 // The image list currently on show: the curated highlights, or every distinct
 // candidate found before the selection caps.
@@ -1418,6 +1441,30 @@ onMounted(async () => {
   gap: 0.75rem;
   color: var(--color-gray-600);
   font-size: 0.875rem;
+}
+
+.insightsProgress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.insightsProgressTrack {
+  width: 100%;
+  max-width: 22rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--color-gray-200);
+  overflow: hidden;
+}
+
+.insightsProgressBar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-blue-500, #3b82f6);
+  transition: width 0.3s ease;
 }
 
 .insightsSummary {

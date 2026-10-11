@@ -1,10 +1,10 @@
 import fs from 'fs';
 import path from 'path';
-import type { ApplicationInsights, Comment, DocumentMeta, InsightImage, InsightPage } from '../types.js';
+import type { ApplicationInsights, Comment, DocumentMeta, InsightImage, InsightPage, InsightsProgress } from '../types.js';
 import { resolveApplicationMeta } from '../storage.js';
 import { profileDocument, type DocumentProfile } from './keywords.js';
 import { classifyPage } from './classify.js';
-import { selectImages } from './select.js';
+import { selectImages, type SelectionResult } from './select.js';
 import { KIND_ORDER } from './kinds.js';
 import { selectDocumentPages, LARGE_IMAGE_AREA, type ScannedPage } from './pages.js';
 import { pageTitleScore } from './title.js';
@@ -79,7 +79,17 @@ export interface GenerateOptions {
   // Scan more documents and pages. Slower, but finds visuals a quick run misses.
   deep?: boolean;
   trace?: (entry: PageTrace) => void;
+  // Live counters, called after every page. Cheap; safe to call often.
+  onProgress?: (progress: InsightsProgress) => void;
+  // A partial result published while the run proceeds, throttled by the
+  // pipeline. Carries `complete: false`; the caller decides what to do with it
+  // (the server writes it to the cache so the UI can stream images in).
+  onSnapshot?: (insights: ApplicationInsights) => void;
 }
+
+// How often a partial snapshot is published during a run. Bounds the disk write
+// cost while keeping the UI responsive; progress counters update on every page.
+const SNAPSHOT_INTERVAL_MS = 2000;
 
 export function documentList(meta: { documents?: DocumentMeta[] }): DocumentMeta[] {
   const seen = new Set<string>();
@@ -111,11 +121,13 @@ function sameSource(a: ApplicationInsights['source'], b: ApplicationInsights['so
 }
 
 // Cached insights are current when the same strategy produced them from the
-// same source files.
+// same source files. A partial snapshot (an interrupted run) has `complete:
+// false` and is never current, so it is regenerated rather than served.
 export function isCurrent(insights: ApplicationInsights, source: ApplicationInsights['source']): boolean {
   return (
     insights.strategy.id === STRATEGY.id &&
     insights.strategy.version === STRATEGY.version &&
+    insights.complete !== false &&
     sameSource(insights.source, source)
   );
 }
@@ -204,6 +216,10 @@ interface Analysis {
   candidates: InsightImage[];
   interpreted: InsightPage[];
   trace: ((entry: PageTrace) => void) | undefined;
+  // Report live counters (called after every rendered page).
+  report: () => void;
+  // Publish a throttled partial snapshot (no-op when no sink is configured).
+  snapshot: () => void;
 }
 
 function takePrescanBudget(counters: RunCounters, budget: Budget): boolean {
@@ -259,6 +275,7 @@ async function analyseDocument(doc: DocumentMeta, profile: DocumentProfile, run:
       counters.pagesRendered++;
       if (isPhotoDoc) counters.photoPagesRendered++;
       renderedPages.push(page);
+      run.report();
 
       const render = await handle.render(page, THUMB_WIDTH);
       if (!render) continue;
@@ -280,6 +297,7 @@ async function analyseDocument(doc: DocumentMeta, profile: DocumentProfile, run:
       };
       run.interpreted.push(entry);
       run.trace?.(entry);
+      run.snapshot();
       if (classification.score <= 0) continue;
 
       docImages++;
@@ -338,14 +356,83 @@ export async function generateInsights(
     // Documents beyond maxDocs were never considered, so the run is partial.
     capped: rankedAll.length > budget.maxDocs
   };
+  // The candidates and interpreted pages gathered as the run proceeds. Held
+  // here (rather than on `run`) so the snapshot closure below can read them.
+  const candidates: InsightImage[] = [];
+  const interpreted: InsightPage[] = [];
+
+  const summary = buildSummary(meta, docs);
+  const comments = tallyComments(readComments(dir));
+
+  const liveProgress = (): InsightsProgress => ({
+    documentsAnalysed: counters.documentsAnalysed,
+    documentsTotal: docs.length,
+    pagesRendered: counters.pagesRendered
+  });
+
+  // Build an ApplicationInsights from the candidates gathered so far. Used for
+  // both the throttled partial snapshots and the final result, so the two share
+  // one shape and the UI renders either the same way.
+  const buildInsights = (selection: SelectionResult, complete: boolean): ApplicationInsights => ({
+    version: INSIGHTS_VERSION,
+    strategy: STRATEGY,
+    generatedAt: new Date().toISOString(),
+    source,
+    summary,
+    images: selection.images,
+    found: selection.deduped,
+    depth,
+    comments,
+    // Accepted and rejected pages alike, for the review UI (false negatives).
+    pages: interpreted,
+    coverage: {
+      images: KIND_ORDER.map((kind) => ({
+        kind,
+        selected: selection.images.filter((image) => image.kind === kind).length,
+        available: selection.available[kind]
+      })).filter((entry) => entry.available > 0),
+      // True only when a budget actually cut candidates off; "available" is then
+      // a lower bound and some documents were never scanned.
+      partial: counters.capped,
+      documentsAnalysed: counters.documentsAnalysed,
+      documentsTotal: docs.length
+    },
+    progress: liveProgress(),
+    complete
+  });
+
+  // A partial snapshot must not reference thumbnails that are not on disk yet: a
+  // warm run can select a page whose asset was pruned by a previous run and is
+  // only re-rendered at the end, which would show as a broken tile mid-scan.
+  const snapshot = (): ApplicationInsights => {
+    const selection = selectImages(candidates);
+    const onDisk = (image: InsightImage) => fs.existsSync(assetPath(dir, image.imageFile));
+    return buildInsights(
+      { ...selection, images: selection.images.filter(onDisk), deduped: selection.deduped.filter(onDisk) },
+      false
+    );
+  };
+
+  let lastSnapshotAt = 0;
+  const report = (): void => opts.onProgress?.(liveProgress());
+  const publishSnapshot = (): void => {
+    if (!opts.onSnapshot) return;
+    const now = Date.now();
+    if (now - lastSnapshotAt < SNAPSHOT_INTERVAL_MS) return;
+    lastSnapshotAt = now;
+    opts.onSnapshot(snapshot());
+  };
+
   const run: Analysis = {
     reference,
     budget,
     store,
     counters,
-    candidates: [],
-    interpreted: [],
-    trace: opts.trace
+    candidates,
+    interpreted,
+    trace: opts.trace,
+    report,
+    snapshot: publishSnapshot
   };
   const startedAt = Date.now();
 
@@ -373,8 +460,6 @@ export async function generateInsights(
     await analyseDocument(doc, profile, run);
   }
 
-  const candidates = run.candidates;
-  const interpreted = run.interpreted;
   const selection = selectImages(candidates);
   const images = selection.images;
   const found = selection.deduped;
@@ -396,31 +481,7 @@ export async function generateInsights(
   // so the UI can offer "show all found"; unreferenced assets are pruned.
   pruneAssets(dir, new Set(found.map((image) => image.imageFile)));
 
-  const insights: ApplicationInsights = {
-    version: INSIGHTS_VERSION,
-    strategy: STRATEGY,
-    generatedAt: new Date().toISOString(),
-    source,
-    summary: buildSummary(meta, docs),
-    images,
-    found,
-    depth,
-    comments: tallyComments(readComments(dir)),
-    // Accepted and rejected pages alike, for the review UI (false negatives).
-    pages: interpreted,
-    coverage: {
-      images: KIND_ORDER.map((kind) => ({
-        kind,
-        selected: images.filter((image) => image.kind === kind).length,
-        available: selection.available[kind]
-      })).filter((entry) => entry.available > 0),
-      // True only when a budget actually cut candidates off; "available" is then
-      // a lower bound and some documents were never scanned.
-      partial: counters.capped,
-      documentsAnalysed: counters.documentsAnalysed,
-      documentsTotal: docs.length
-    }
-  };
+  const insights = buildInsights(selection, true);
   writeInsights(dir, insights);
   const { work } = store;
   insightsLog(
