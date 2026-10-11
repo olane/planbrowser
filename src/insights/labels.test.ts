@@ -3,7 +3,6 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import {
-  labelsAvailable,
   mergeLabels,
   mergeReviewLabels,
   readLabels,
@@ -41,19 +40,12 @@ afterEach(() => {
 });
 
 describe('insight labels', () => {
-  it('reports availability from the truth file', () => {
-    expect(labelsAvailable()).toBe(true);
-    process.env.INSIGHTS_TRUTH = path.join(dir, 'missing.json');
-    expect(labelsAvailable()).toBe(false);
-  });
-
-  it('gates review on the explicit env flag first', () => {
-    process.env.INSIGHTS_REVIEW = '0';
-    expect(reviewEnabled()).toBe(false);
+  it('enables review unless explicitly switched off', () => {
+    expect(reviewEnabled()).toBe(true);
     process.env.INSIGHTS_REVIEW = '1';
     expect(reviewEnabled()).toBe(true);
-    delete process.env.INSIGHTS_REVIEW;
-    expect(reviewEnabled()).toBe(true);
+    process.env.INSIGHTS_REVIEW = '0';
+    expect(reviewEnabled()).toBe(false);
   });
 
   it('merges labels, replacing a prior verdict for the same page', () => {

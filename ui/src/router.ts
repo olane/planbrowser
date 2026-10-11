@@ -38,9 +38,8 @@ const routes: RouteRecordRaw[] = [
     component: Viewer
   },
   {
-    // Insights review tool. Always routed so a deployed instance can collect
-    // feedback; the server endpoints that persist it stay gated by
-    // `reviewEnabled()`, so on a plain build the page loads but cannot save.
+    // Insights review tool. Reachable by knowing the /review/<ref> URL; its
+    // server endpoints persist feedback to the review store.
     path: '/review/:ref',
     name: 'Review',
     component: () => import('./pages/Review.vue')

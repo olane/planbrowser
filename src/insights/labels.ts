@@ -24,18 +24,12 @@ export function reviewsFile(): string {
     : path.join(getDownloadsDir(), 'insights-reviews.json');
 }
 
-export function labelsAvailable(): boolean {
-  return fs.existsSync(truthFile());
-}
-
-// Whether the review/dev endpoints are enabled. Off explicitly with
-// INSIGHTS_REVIEW=0 (packaged builds), on explicitly with INSIGHTS_REVIEW=1
-// (tests, a dev server outside a checkout, or a deployed instance that wants
-// live feedback), and otherwise on when the repo's ground-truth file is present.
+// Whether the review endpoints are enabled. Always on: the tool is only
+// reachable by knowing the `/review/<ref>` URL, so a private deployment collects
+// feedback with no extra configuration. `INSIGHTS_REVIEW=0` is an explicit off
+// switch for a build that must not accept review writes.
 export function reviewEnabled(): boolean {
-  if (process.env.INSIGHTS_REVIEW === '0') return false;
-  if (process.env.INSIGHTS_REVIEW === '1') return true;
-  return labelsAvailable();
+  return process.env.INSIGHTS_REVIEW !== '0';
 }
 
 const KINDS: InsightImageKind[] = ['render', 'plan', 'elevation', 'section', 'map', 'photo', 'other'];

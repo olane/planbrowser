@@ -18,8 +18,8 @@ import { THUMB_WIDTH } from './generate.js';
 import { resolveAuthorityId } from './routes.js';
 
 // Review tooling (docs/insights.md). It collects page verdicts into the
-// persistent review store and re-renders rejected pages, so every route is
-// gated by `reviewEnabled()` and 404s on a plain packaged build.
+// persistent review store and re-renders rejected pages. On by default and only
+// reachable by knowing the URL; `reviewEnabled()` keeps an explicit off switch.
 export const reviewRouter = Router();
 
 // Download every verdict collected so far, in the shape `npm run
