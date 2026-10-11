@@ -351,6 +351,7 @@ import 'leaflet/dist/leaflet.css'
 import { timeAgo, progressText, isKeyDocument, shortDocumentName } from '../utils'
 import type { ApplicationMeta, ApplicationInsights, ApplicationLocation, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet, InsightImageKind } from '../../../src/types.js'
 import { KIND_ORDER, KIND_GROUP_LABELS, kindLabel } from '../../../src/insights/kinds.js'
+import { createMap } from '../map'
 import * as api from '../api'
 import { useInsights } from '../composables/useInsights'
 import DocumentList from '../components/DocumentList.vue'
@@ -495,11 +496,7 @@ const buildLocationMap = () => {
   destroyLocationMap()
   const loc = app.value?.location
   if (!locationMapEl.value || !loc) return
-  const map = L.map(locationMapEl.value, { scrollWheelZoom: false })
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map)
+  const map = createMap(locationMapEl.value)
   const bounds = L.latLngBounds([])
   for (const rings of locationPolygons(loc)) {
     L.polygon(rings, { color: '#2563eb', weight: 2, fillColor: '#2563eb', fillOpacity: 0.2 }).addTo(map)

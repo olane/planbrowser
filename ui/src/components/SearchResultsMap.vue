@@ -10,6 +10,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch, useCssModule } from '
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { PlanItRecord } from '../../../src/types.js'
+import { createMap, escapeHtml, pinIcon, truncate } from '../map'
 import MapLegend from './MapLegend.vue'
 import { useMapColorMode } from '../useMapColorMode'
 import {
@@ -35,35 +36,13 @@ const mapEl = ref<HTMLDivElement | null>(null)
 let map: L.Map | null = null
 let markerLayer: L.LayerGroup | null = null
 
-const escapeHtml = (s: string) => s.replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;' }[c] as string))
-
-const truncate = (s: string, words = 6) => {
-  const parts = s.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return ''
-  const cut = parts.slice(0, words).join(' ')
-  return parts.length > words ? cut + '…' : cut
-}
-
 const { colorMode, setColorMode } = useMapColorMode('planbrowser.mapColorMode.search', 'type')
 
 const markerFill = (rec: PlanItRecord) =>
   colorMode.value === 'type' ? appTypeColor(rec.app_type) : outcomeColor(rec.app_state)
 
-const pinIcon = (fill: string) => L.divIcon({
-  className: 'search-result-pin',
-  html: `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42"><path d="M15 1C7.3 1 1 7.3 1 15c0 9.6 14 26 14 26s14-16.4 14-26C29 7.3 22.7 1 15 1z" fill="${fill}" stroke="#1f2937" stroke-width="1"/><circle cx="15" cy="15" r="5.5" fill="#fff"/></svg>`,
-  iconSize: [30, 42],
-  iconAnchor: [15, 42],
-  popupAnchor: [0, -36]
-})
-
-const activePinIcon = L.divIcon({
-  className: 'search-result-pin',
-  html: '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42"><path d="M15 1C7.3 1 1 7.3 1 15c0 9.6 14 26 14 26s14-16.4 14-26C29 7.3 22.7 1 15 1z" fill="#dc2626" stroke="#991b1b" stroke-width="1"/><circle cx="15" cy="15" r="5.5" fill="#fff"/></svg>',
-  iconSize: [30, 42],
-  iconAnchor: [15, 42],
-  popupAnchor: [0, -36]
-})
+const PIN_CLASS = 'search-result-pin'
+const activePinIcon = pinIcon('#dc2626', PIN_CLASS, '#991b1b')
 
 const legendEntries = computed<LegendEntry[]>(() => {
   if (colorMode.value === 'type') {
@@ -98,11 +77,11 @@ const renderMarkers = () => {
   for (const p of points.value) {
     const popupContent = `<div class="${styles.popup}">
       <div class="${styles.popupUid}">${escapeHtml(p.rec.uid)}</div>
-      <div class="${styles.popupDesc}">${escapeHtml(truncate(p.rec.description || ''))}</div>
+      <div class="${styles.popupDesc}">${escapeHtml(truncate(p.rec.description || '', 6))}</div>
       <div class="${styles.popupMeta}">${escapeHtml([p.rec.app_type, p.rec.app_state].filter(Boolean).join(' | '))}</div>
       <button class="jump-link ${styles.popupLink}">Show in results</button>
     </div>`
-    const marker = L.marker([p.lat, p.lon], { icon: p.rec.uid === activeUid ? activePinIcon : pinIcon(markerFill(p.rec)) }).addTo(markerLayer)
+    const marker = L.marker([p.lat, p.lon], { icon: p.rec.uid === activeUid ? activePinIcon : pinIcon(markerFill(p.rec), PIN_CLASS) }).addTo(markerLayer)
     markersByUid.set(p.rec.uid, marker)
     marker.bindPopup(popupContent)
     marker.on('popupopen', (e) => {
@@ -120,7 +99,7 @@ const focus = (uid: string) => {
   if (!marker || !point) return
   if (activeUid && activeUid !== uid) {
     const prev = points.value.find(p => p.rec.uid === activeUid)
-    markersByUid.get(activeUid)?.setIcon(pinIcon(prev ? markerFill(prev.rec) : appTypeColor()))
+    markersByUid.get(activeUid)?.setIcon(pinIcon(prev ? markerFill(prev.rec) : appTypeColor(), PIN_CLASS))
   }
   activeUid = uid
   marker.setIcon(activePinIcon)
@@ -132,11 +111,7 @@ defineExpose({ focus })
 
 onMounted(() => {
   if (!mapEl.value) return
-  map = L.map(mapEl.value, { scrollWheelZoom: false }).setView([52.2, 0.12], 12)
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map)
+  map = createMap(mapEl.value)
   markerLayer = L.layerGroup().addTo(map)
   renderMarkers()
 })
@@ -147,7 +122,7 @@ watch(() => props.results, () => renderMarkers())
 watch(colorMode, () => {
   for (const p of points.value) {
     if (p.rec.uid === activeUid) continue
-    markersByUid.get(p.rec.uid)?.setIcon(pinIcon(markerFill(p.rec)))
+    markersByUid.get(p.rec.uid)?.setIcon(pinIcon(markerFill(p.rec), PIN_CLASS))
   }
 })
 
