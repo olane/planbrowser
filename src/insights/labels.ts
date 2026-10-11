@@ -3,6 +3,7 @@ import path from 'path';
 import { getDownloadsDir } from '../config.js';
 import type { InsightImageKind, InsightLabel, InsightRank } from '../types.js';
 import { atomicWrite } from './cache.js';
+import { KIND_ORDER } from './kinds.js';
 
 // The review UI collects page verdicts. They used to be written straight into
 // the checked-in eval ground truth; they now land in a separate store
@@ -24,15 +25,14 @@ export function reviewsFile(): string {
     : path.join(getDownloadsDir(), 'insights-reviews.json');
 }
 
-const KINDS: InsightImageKind[] = ['render', 'plan', 'elevation', 'section', 'map', 'photo', 'other'];
 const RANKS: InsightRank[] = ['high', 'low'];
 
-export interface TruthSample {
+interface TruthSample {
   labels?: InsightLabel[];
   [key: string]: unknown;
 }
 
-export interface TruthFile {
+interface TruthFile {
   samples?: Record<string, TruthSample>;
   [key: string]: unknown;
 }
@@ -53,7 +53,7 @@ export function sanitizeLabels(input: unknown): InsightLabel[] | null {
     const label: InsightLabel = { file, page, verdict };
     // A kind and a rank only make sense for a page judged worth showing.
     if (verdict === 'good') {
-      if (typeof kind === 'string' && (KINDS as string[]).includes(kind)) {
+      if (typeof kind === 'string' && (KIND_ORDER as readonly string[]).includes(kind)) {
         label.kind = kind as InsightImageKind;
       }
       if (typeof rank === 'string' && (RANKS as string[]).includes(rank)) {
@@ -125,13 +125,6 @@ export function readLabels(reference: string): InsightLabel[] {
 
 export function mergeLabels(reference: string, incoming: InsightLabel[]): InsightLabel[] {
   return mergeInto(truthFile(), reference, incoming);
-}
-
-export function removeLabels(
-  reference: string,
-  pages: { file: string; page: number }[]
-): InsightLabel[] {
-  return removeFrom(truthFile(), reference, pages);
 }
 
 // Labels collected in the review UI (reviewsFile()).

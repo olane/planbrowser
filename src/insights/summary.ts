@@ -60,7 +60,7 @@ export function extractMetrics(text: string): Record<string, string> {
 // (demolition, extension, ward, …) which the viewer already shows above. These
 // rules instead report what the application *contains*, which is the thing you
 // cannot see from the metadata: its evidence base.
-export interface SummaryDocument {
+interface SummaryDocument {
   documentType?: string;
   description?: string;
   localFilename?: string;

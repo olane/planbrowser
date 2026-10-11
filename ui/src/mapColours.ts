@@ -21,7 +21,7 @@ export const APP_TYPE_ORDER = [
   'Other'
 ] as const
 
-export type AppType = (typeof APP_TYPE_ORDER)[number]
+type AppType = (typeof APP_TYPE_ORDER)[number]
 
 export const APP_TYPE_COLORS: Record<AppType, string> = {
   Full: '#2563eb',
@@ -87,7 +87,7 @@ export function appTypeColor(raw?: string): string {
 
 export const OUTCOME_ORDER = ['Pending', 'Permitted', 'Refused', 'Withdrawn', 'Other'] as const
 
-export type Outcome = (typeof OUTCOME_ORDER)[number]
+type Outcome = (typeof OUTCOME_ORDER)[number]
 
 export const OUTCOME_COLORS: Record<Outcome, string> = {
   Pending: '#2563eb',

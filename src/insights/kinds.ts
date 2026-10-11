@@ -7,6 +7,33 @@ import type { InsightImageKind } from '../types.js';
 // Display order, best first. Gallery groups and ranking both use it.
 export const KIND_ORDER: InsightImageKind[] = ['render', 'map', 'elevation', 'plan', 'section', 'photo', 'other'];
 
+// Singular label for one kind (a tile caption, a review row) and plural label
+// for a gallery group of that kind. Kept here with the order so the viewer and
+// the review tool cannot drift apart.
+export const KIND_LABELS: Record<InsightImageKind, string> = {
+  render: 'Render',
+  map: 'Location map',
+  elevation: 'Elevation',
+  plan: 'Plan',
+  section: 'Section',
+  photo: 'Photo',
+  other: 'Other'
+};
+
+export const KIND_GROUP_LABELS: Record<InsightImageKind, string> = {
+  render: 'Renders',
+  map: 'Location maps',
+  elevation: 'Elevations',
+  plan: 'Plans',
+  section: 'Sections',
+  photo: 'Photos',
+  other: 'Other'
+};
+
+export function kindLabel(kind: string): string {
+  return (KIND_LABELS as Record<string, string>)[kind] ?? kind;
+}
+
 // Base score of a classified page, before content bonuses/penalties. `render`
 // outranks a map, which outranks a plain plan; `other` is a weak fallback.
 export const KIND_BASE: Record<InsightImageKind, number> = {

@@ -3,14 +3,14 @@
 // shipping sample documents. Not imported by production code.
 import zlib from 'zlib';
 
-export interface TestText {
+interface TestText {
   x: number;
   y: number;
   size: number;
   str: string;
 }
 
-export interface TestImage {
+interface TestImage {
   // Placement on the page, in PDF points (origin bottom-left).
   x: number;
   y: number;
