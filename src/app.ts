@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
-import { downloadApplication } from './scraper.js';
 import { searchPlanIt } from './planit.js';
 import { getApplications, getApplication } from './storage.js';
 import { downloadQueue } from './queue.js';
@@ -295,7 +294,7 @@ export function createApp(): express.Express {
 
   // Automatically-derived summary + most relevant images/plans/renders
   app.use(insightsRouter);
-  // Local-development review tooling; each route 404s unless enabled.
+  // Review tooling; always registered, reachable only by knowing the URL.
   app.use(reviewRouter);
 
   // Serve static documents

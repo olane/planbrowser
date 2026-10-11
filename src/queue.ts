@@ -3,7 +3,7 @@ import { DEFAULT_AUTHORITY_ID } from './authorities.js';
 
 import type { QueueItem } from './types.js';
 
-export interface DownloadQueueOptions {
+interface DownloadQueueOptions {
   // Delay between finishing one application and starting the next, to avoid
   // rate limiting the target portal.
   delayMs?: number;

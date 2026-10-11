@@ -80,7 +80,7 @@
                 <button type="button" :class="pageVerdict(page) === 'good' ? $style.goodActive : $style.button" @click="rate(page, 'good')">Good</button>
                 <button type="button" :class="pageVerdict(page) === 'bad' ? $style.badActive : $style.button" @click="rate(page, 'bad')">Bad</button>
                 <select :class="$style.select" :value="pageKind(page)" @change="setKind(page, $event)">
-                  <option v-for="kind in KINDS" :key="kind" :value="kind">{{ kindLabel(kind) }}</option>
+                  <option v-for="kind in KIND_ORDER" :key="kind" :value="kind">{{ kindLabel(kind) }}</option>
                 </select>
                 <select
                   :class="[$style.select, pageRank(page) === 'high' ? $style.rankHigh : pageRank(page) === 'low' ? $style.rankLow : '']"
@@ -105,6 +105,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { ApplicationMeta, ApplicationInsights, InsightImageKind, InsightRank, InsightLabel, InsightPage } from '../../../src/types.js'
+import { KIND_ORDER, kindLabel } from '../../../src/insights/kinds.js'
 import * as api from '../api'
 import { useInsights } from '../composables/useInsights'
 
@@ -117,18 +118,6 @@ const { insights, status, error, load, generate, reset } = useInsights(
   () => refParam.value,
   () => app.value?.authorityId
 )
-
-const KINDS: InsightImageKind[] = ['render', 'map', 'elevation', 'plan', 'section', 'photo', 'other']
-const KIND_LABELS: Record<string, string> = {
-  render: 'Render',
-  map: 'Location map',
-  elevation: 'Elevation',
-  plan: 'Plan',
-  section: 'Section',
-  photo: 'Photo',
-  other: 'Other'
-}
-const kindLabel = (kind: string) => KIND_LABELS[kind] ?? kind
 
 const pageKey = (page: { localFilename: string; page: number }) => `${page.localFilename}#${page.page}`
 const shortName = (name: string) =>

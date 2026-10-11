@@ -4,7 +4,7 @@ import path from 'path';
 // Extracted text for an application's documents, cached to disk so each file is
 // parsed once. Each entry records the file's mtime/size so a file that changes
 // (e.g. re-downloaded or replaced) is re-extracted rather than served stale text.
-export interface CachedDocumentText {
+interface CachedDocumentText {
   text: string;
   mtimeMs: number;
   size: number;
