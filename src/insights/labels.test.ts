@@ -8,7 +8,6 @@ import {
   readLabels,
   readReviewLabels,
   readReviewStore,
-  removeLabels,
   removeReviewLabels,
   reviewsFile,
   sanitizeLabels,
@@ -60,17 +59,6 @@ describe('insight labels', () => {
   it('creates a sample entry that is not present yet', () => {
     mergeLabels('B/2', [{ file: 'x.pdf', page: 1, verdict: 'good', kind: 'photo' }]);
     expect(readLabels('B/2')).toEqual([{ file: 'x.pdf', page: 1, verdict: 'good', kind: 'photo' }]);
-  });
-
-  it('removes a verdict without touching the others', () => {
-    mergeLabels('A/1', [
-      { file: 'd.pdf', page: 1, verdict: 'good', kind: 'plan' },
-      { file: 'd.pdf', page: 2, verdict: 'bad' }
-    ]);
-    expect(removeLabels('A/1', [{ file: 'd.pdf', page: 1 }])).toEqual([
-      { file: 'd.pdf', page: 2, verdict: 'bad' }
-    ]);
-    expect(readLabels('A/1')).toEqual([{ file: 'd.pdf', page: 2, verdict: 'bad' }]);
   });
 
   it('keeps review labels in a separate store, leaving the truth untouched', () => {

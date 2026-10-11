@@ -2,14 +2,14 @@ import type { InsightImage, InsightImageKind } from '../types.js';
 import { DEFAULT_KIND_CAPS, KIND_ORDER } from './kinds.js';
 import { hammingDistance } from './pixels.js';
 
-export const DEFAULT_TOTAL_CAP = 24;
+const DEFAULT_TOTAL_CAP = 24;
 
 // Two difference hashes within this many bits are treated as the same image.
 // Deliberately strict: repeated covers differ only by a little text (distance
 // ~0), while genuinely distinct drawings of the same kind sit well above it.
 const PHASH_DISTANCE = 6;
 
-export interface SelectOptions {
+interface SelectOptions {
   caps?: Partial<Record<InsightImageKind, number>>;
   total?: number;
   // Keep the gallery diverse: at most this many images from any one document.

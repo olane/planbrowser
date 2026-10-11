@@ -41,7 +41,7 @@ export function progressText(progress: { message: string; current?: number; tota
   return `${progress.message} (${progress.current ?? 0}/${progress.total})`;
 }
 
-export type StatusTone = 'red' | 'green' | 'blue';
+type StatusTone = 'red' | 'green' | 'blue';
 
 export function statusBadgeTone(app: { status?: string; furtherInformation?: Record<string, string> }): StatusTone {
   const label = statusLabel(app).toLowerCase();
@@ -131,13 +131,13 @@ function groupName(description?: string): { title: string; key: string } | null 
   return { title: name, key: name.toLowerCase() };
 }
 
-export interface DocumentGroup<T> {
+interface DocumentGroup<T> {
   kind: 'group';
   title: string;
   parts: T[];
 }
 
-export interface DocumentSolo<T> {
+interface DocumentSolo<T> {
   kind: 'doc';
   doc: T;
 }
@@ -189,7 +189,7 @@ export function groupDocuments<T extends { description?: string }>(docs: T[]): D
   return entries;
 }
 
-export interface HighlightSegment {
+interface HighlightSegment {
   text: string;
   match: boolean;
 }

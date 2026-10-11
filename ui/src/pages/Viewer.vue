@@ -349,7 +349,8 @@ import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick, useCssModul
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { timeAgo, progressText, isKeyDocument, shortDocumentName } from '../utils'
-import type { ApplicationMeta, ApplicationInsights, ApplicationLocation, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet } from '../../../src/types.js'
+import type { ApplicationMeta, ApplicationInsights, ApplicationLocation, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet, InsightImageKind } from '../../../src/types.js'
+import { KIND_ORDER, KIND_GROUP_LABELS, kindLabel } from '../../../src/insights/kinds.js'
 import * as api from '../api'
 import { useInsights } from '../composables/useInsights'
 import DocumentList from '../components/DocumentList.vue'
@@ -417,27 +418,6 @@ const docFilterActive = computed(() => docSearch.value.trim() !== '' || selected
 
 const tabClass = (tab: string) => (activeTab.value === tab ? styles.tabActive : styles.tabInactive)
 
-const KIND_GROUP_ORDER = ['render', 'map', 'elevation', 'plan', 'section', 'photo', 'other']
-const KIND_GROUP_LABELS: Record<string, string> = {
-  render: 'Renders',
-  map: 'Location maps',
-  elevation: 'Elevations',
-  plan: 'Plans',
-  section: 'Sections',
-  photo: 'Photos',
-  other: 'Other'
-}
-const KIND_LABELS: Record<string, string> = {
-  render: 'Render',
-  map: 'Location map',
-  elevation: 'Elevation',
-  plan: 'Plan',
-  section: 'Section',
-  photo: 'Photo',
-  other: 'Other'
-}
-const kindLabel = (kind: string) => KIND_LABELS[kind] ?? kind
-
 // Live progress text and bar while a scan runs, from the streamed counters.
 const insightsProgressLabel = computed(() => {
   const p = insightsProgress.value
@@ -465,7 +445,7 @@ const insightGroups = computed(() => {
   if (!insights.value) return []
   const availableByKind: Record<string, number> = {}
   for (const entry of insights.value.coverage?.images ?? []) availableByKind[entry.kind] = entry.available
-  const groups = new Map<string, ApplicationInsights['images']>()
+  const groups = new Map<InsightImageKind, ApplicationInsights['images']>()
   for (const image of insightSourceImages.value) {
     const list = groups.get(image.kind) ?? []
     list.push(image)
@@ -476,14 +456,14 @@ const insightGroups = computed(() => {
       const available = availableByKind[kind] ?? images.length
       return {
         kind,
-        label: KIND_GROUP_LABELS[kind] ?? kind,
+        label: KIND_GROUP_LABELS[kind],
         images,
         selected: images.length,
         available,
         truncated: images.length < available
       }
     })
-    .sort((a, b) => KIND_GROUP_ORDER.indexOf(a.kind) - KIND_GROUP_ORDER.indexOf(b.kind))
+    .sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind))
 })
 
 const hasAllFound = computed(() => (insights.value?.found?.length ?? 0) > (insights.value?.images.length ?? 0))

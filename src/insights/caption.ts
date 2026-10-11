@@ -12,7 +12,7 @@ export interface TextItem {
   fontSize?: number | undefined;
 }
 
-export interface Box {
+interface Box {
   x0: number;
   y0: number;
   x1: number;
@@ -68,7 +68,7 @@ const asMatrix = (value: unknown): Matrix => {
 // One painted image: where it lands on the page and, for image XObjects, its
 // pixel dimensions (pdf.js passes them as the op's arguments, so no pixel data
 // needs to be read).
-export interface ImagePlacement {
+interface ImagePlacement {
   box: Box;
   // Width x height in pixels for an image XObject; 0 for masks.
   pixelArea: number;
