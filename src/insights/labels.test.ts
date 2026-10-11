@@ -2,10 +2,24 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { labelsAvailable, mergeLabels, readLabels, removeLabels, reviewEnabled, sanitizeLabels, sanitizePageRefs } from './labels.js';
+import {
+  labelsAvailable,
+  mergeLabels,
+  mergeReviewLabels,
+  readLabels,
+  readReviewLabels,
+  readReviewStore,
+  removeLabels,
+  removeReviewLabels,
+  reviewEnabled,
+  reviewsFile,
+  sanitizeLabels,
+  sanitizePageRefs
+} from './labels.js';
 
 let dir: string;
 let file: string;
+let reviews: string;
 
 beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pb-insight-labels-'));
@@ -15,10 +29,13 @@ beforeEach(() => {
     JSON.stringify({ samples: { 'A/1': { expect: [{ doc: 'kept', kind: 'plan' }] } } }, null, 2)
   );
   process.env.INSIGHTS_TRUTH = file;
+  reviews = path.join(dir, 'insights-reviews.json');
+  process.env.INSIGHTS_REVIEWS = reviews;
 });
 
 afterEach(() => {
   delete process.env.INSIGHTS_TRUTH;
+  delete process.env.INSIGHTS_REVIEWS;
   delete process.env.INSIGHTS_REVIEW;
   fs.rmSync(dir, { recursive: true, force: true });
 });
@@ -72,6 +89,35 @@ describe('insight labels', () => {
       { file: 'd.pdf', page: 2, verdict: 'bad' }
     ]);
     expect(readLabels('A/1')).toEqual([{ file: 'd.pdf', page: 2, verdict: 'bad' }]);
+  });
+
+  it('keeps review labels in a separate store, leaving the truth untouched', () => {
+    mergeReviewLabels('A/1', [
+      { file: 'd.pdf', page: 1, verdict: 'good', kind: 'render' },
+      { file: 'd.pdf', page: 2, verdict: 'bad' }
+    ]);
+    expect(readReviewLabels('A/1')).toEqual([
+      { file: 'd.pdf', page: 1, verdict: 'good', kind: 'render' },
+      { file: 'd.pdf', page: 2, verdict: 'bad' }
+    ]);
+    expect(readLabels('A/1')).toEqual([]);
+    expect(readReviewStore().samples?.['A/1']?.labels).toHaveLength(2);
+  });
+
+  it('removes review labels without rewriting them into the truth', () => {
+    mergeReviewLabels('A/1', [
+      { file: 'd.pdf', page: 1, verdict: 'good' },
+      { file: 'd.pdf', page: 2, verdict: 'bad' }
+    ]);
+    expect(removeReviewLabels('A/1', [{ file: 'd.pdf', page: 1 }])).toEqual([
+      { file: 'd.pdf', page: 2, verdict: 'bad' }
+    ]);
+    expect(readReviewLabels('A/1')).toEqual([{ file: 'd.pdf', page: 2, verdict: 'bad' }]);
+    expect(readLabels('A/1')).toEqual([]);
+  });
+
+  it('resolves the review store from INSIGHTS_REVIEWS', () => {
+    expect(reviewsFile()).toBe(reviews);
   });
 
   it('sanitizes untrusted page references', () => {

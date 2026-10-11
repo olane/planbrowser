@@ -9,8 +9,8 @@
       </p>
       <p :class="$style.intro">
         Rate each page the heuristic interpreted — including the ones it <b>rejected</b> — so missed
-        pages can be flagged as false negatives. Click the active rating again to clear it. Labels
-        save to <code>scripts/samples.expected.json</code> for <code>npm run insights:eval</code>.
+        pages can be flagged as false negatives. Click the active rating again to clear it. Ratings
+        save to the server; download them to fold into the eval ground truth.
       </p>
     </header>
 
@@ -40,6 +40,7 @@
           <input type="checkbox" v-model="hideLabelled" /> Hide labelled
         </label>
         <span :class="$style.progress">{{ labelledCount }} labelled</span>
+        <a :href="api.reviewsDownloadUrl()" download :class="$style.linkButton">Download reviews</a>
         <span v-if="saveState === 'saving'" :class="$style.saving">Saving…</span>
         <span v-else-if="saveState === 'saved'" :class="$style.saved">Saved</span>
         <span v-else-if="saveState === 'error'" :class="$style.error">{{ saveError }}</span>
