@@ -24,14 +24,6 @@ export function reviewsFile(): string {
     : path.join(getDownloadsDir(), 'insights-reviews.json');
 }
 
-// Whether the review endpoints are enabled. Always on: the tool is only
-// reachable by knowing the `/review/<ref>` URL, so a private deployment collects
-// feedback with no extra configuration. `INSIGHTS_REVIEW=0` is an explicit off
-// switch for a build that must not accept review writes.
-export function reviewEnabled(): boolean {
-  return process.env.INSIGHTS_REVIEW !== '0';
-}
-
 const KINDS: InsightImageKind[] = ['render', 'plan', 'elevation', 'section', 'map', 'photo', 'other'];
 const RANKS: InsightRank[] = ['high', 'low'];
 

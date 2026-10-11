@@ -9,7 +9,6 @@ import {
   readReviewLabels,
   readReviewStore,
   removeReviewLabels,
-  reviewEnabled,
   sanitizeLabels,
   sanitizePageRefs
 } from './labels.js';
@@ -18,18 +17,14 @@ import { THUMB_WIDTH } from './generate.js';
 import { resolveAuthorityId } from './routes.js';
 
 // Review tooling (docs/insights.md). It collects page verdicts into the
-// persistent review store and re-renders rejected pages. On by default and only
-// reachable by knowing the URL; `reviewEnabled()` keeps an explicit off switch.
+// persistent review store and re-renders rejected pages. Reachable only by
+// knowing the URL.
 export const reviewRouter = Router();
 
 // Download every verdict collected so far, in the shape `npm run
 // insights:labels` consumes: `{ samples: { <reference>: InsightLabel[] } }`.
 // Point an agent at this URL to fold live feedback into the eval ground truth.
 reviewRouter.get('/api/insights/reviews', (req, res) => {
-  if (!reviewEnabled()) {
-    res.status(404).json({ error: 'Review labelling is not available' });
-    return;
-  }
   const samples: Record<string, InsightLabel[]> = {};
   for (const [reference, spec] of Object.entries(readReviewStore().samples ?? {})) {
     const labels = spec.labels ?? [];
@@ -41,10 +36,6 @@ reviewRouter.get('/api/insights/reviews', (req, res) => {
 });
 
 reviewRouter.get('/api/applications/:ref/insights/labels', (req, res) => {
-  if (!reviewEnabled()) {
-    res.status(404).json({ error: 'Review labelling is not available' });
-    return;
-  }
   const found = resolveApplicationMeta(req.params.ref, resolveAuthorityId(req.query.authority));
   if (!found) {
     res.status(404).json({ error: 'Application not found' });
@@ -58,10 +49,6 @@ reviewRouter.get('/api/applications/:ref/insights/labels', (req, res) => {
 });
 
 reviewRouter.post('/api/applications/:ref/insights/labels', (req, res) => {
-  if (!reviewEnabled()) {
-    res.status(404).json({ error: 'Review labelling is not available' });
-    return;
-  }
   const found = resolveApplicationMeta(
     req.params.ref,
     resolveAuthorityId(req.body?.authority ?? req.query.authority)
@@ -98,10 +85,6 @@ reviewRouter.post('/api/applications/:ref/insights/labels', (req, res) => {
 // review grid requests many images at once, and writing features.json per
 // request would race.
 reviewRouter.get('/api/applications/:ref/insights/review/image', async (req, res) => {
-  if (!reviewEnabled()) {
-    res.status(404).end();
-    return;
-  }
   const found = resolveApplicationMeta(req.params.ref, resolveAuthorityId(req.query.authority));
   if (!found) {
     res.status(404).end();

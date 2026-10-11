@@ -348,8 +348,8 @@ away visual documents.
   UI writes to a separate store (`reviewsFile()`), so collected feedback never mutates the
   checked-in ground truth until it is explicitly merged.
 - **Review endpoints split out.** The label and rejected-page routes live in
-  `routes.review.ts`, gated by `reviewEnabled()` (on by default, `INSIGHTS_REVIEW=0` disables).
-  The UI page and endpoints always ship; access is only by knowing the `/review/<ref>` URL.
+  `routes.review.ts`. The UI page and endpoints always ship; access is only by knowing the
+  `/review/<ref>` URL.
 - **`coverage.partial` only fires on a real cap.** A generation records whether a budget actually
   cut work off, so a run that merely used its last page does not report as partial.
 - **`generateInsights` delegates.** The per-document step (page choice, pre-scan, classify,
@@ -461,9 +461,8 @@ Because this is a ranking problem, do not tune it blind.
   for `npm run insights:eval`.
 
   The UI route and endpoints (`routes.review.ts`) are always registered and reachable only by
-  knowing the `/review/<ref>` URL; `reviewEnabled()` keeps an `INSIGHTS_REVIEW=0` kill switch for
-  a build that must not accept review writes. This supersedes the contact sheet for labelling
-  `found` and rejected pages; the contact sheet remains useful for a whole-corpus side-by-side.
+  knowing the `/review/<ref>` URL. This supersedes the contact sheet for labelling `found` and
+  rejected pages; the contact sheet remains useful for a whole-corpus side-by-side.
 - **Ground truth + eval** (`scripts/samples.expected.json`, `npm run insights:eval`; format in
   `scripts/insights-truth.mjs`). Hard assertions — `expect` (doc substring + optional
   page/kind, optionally `highlight: true`), `expectAbsent`, `expectEmpty` — fail the run. Labels

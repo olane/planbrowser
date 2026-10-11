@@ -10,7 +10,6 @@ import {
   readReviewStore,
   removeLabels,
   removeReviewLabels,
-  reviewEnabled,
   reviewsFile,
   sanitizeLabels,
   sanitizePageRefs
@@ -35,19 +34,10 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env.INSIGHTS_TRUTH;
   delete process.env.INSIGHTS_REVIEWS;
-  delete process.env.INSIGHTS_REVIEW;
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
 describe('insight labels', () => {
-  it('enables review unless explicitly switched off', () => {
-    expect(reviewEnabled()).toBe(true);
-    process.env.INSIGHTS_REVIEW = '1';
-    expect(reviewEnabled()).toBe(true);
-    process.env.INSIGHTS_REVIEW = '0';
-    expect(reviewEnabled()).toBe(false);
-  });
-
   it('merges labels, replacing a prior verdict for the same page', () => {
     mergeLabels('A/1', [{ file: 'd.pdf', page: 2, verdict: 'good', kind: 'render' }]);
     mergeLabels('A/1', [
