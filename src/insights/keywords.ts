@@ -5,7 +5,7 @@ import { KIND_PRIOR_WEIGHT } from './kinds.js';
 // treated as weak evidence (see docs/insights.md): they rank candidates, they do
 // not gate them. Page contents refine the decision later.
 
-export interface DocumentPrior {
+interface DocumentPrior {
   score: number;
   kind?: InsightImageKind;
 }
@@ -144,7 +144,7 @@ export function kindsFromText(text: string): InsightImageKind[] {
 }
 
 // The normalised name haystack for a document: type, description and filename.
-export function documentHaystack(doc: NamedDocument): string {
+function documentHaystack(doc: NamedDocument): string {
   return normalise([doc.documentType, doc.description, doc.localFilename].filter(Boolean).join(' '));
 }
 

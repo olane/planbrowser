@@ -3,9 +3,9 @@ import { resolveApplicationMeta } from '../storage.js';
 import { readInsights } from './cache.js';
 import { documentList, generateInsights, isCurrent, sourceSignature, type GenerateOptions } from './generate.js';
 
-export type InsightsStatus = 'none' | 'running' | 'ready' | 'error';
+type InsightsStatus = 'none' | 'running' | 'ready' | 'error';
 
-export interface InsightsState {
+interface InsightsState {
   status: InsightsStatus;
   insights?: ApplicationInsights;
   // Live counters for an in-flight run, so the UI can show real progress.

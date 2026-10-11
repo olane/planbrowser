@@ -6,7 +6,7 @@ import { extractPostcode } from './postcode.js';
 // this is intentionally approximate and never preferred over scraped geometry.
 const POSTCODES_IO_URL = 'https://api.postcodes.io/postcodes';
 
-export interface PostcodeCoordinates {
+interface PostcodeCoordinates {
   latitude: number;
   longitude: number;
 }

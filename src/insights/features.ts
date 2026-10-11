@@ -14,16 +14,16 @@ import type { PageLine } from './title.js';
 //
 // Bump FEATURES_VERSION when *extraction* changes (text grouping, scan, pixel
 // stats). Interpretation changes bump STRATEGY.version in generate.ts instead.
-export const FEATURES_VERSION = 1;
+const FEATURES_VERSION = 1;
 
-export interface PageRender {
+interface PageRender {
   // Content-addressed thumbnail under insights/ (may have been pruned; it is
   // re-rendered on demand).
   imageFile: string;
   pixels: PagePixelStats;
 }
 
-export interface DocumentFeatures {
+interface DocumentFeatures {
   mtimeMs: number;
   size: number;
   // Text lines per page (index 0 = page 1). Absent until first needed.
@@ -55,14 +55,14 @@ function readFeatureFile(appDir: string): FeatureFile {
 }
 
 // Work actually done (cache misses), for logging and tests.
-export interface FeatureWork {
+interface FeatureWork {
   opened: number;
   textExtracted: number;
   scanned: number;
   rendered: number;
 }
 
-export interface CaptionPolicy {
+interface CaptionPolicy {
   // Only read a caption for pages carrying an image at least this large.
   captionMinArea: number;
 }

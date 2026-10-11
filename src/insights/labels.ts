@@ -27,12 +27,12 @@ export function reviewsFile(): string {
 const KINDS: InsightImageKind[] = ['render', 'plan', 'elevation', 'section', 'map', 'photo', 'other'];
 const RANKS: InsightRank[] = ['high', 'low'];
 
-export interface TruthSample {
+interface TruthSample {
   labels?: InsightLabel[];
   [key: string]: unknown;
 }
 
-export interface TruthFile {
+interface TruthFile {
   samples?: Record<string, TruthSample>;
   [key: string]: unknown;
 }
@@ -125,13 +125,6 @@ export function readLabels(reference: string): InsightLabel[] {
 
 export function mergeLabels(reference: string, incoming: InsightLabel[]): InsightLabel[] {
   return mergeInto(truthFile(), reference, incoming);
-}
-
-export function removeLabels(
-  reference: string,
-  pages: { file: string; page: number }[]
-): InsightLabel[] {
-  return removeFrom(truthFile(), reference, pages);
 }
 
 // Labels collected in the review UI (reviewsFile()).

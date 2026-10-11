@@ -8,7 +8,7 @@ export function insightsDir(appDir: string): string {
   return path.join(appDir, 'insights');
 }
 
-export function insightsFile(appDir: string): string {
+function insightsFile(appDir: string): string {
   return path.join(insightsDir(appDir), 'insights.json');
 }
 

@@ -4,7 +4,7 @@ import { KIND_BASE } from './kinds.js';
 import type { PagePixelStats } from './pixels.js';
 import { linesFromText, linesToText, titleCandidates, type PageLine, type TitleCandidate } from './title.js';
 
-export interface PageClassification {
+interface PageClassification {
   kind: InsightImageKind;
   score: number;
   label: string;
@@ -48,7 +48,7 @@ export function isProsePage(text: string, stats: PagePixelStats): boolean {
   return longLines >= 3 && stats.edgeDensity < 0.16;
 }
 
-export interface ClassifyOptions {
+interface ClassifyOptions {
   // True when the page carries a large embedded raster (from the pre-scan). A
   // statement page can mix body text with a render/photo figure; this keeps such
   // a page from being dismissed as prose.
