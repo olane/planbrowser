@@ -74,7 +74,7 @@
                 <span :class="$style.kind">{{ kindLabel(page.kind) }}</span>
                 <span :class="$style.score">score {{ page.score }}</span>
               </div>
-              <div :class="$style.doc">{{ shortName(page.localFilename) }} · page {{ page.page }}</div>
+              <div :class="$style.doc">{{ shortDocumentName(page.localFilename) }} · page {{ page.page }}</div>
               <div :class="$style.reason">{{ page.reason }}</div>
               <div :class="$style.controls">
                 <button type="button" :class="pageVerdict(page) === 'good' ? $style.goodActive : $style.button" @click="rate(page, 'good')">Good</button>
@@ -108,6 +108,7 @@ import type { ApplicationMeta, ApplicationInsights, InsightImageKind, InsightRan
 import { KIND_ORDER, kindLabel } from '../../../src/insights/kinds.js'
 import * as api from '../api'
 import { useInsights } from '../composables/useInsights'
+import { shortDocumentName } from '../utils'
 
 const route = useRoute()
 const refParam = computed(() => route.params.ref as string)
@@ -120,8 +121,6 @@ const { insights, status, error, load, generate, reset } = useInsights(
 )
 
 const pageKey = (page: { localFilename: string; page: number }) => `${page.localFilename}#${page.page}`
-const shortName = (name: string) =>
-  name.replace(/\.pdf$/i, '').replace(/^\d{1,2}\s+\w{3}\s+\d{4}\s*-\s*[^-]+-\s*/, '')
 
 type ReviewLabel = { verdict: 'good' | 'bad'; kind?: InsightImageKind; rank?: InsightRank }
 const labels = ref<Record<string, ReviewLabel>>({})

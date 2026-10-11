@@ -215,6 +215,13 @@ export function highlightSegments(text: string, query: string): HighlightSegment
   return segments.length ? segments : [{ text, match: false }];
 }
 
+// Stored filenames are "<date> - <type> - <description>.pdf"; strip everything
+// but the description, e.g. "13 Jan 2026 - Drawings - PROPOSED SITE PLAN.pdf"
+// -> "PROPOSED SITE PLAN".
+export function shortDocumentName(name: string): string {
+  return name.replace(/\.pdf$/i, '').replace(/^\d{1,2}\s+\w{3}\s+\d{4}\s*-\s*[^-]+-\s*/, '')
+}
+
 const KEY_DOC_KEYWORDS = [
   'design and access',
   'planning statement',

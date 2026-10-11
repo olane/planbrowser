@@ -44,6 +44,7 @@ import type { ApplicationMeta } from '../../../src/types.js'
 import { DEFAULT_AUTHORITY_ID, authorityName } from '../../../src/authorities.js'
 import { refreshQueue } from '../queueStore'
 import * as api from '../api'
+import ui from '../styles/primitives.module.css'
 
 const props = defineProps<{ app: ApplicationMeta; queueStatus?: string; readonly?: boolean }>()
 
@@ -59,9 +60,9 @@ const isSyncing = computed(() => props.queueStatus === 'in_progress')
 const isFailed = computed(() => props.queueStatus === 'failed')
 
 const badgeToneClass = computed(() => ({
-  red: styles.badgeRed,
-  green: styles.badgeGreen,
-  blue: styles.badgeBlue,
+  red: ui.toneRed,
+  green: ui.toneGreen,
+  blue: ui.toneBlue,
 }[statusBadgeTone(props.app)]))
 
 const syncButtonTitle = computed(() => {
@@ -270,24 +271,6 @@ async function syncApp() {
   line-height: 1rem;
   font-weight: 500;
   box-shadow: inset 0 0 0 1px currentColor;
-}
-
-.badgeRed {
-  background: var(--color-red-50);
-  color: var(--color-red-700);
-  box-shadow: inset 0 0 0 1px rgb(220 38 38 / 0.1);
-}
-
-.badgeGreen {
-  background: var(--color-green-50);
-  color: var(--color-green-700);
-  box-shadow: inset 0 0 0 1px rgb(22 163 74 / 0.2);
-}
-
-.badgeBlue {
-  background: var(--color-blue-50);
-  color: var(--color-blue-700);
-  box-shadow: inset 0 0 0 1px rgb(29 78 216 / 0.1);
 }
 
 .actionRow {
