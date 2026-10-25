@@ -296,9 +296,9 @@ export function createApp(): express.Express {
           // Unknown authority filter: fall back to searching all authorities
         }
       }
-      const app = getApplication(ref, authorityId);
-      if (app) {
-        res.json(app);
+      const record = getApplication(ref, authorityId);
+      if (record) {
+        res.json(record);
       } else {
         res.status(404).json({ error: 'Application not found' });
       }

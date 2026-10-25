@@ -7,6 +7,7 @@
   "rules": {
     "eslint/no-unused-vars": "error",
     "eslint/no-useless-escape": "error",
+    "eslint/no-shadow": "error",
     "unicorn/no-empty-file": "error",
     "vitest/no-conditional-expect": "error"
   },

@@ -65,7 +65,7 @@ export function parseWfsGeometry(xml: string): WfsGeometry {
     const rings: LocationPolygon = [];
     $(poly)
       .find('gml\\:exterior, gml\\:interior')
-      .each((_, part) => {
+      .each((_i, part) => {
         const wrapper = $(part);
         const ringEl = wrapper.find('gml\\:LinearRing').first();
         const ring = ringFrom($, ringEl.length > 0 ? ringEl : wrapper);
