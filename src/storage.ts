@@ -53,7 +53,7 @@ function withFlags(meta: ApplicationMeta): ApplicationMeta {
     ...meta,
     starred: flags.starred,
     archived: flags.archived,
-    documents: (meta.documents || []).map((d) => withDocFlags(d, meta.reference, meta.authorityId))
+    documents: (meta.documents || []).map((d) => withDocFlags(d, meta.reference, meta.authorityId)),
   };
 }
 
@@ -66,7 +66,10 @@ function withDocFlags(doc: DocumentMeta, reference: string, authorityId?: string
 // it lives in (needed by callers that also want the document files). Mirrors the
 // resolution order of getApplication: known authority, legacy flat layout, then
 // any namespaced directory.
-export function resolveApplicationMeta(reference: string, authorityId?: string): { meta: ApplicationMeta; dir: string } | null {
+export function resolveApplicationMeta(
+  reference: string,
+  authorityId?: string,
+): { meta: ApplicationMeta; dir: string } | null {
   const safeRef = safeReference(reference);
 
   if (authorityId) {
@@ -109,7 +112,11 @@ function atomicWriteJson(filePath: string, data: unknown): void {
   fs.renameSync(tmp, filePath);
 }
 
-export function saveApplicationMeta(reference: string, meta: ApplicationMeta, authorityId: string = DEFAULT_AUTHORITY_ID): void {
+export function saveApplicationMeta(
+  reference: string,
+  meta: ApplicationMeta,
+  authorityId: string = DEFAULT_AUTHORITY_ID,
+): void {
   const outDir = getApplicationDir(reference, authorityId);
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });
@@ -128,7 +135,7 @@ function dedupeMeta(meta: ApplicationMeta): ApplicationMeta {
       if (!d.localFilename || seen.has(d.localFilename)) return false;
       seen.add(d.localFilename);
       return true;
-    })
+    }),
   };
 }
 

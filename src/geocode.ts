@@ -12,7 +12,9 @@ interface PostcodeCoordinates {
 
 async function requestPostcode(postcode: string, fetchFn: typeof fetch = fetch): Promise<PostcodeCoordinates | null> {
   try {
-    const res = await fetchFn(`${POSTCODES_IO_URL}/${encodeURIComponent(postcode)}`, { signal: AbortSignal.timeout(8000) });
+    const res = await fetchFn(`${POSTCODES_IO_URL}/${encodeURIComponent(postcode)}`, {
+      signal: AbortSignal.timeout(8000),
+    });
     if (!res.ok) return null;
     const body = (await res.json()) as { result?: { latitude?: number | null; longitude?: number | null } };
     const { latitude, longitude } = body.result ?? {};
@@ -39,7 +41,10 @@ export async function geocodePostcode(postcode: string, fetchFn: typeof fetch = 
 // Resolve a scraped application address to a location by geocoding the postcode
 // embedded in it. Returns null when the address has no recognisable postcode or
 // the lookup fails, so callers can treat it as a pure best-effort fallback.
-export async function locationFromAddress(address: string, fetchFn: typeof fetch = fetch): Promise<ApplicationLocation | null> {
+export async function locationFromAddress(
+  address: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<ApplicationLocation | null> {
   const postcode = extractPostcode(address);
   if (!postcode) return null;
   const coords = await geocodePostcode(postcode, fetchFn);
@@ -53,8 +58,8 @@ export async function locationFromAddress(address: string, fetchFn: typeof fetch
       minLon: coords.lon,
       maxLon: coords.lon,
       minLat: coords.lat,
-      maxLat: coords.lat
+      maxLat: coords.lat,
     },
-    source: 'postcode'
+    source: 'postcode',
   };
 }

@@ -45,7 +45,10 @@ function dedupe(candidates: InsightImage[]): InsightImage[] {
   const kept: InsightImage[] = [];
   const keptHashes: string[] = [];
   for (const candidate of sorted) {
-    if (candidate.phash && keptHashes.some((hash) => hammingDistance(hash, candidate.phash as string) <= PHASH_DISTANCE)) {
+    if (
+      candidate.phash &&
+      keptHashes.some((hash) => hammingDistance(hash, candidate.phash as string) <= PHASH_DISTANCE)
+    ) {
       continue;
     }
     if (candidate.phash) keptHashes.push(candidate.phash);
@@ -80,16 +83,14 @@ export function selectImages(candidates: InsightImage[], opts: SelectOptions = {
     chosen.push(candidate);
   }
 
-  chosen.sort(
-    (a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || b.score - a.score
-  );
+  chosen.sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || b.score - a.score);
   const dedupedSorted = [...deduped].sort(
-    (a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || b.score - a.score
+    (a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || b.score - a.score,
   );
   return {
     images: chosen,
     deduped: dedupedSorted,
     available,
-    truncated: chosen.length < deduped.length
+    truncated: chosen.length < deduped.length,
   };
 }

@@ -69,8 +69,8 @@ export function buildPdf(pages: TestPage[]): Buffer {
       const imageId = add(
         stream(
           `/Type /XObject /Subtype /Image /Width ${img.pxW} /Height ${img.pxH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode`,
-          zlib.deflateSync(raw)
-        )
+          zlib.deflateSync(raw),
+        ),
       );
       resources += ` /XObject << /Im1 ${imageId} 0 R >>`;
       content += `q ${img.w} 0 0 ${img.h} ${img.x} ${img.y} cm /Im1 Do Q\n`;
@@ -82,12 +82,13 @@ export function buildPdf(pages: TestPage[]): Buffer {
     const contentId = add(stream('', Buffer.from(content)));
     pageIds.push(
       add(
-        `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${width} ${height}] /Resources << ${resources} >> /Contents ${contentId} 0 R >>`
-      )
+        `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${width} ${height}] /Resources << ${resources} >> /Contents ${contentId} 0 R >>`,
+      ),
     );
   }
   objects[catalogId - 1] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
-  objects[pagesId - 1] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`;
+  objects[pagesId - 1] =
+    `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`;
 
   const chunks: Buffer[] = [Buffer.from('%PDF-1.4\n')];
   const offsets: number[] = [];

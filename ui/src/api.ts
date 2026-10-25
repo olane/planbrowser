@@ -1,4 +1,20 @@
-import type { ApplicationMeta, PlanItResponse, Comment, QueueItem, SearchFilters, ApplicationFlags, ActivityEvent, DocumentFlags, DocumentSearchHit, SavedSearch, PlanItRecord, SortSpec, ApplicationInsights, InsightLabel, InsightsProgress } from '../../src/types.js';
+import type {
+  ApplicationMeta,
+  PlanItResponse,
+  Comment,
+  QueueItem,
+  SearchFilters,
+  ApplicationFlags,
+  ActivityEvent,
+  DocumentFlags,
+  DocumentSearchHit,
+  SavedSearch,
+  PlanItRecord,
+  SortSpec,
+  ApplicationInsights,
+  InsightLabel,
+  InsightsProgress,
+} from '../../src/types.js';
 import type { SyncScope } from '../../src/decision.js';
 import { DEFAULT_AUTHORITY_ID } from '../../src/authorities.js';
 import { safeReference } from '../../src/refs.js';
@@ -14,7 +30,12 @@ export function documentUrl(reference: string, authorityId: string | undefined, 
 }
 
 // A document URL that opens the browser's PDF viewer at a given 1-based page.
-export function documentPageUrl(reference: string, authorityId: string | undefined, filename: string, page: number): string {
+export function documentPageUrl(
+  reference: string,
+  authorityId: string | undefined,
+  filename: string,
+  page: number,
+): string {
   return `${documentUrl(reference, authorityId, filename)}#page=${page}`;
 }
 
@@ -33,7 +54,12 @@ export async function fetchApplication(reference: string): Promise<ApplicationMe
   return res.json();
 }
 
-export async function searchPlanIt(postcode: string, radius: string, filters: SearchFilters = {}, sort?: SortSpec): Promise<PlanItResponse> {
+export async function searchPlanIt(
+  postcode: string,
+  radius: string,
+  filters: SearchFilters = {},
+  sort?: SortSpec,
+): Promise<PlanItResponse> {
   const params = new URLSearchParams({ postcode, radius });
   for (const [key, value] of Object.entries(filters)) {
     if (value) {
@@ -64,7 +90,7 @@ export async function downloadApplication(reference: string, authority?: string)
   const res = await fetch('/api/download', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reference, authority })
+    body: JSON.stringify({ reference, authority }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -73,12 +99,18 @@ export async function downloadApplication(reference: string, authority?: string)
 }
 
 export async function fetchComments(reference: string, authorityId?: string): Promise<Comment[]> {
-  const res = await fetch(`/api/documents/${docUrlPrefix(authorityId)}${encodeURIComponent(safeReference(reference))}/comments.json`);
+  const res = await fetch(
+    `/api/documents/${docUrlPrefix(authorityId)}${encodeURIComponent(safeReference(reference))}/comments.json`,
+  );
   if (!res.ok) throw new Error('Failed to load comments');
   return res.json();
 }
 
-export async function searchDocuments(reference: string, query: string, authorityId?: string): Promise<DocumentSearchHit[]> {
+export async function searchDocuments(
+  reference: string,
+  query: string,
+  authorityId?: string,
+): Promise<DocumentSearchHit[]> {
   const params = new URLSearchParams({ q: query });
   if (authorityId) params.set('authority', authorityId);
   const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/documents/search?${params.toString()}`);
@@ -125,11 +157,15 @@ export async function requeueQueueItem(id: string): Promise<void> {
   }
 }
 
-export async function setApplicationFlags(reference: string, flags: Partial<ApplicationFlags>, authority?: string): Promise<ApplicationFlags> {
+export async function setApplicationFlags(
+  reference: string,
+  flags: Partial<ApplicationFlags>,
+  authority?: string,
+): Promise<ApplicationFlags> {
   const res = await fetch(`/api/applications/${encodeURIComponent(reference)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ authority, ...flags })
+    body: JSON.stringify({ authority, ...flags }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -149,7 +185,7 @@ export async function syncApplications(scope: SyncScope): Promise<{ queued: numb
   const res = await fetch('/api/sync', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(scope)
+    body: JSON.stringify(scope),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -158,11 +194,16 @@ export async function syncApplications(scope: SyncScope): Promise<{ queued: numb
   return res.json();
 }
 
-export async function setDocumentFlags(reference: string, filename: string, flags: Partial<DocumentFlags>, authority?: string): Promise<DocumentFlags> {
+export async function setDocumentFlags(
+  reference: string,
+  filename: string,
+  flags: Partial<DocumentFlags>,
+  authority?: string,
+): Promise<DocumentFlags> {
   const res = await fetch('/api/documents', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reference, filename, authority, ...flags })
+    body: JSON.stringify({ reference, filename, authority, ...flags }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -178,11 +219,16 @@ export async function fetchSavedSearches(): Promise<SavedSearch[]> {
   return res.json();
 }
 
-export async function saveSavedSearch(input: { postcode: string; radius: string; filters: SearchFilters; sort?: SortSpec }): Promise<SavedSearch> {
+export async function saveSavedSearch(input: {
+  postcode: string;
+  radius: string;
+  filters: SearchFilters;
+  sort?: SortSpec;
+}): Promise<SavedSearch> {
   const res = await fetch('/api/saved-searches', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input)
+    body: JSON.stringify(input),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -196,7 +242,9 @@ export async function deleteSavedSearch(id: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete saved search');
 }
 
-export async function runSavedSearch(id: string): Promise<{ records: PlanItRecord[]; previousReferences: string[]; total?: number }> {
+export async function runSavedSearch(
+  id: string,
+): Promise<{ records: PlanItRecord[]; previousReferences: string[]; total?: number }> {
   const res = await fetch(`/api/saved-searches/${encodeURIComponent(id)}/run`, { method: 'POST' });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -230,7 +278,7 @@ export async function startInsights(reference: string, authorityId?: string, dee
   const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/insights`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ authority: authorityId, deep })
+    body: JSON.stringify({ authority: authorityId, deep }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -258,11 +306,15 @@ export async function fetchInsightLabels(reference: string, authorityId?: string
   return data.labels ?? [];
 }
 
-export async function saveInsightLabels(reference: string, labels: InsightLabel[], authorityId?: string): Promise<InsightLabel[]> {
+export async function saveInsightLabels(
+  reference: string,
+  labels: InsightLabel[],
+  authorityId?: string,
+): Promise<InsightLabel[]> {
   const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/insights/labels`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ authority: authorityId, labels })
+    body: JSON.stringify({ authority: authorityId, labels }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -275,12 +327,12 @@ export async function saveInsightLabels(reference: string, labels: InsightLabel[
 export async function removeInsightLabels(
   reference: string,
   pages: { file: string; page: number }[],
-  authorityId?: string
+  authorityId?: string,
 ): Promise<InsightLabel[]> {
   const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/insights/labels`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ authority: authorityId, remove: pages })
+    body: JSON.stringify({ authority: authorityId, remove: pages }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

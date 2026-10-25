@@ -8,15 +8,15 @@ export function timeAgo(dateStr: string | undefined): string {
 
   if (diffInSeconds < 30) return 'Just now';
   if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
-  
+
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes === 1) return '1 minute ago';
   if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
-  
+
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours === 1) return '1 hour ago';
   if (diffInHours < 24) return `${diffInHours} hours ago`;
-  
+
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays === 1) return 'Yesterday';
   if (diffInDays < 7) return `${diffInDays} days ago`;
@@ -219,7 +219,7 @@ export function highlightSegments(text: string, query: string): HighlightSegment
 // but the description, e.g. "13 Jan 2026 - Drawings - PROPOSED SITE PLAN.pdf"
 // -> "PROPOSED SITE PLAN".
 export function shortDocumentName(name: string): string {
-  return name.replace(/\.pdf$/i, '').replace(/^\d{1,2}\s+\w{3}\s+\d{4}\s*-\s*[^-]+-\s*/, '')
+  return name.replace(/\.pdf$/i, '').replace(/^\d{1,2}\s+\w{3}\s+\d{4}\s*-\s*[^-]+-\s*/, '');
 }
 
 const KEY_DOC_KEYWORDS = [
@@ -231,7 +231,7 @@ const KEY_DOC_KEYWORDS = [
   'officer report',
   'delegated report',
   'committee report',
-  'appeal decision'
+  'appeal decision',
 ];
 
 export function isKeyDocument(doc: { documentType?: string; description?: string; localFilename?: string }): boolean {

@@ -34,9 +34,7 @@ if (listOnly) {
   process.exit(0);
 }
 
-const samples = filters.length
-  ? manifest.filter((s) => filters.includes(s.reference))
-  : manifest;
+const samples = filters.length ? manifest.filter((s) => filters.includes(s.reference)) : manifest;
 
 if (samples.length === 0) {
   console.error(`No samples matched: ${filters.join(', ')}`);
@@ -73,7 +71,7 @@ for (const sample of samples) {
 }
 
 console.log(
-  `\n${samples.length} sample(s): ${cached.length} cached, ${fetched.length} fetched, ${failed.length} failed`
+  `\n${samples.length} sample(s): ${cached.length} cached, ${fetched.length} fetched, ${failed.length} failed`,
 );
 if (failed.length) {
   for (const s of failed) console.error(`  failed: ${s.reference} (${s.authorityId})`);

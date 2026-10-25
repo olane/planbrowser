@@ -104,11 +104,7 @@ function mergeInto(file: string, reference: string, incoming: InsightLabel[]): I
 }
 
 // Drop the verdicts for the given pages, e.g. when a reviewer unselects a rating.
-function removeFrom(
-  file: string,
-  reference: string,
-  pages: { file: string; page: number }[]
-): InsightLabel[] {
+function removeFrom(file: string, reference: string, pages: { file: string; page: number }[]): InsightLabel[] {
   const truth = loadStore(file);
   const samples = (truth.samples ??= {});
   const spec = (samples[reference] ??= {});
@@ -136,10 +132,7 @@ export function mergeReviewLabels(reference: string, incoming: InsightLabel[]): 
   return mergeInto(reviewsFile(), reference, incoming);
 }
 
-export function removeReviewLabels(
-  reference: string,
-  pages: { file: string; page: number }[]
-): InsightLabel[] {
+export function removeReviewLabels(reference: string, pages: { file: string; page: number }[]): InsightLabel[] {
   return removeFrom(reviewsFile(), reference, pages);
 }
 
@@ -153,6 +146,6 @@ export function readReviewStore(): TruthFile {
 function formatTruth(truth: TruthFile): string {
   return JSON.stringify(truth, null, 2).replace(
     /\{\n\s+([^{}\[\]]*?)\n\s*\}/g,
-    (_, body: string) => `{ ${body.replace(/,\n\s+/g, ', ')} }`
+    (_, body: string) => `{ ${body.replace(/,\n\s+/g, ', ')} }`,
   );
 }

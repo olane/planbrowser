@@ -2,7 +2,15 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { analysePagePng, type PagePixelStats } from './pixels.js';
-import { closePdf, extractPageLines, openPdf, renderPageToPng, scanPage, type PageScan, type PdfDocument } from './render.js';
+import {
+  closePdf,
+  extractPageLines,
+  openPdf,
+  renderPageToPng,
+  scanPage,
+  type PageScan,
+  type PdfDocument,
+} from './render.js';
 import { assetPath, atomicWrite, insightsDir, writeAsset } from './cache.js';
 import type { PageLine } from './title.js';
 
@@ -78,7 +86,7 @@ export class FeatureStore {
 
   constructor(
     private readonly appDir: string,
-    private readonly policy: CaptionPolicy
+    private readonly policy: CaptionPolicy,
   ) {
     this.file = readFeatureFile(appDir);
   }
@@ -129,7 +137,7 @@ export class DocumentHandle {
     private readonly appDir: string,
     private readonly filePath: string,
     private readonly entry: DocumentFeatures,
-    private readonly policy: CaptionPolicy
+    private readonly policy: CaptionPolicy,
   ) {}
 
   private async open(): Promise<PdfDocument | undefined> {

@@ -46,7 +46,12 @@ export function getSavedSearch(id: string): SavedSearch | undefined {
   return readSearches().find((s) => s.id === id);
 }
 
-export function saveSearch(input: { postcode: string; radius: string; filters: SearchFilters; sort: SortSpec }): SavedSearch {
+export function saveSearch(input: {
+  postcode: string;
+  radius: string;
+  filters: SearchFilters;
+  sort: SortSpec;
+}): SavedSearch {
   const searches = readSearches();
   const search: SavedSearch = {
     id: Math.random().toString(36).substring(2, 10),
@@ -54,7 +59,7 @@ export function saveSearch(input: { postcode: string; radius: string; filters: S
     radius: input.radius,
     filters: input.filters,
     sort: input.sort,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   };
   searches.unshift(search);
   writeSearches(searches);

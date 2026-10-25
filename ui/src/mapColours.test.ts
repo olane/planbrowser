@@ -10,7 +10,7 @@ import {
   normaliseAppType,
   normaliseOutcome,
   outcomeColor,
-  presentBuckets
+  presentBuckets,
 } from './mapColours';
 
 describe('normaliseAppType', () => {
@@ -89,7 +89,7 @@ describe('presentBuckets', () => {
   it('orders outcomes canonically', () => {
     expect(presentBuckets(['Rejected', 'Permitted'], normaliseOutcome, OUTCOME_ORDER)).toEqual([
       'Permitted',
-      'Refused'
+      'Refused',
     ]);
   });
 });
@@ -98,7 +98,7 @@ describe('legendFor', () => {
   it('pairs labels with their colours', () => {
     expect(legendFor(['Full', 'Other'], APP_TYPE_COLORS)).toEqual([
       { label: 'Full', color: APP_TYPE_COLORS.Full },
-      { label: 'Other', color: APP_TYPE_COLORS.Other }
+      { label: 'Other', color: APP_TYPE_COLORS.Other },
     ]);
   });
 });

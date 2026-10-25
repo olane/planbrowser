@@ -13,13 +13,15 @@ describe('titleCandidates', () => {
   it('prefers the larger font among equally qualified lines', () => {
     const [first] = titleCandidates([
       { str: 'FRONT ELEVATION', size: 6 },
-      { str: 'SIDE ELEVATION', size: 12 }
+      { str: 'SIDE ELEVATION', size: 12 },
     ]);
     expect(first?.text).toBe('SIDE ELEVATION');
   });
 
   it('ignores notes, cross-references and chrome', () => {
-    expect(titleCandidates(lines('Refer to elevations drawing 102', 'KEY PLAN', 'SCALE 1:100 SITE PLAN', 'NORTH POINT'))).toEqual([]);
+    expect(
+      titleCandidates(lines('Refer to elevations drawing 102', 'KEY PLAN', 'SCALE 1:100 SITE PLAN', 'NORTH POINT')),
+    ).toEqual([]);
   });
 
   it('keeps compass-named elevations', () => {

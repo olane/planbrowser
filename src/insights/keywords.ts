@@ -44,19 +44,12 @@ const KIND_MATCHERS: { kind: InsightImageKind; patterns: RegExp[] }[] = [
       /photoreal/,
       /axonometric/,
       /\b3d (?:view|visual|image)/,
-      /aerial (?:view|image|visual)/
-    ]
+      /aerial (?:view|image|visual)/,
+    ],
   },
   {
     kind: 'photo',
-    patterns: [
-      /photograph/,
-      /\bphotos?\b/,
-      /photosheet/,
-      /\bavrs?\b/,
-      /viewpoint/,
-      /verified view/
-    ]
+    patterns: [/photograph/, /\bphotos?\b/, /photosheet/, /\bavrs?\b/, /viewpoint/, /verified view/],
   },
   {
     kind: 'map',
@@ -69,17 +62,17 @@ const KIND_MATCHERS: { kind: InsightImageKind; patterns: RegExp[] }[] = [
       /constraints? (?:plan|map)/,
       /designations? (?:plan|map)/,
       /\bkey diagram\b/,
-      /\bos (?:map|extract)\b/
-    ]
+      /\bos (?:map|extract)\b/,
+    ],
   },
   {
     kind: 'elevation',
-    patterns: [/\belevations?\b/]
+    patterns: [/\belevations?\b/],
   },
   {
     kind: 'section',
     // Not "section 106" / "section 73" (legal agreements, variations).
-    patterns: [/\bsections?\b(?! ?\d)/]
+    patterns: [/\bsections?\b(?! ?\d)/],
   },
   {
     kind: 'plan',
@@ -101,9 +94,9 @@ const KIND_MATCHERS: { kind: InsightImageKind; patterns: RegExp[] }[] = [
       /development zone/,
       /access and movement/,
       /maximum heights/,
-      /green and blue/
-    ]
-  }
+      /green and blue/,
+    ],
+  },
 ];
 
 // Captions that disambiguate a render from a photo, read from the text next to
@@ -225,7 +218,7 @@ export function profileDocument(doc: NamedDocument): DocumentProfile {
     admin: ADMIN_RE.test(normalise([doc.description, doc.localFilename].filter(Boolean).join(' '))),
     namesPhoto: PHOTO_NAME_RE.test(hay),
     namesRender: RENDER_NAME_RE.test(hay),
-    visualName: VISUAL_NAME_RE.test(hay)
+    visualName: VISUAL_NAME_RE.test(hay),
   };
   return { ...profile, prior: priorFromProfile(profile) };
 }
@@ -269,4 +262,3 @@ function priorFromProfile(p: Omit<DocumentProfile, 'prior'>): DocumentPrior {
   if (kind) prior.kind = kind;
   return prior;
 }
-

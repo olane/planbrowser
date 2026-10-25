@@ -1,56 +1,59 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import ui from '../styles/primitives.module.css'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import ui from '../styles/primitives.module.css';
 
 const props = defineProps<{
-  modelValue: string
-  options: string[]
-  placeholder?: string
-}>()
+  modelValue: string;
+  options: string[];
+  placeholder?: string;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: string): void
-}>()
+  (e: 'update:modelValue', value: string): void;
+}>();
 
-const open = ref(false)
-const containerRef = ref<HTMLElement | null>(null)
-const selected = ref<string[]>(props.modelValue ? props.modelValue.split(',').filter(Boolean) : [])
+const open = ref(false);
+const containerRef = ref<HTMLElement | null>(null);
+const selected = ref<string[]>(props.modelValue ? props.modelValue.split(',').filter(Boolean) : []);
 
-watch(() => props.modelValue, (val) => {
-  selected.value = val ? val.split(',').filter(Boolean) : []
-})
+watch(
+  () => props.modelValue,
+  (val) => {
+    selected.value = val ? val.split(',').filter(Boolean) : [];
+  },
+);
 
 const buttonText = computed(() => {
-  if (selected.value.length === 0) return props.placeholder || 'Any'
-  if (selected.value.length === props.options.length) return 'All'
-  if (selected.value.length <= 2) return selected.value.join(', ')
-  return `${selected.value.length} selected`
-})
+  if (selected.value.length === 0) return props.placeholder || 'Any';
+  if (selected.value.length === props.options.length) return 'All';
+  if (selected.value.length <= 2) return selected.value.join(', ');
+  return `${selected.value.length} selected`;
+});
 
-const isChecked = (opt: string) => selected.value.includes(opt)
+const isChecked = (opt: string) => selected.value.includes(opt);
 
 function toggle(opt: string) {
   if (selected.value.includes(opt)) {
-    selected.value = selected.value.filter((o) => o !== opt)
+    selected.value = selected.value.filter((o) => o !== opt);
   } else {
-    selected.value = [...selected.value, opt]
+    selected.value = [...selected.value, opt];
   }
-  emit('update:modelValue', selected.value.join(','))
+  emit('update:modelValue', selected.value.join(','));
 }
 
 function clear() {
-  selected.value = []
-  emit('update:modelValue', '')
+  selected.value = [];
+  emit('update:modelValue', '');
 }
 
 function onClickOutside(e: Event) {
   if (containerRef.value && !containerRef.value.contains(e.target as Node)) {
-    open.value = false
+    open.value = false;
   }
 }
 
-onMounted(() => document.addEventListener('click', onClickOutside))
-onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
+onMounted(() => document.addEventListener('click', onClickOutside));
+onBeforeUnmount(() => document.removeEventListener('click', onClickOutside));
 </script>
 
 <template>
@@ -64,9 +67,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
         <input type="checkbox" :checked="isChecked(opt)" @change="toggle(opt)" :class="$style.checkbox" />
         {{ opt }}
       </label>
-      <button v-if="selected.length" type="button" @click="clear" :class="$style.clear">
-        Clear
-      </button>
+      <button v-if="selected.length" type="button" @click="clear" :class="$style.clear">Clear</button>
     </div>
   </div>
 </template>

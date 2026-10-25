@@ -11,7 +11,7 @@ const OPS: ImageOps = {
   paintFormXObjectEnd: 5,
   paintImageXObject: 6,
   paintInlineImageXObject: 7,
-  paintImageMaskXObject: 8
+  paintImageMaskXObject: 8,
 };
 
 function item(str: string, x: number, y: number, width = 40, height = 10): TextItem {
@@ -30,7 +30,7 @@ describe('imagePlacements', () => {
     const boxes = imageBoxes(fn, args, OPS);
     expect(boxes).toEqual([
       { x0: 0, y0: 0, x1: 5, y1: 5 },
-      { x0: 0, y0: 0, x1: 1, y1: 1 }
+      { x0: 0, y0: 0, x1: 1, y1: 1 },
     ]);
   });
 
@@ -48,7 +48,7 @@ describe('captionForBox', () => {
     const items = [
       item('artist impression of the proposed scheme', 110, 270),
       item('unrelated header', 110, 780),
-      item('off to the side', 700, 400)
+      item('off to the side', 700, 400),
     ];
     expect(captionForBox(items, box, pageHeight)).toBe('artist impression of the proposed scheme');
   });

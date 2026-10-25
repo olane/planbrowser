@@ -4,9 +4,25 @@
       <router-link to="/" :class="$style.backLink">&larr; Back to all applications</router-link>
       <div :class="$style.topActions">
         <span v-if="app" :class="$style.synced">Last Synced: {{ timeAgo(app.scrapedAt) }}</span>
-        <button v-if="app" @click="toggleStar" :disabled="savingFlags" :title="app.starred ? 'Remove from favourites' : 'Add to favourites'" :class="$style.starButton">
-          <svg v-if="app.starred" :class="[$style.starIcon, $style.starActive]" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-          <svg v-else :class="$style.starIcon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.563.563 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"></path></svg>
+        <button
+          v-if="app"
+          @click="toggleStar"
+          :disabled="savingFlags"
+          :title="app.starred ? 'Remove from favourites' : 'Add to favourites'"
+          :class="$style.starButton"
+        >
+          <svg v-if="app.starred" :class="[$style.starIcon, $style.starActive]" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
+            ></path>
+          </svg>
+          <svg v-else :class="$style.starIcon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.563.563 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+            ></path>
+          </svg>
         </button>
         <button v-if="app" @click="toggleArchive" :disabled="savingFlags" :class="[ui.btn, ui.btnOutline]">
           {{ app.archived ? 'Restore' : 'Archive' }}
@@ -23,13 +39,18 @@
     <div v-if="loading" :class="$style.muted">Loading...</div>
     <template v-else>
       <div v-if="isDownloading" :class="$style.downloadBanner">
-        <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+        <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none">
+          <circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
         <span>
           Download in progress — details, comments and documents appear here as they're saved.
           <span v-if="downloadProgress" :class="$style.progressStrong">({{ progressText(downloadProgress) }})</span>
         </span>
       </div>
-      <div v-if="waitingForDownload" :class="$style.waiting">Waiting for the download to start — this page will populate automatically as details are saved.</div>
+      <div v-if="waitingForDownload" :class="$style.waiting">
+        Waiting for the download to start — this page will populate automatically as details are saved.
+      </div>
       <div v-else-if="error" :class="$style.errorText">{{ error }}</div>
       <div v-if="syncError" :class="$style.errorBanner">
         {{ syncError }}
@@ -38,334 +59,535 @@
         {{ syncMessage }}
       </div>
       <div v-if="app" :class="$style.card">
-      <div :class="$style.summaryGrid">
-        <div>
-          <h2 :class="$style.appTitle">{{ app.reference }}</h2>
-          <p :class="$style.appAddress">{{ app.address }}</p>
-          <p :class="$style.appDesc">{{ app.description }}</p>
-          <div :class="$style.statusWrap">
-            <span :class="[ui.toneBlue, $style.statusBadge]">{{ app.status }}</span>
-          </div>
-        </div>
-
-        <div>
-          <h3 :class="$style.sectionTitleBorder">Key Dates</h3>
-          <dl :class="$style.datesList">
-            <div v-for="(value, key) in app.dates" :key="key" :class="$style.dateRow">
-              <dt :class="$style.dateTerm">{{ key }}</dt>
-              <dd :class="$style.dateValue">{{ value }}</dd>
+        <div :class="$style.summaryGrid">
+          <div>
+            <h2 :class="$style.appTitle">{{ app.reference }}</h2>
+            <p :class="$style.appAddress">{{ app.address }}</p>
+            <p :class="$style.appDesc">{{ app.description }}</p>
+            <div :class="$style.statusWrap">
+              <span :class="[ui.toneBlue, $style.statusBadge]">{{ app.status }}</span>
             </div>
-          </dl>
-        </div>
-      </div>
+          </div>
 
-      <div v-if="app.furtherInformation" :class="$style.furtherBox">
-        <h3 :class="$style.furtherTitle">Additional Details</h3>
-        <div :class="$style.furtherGrid">
-          <div v-if="app.furtherInformation?.['Application Type']">
-            <dt :class="$style.furtherTerm">Application Type</dt>
-            <dd :class="$style.furtherValue">{{ app.furtherInformation['Application Type'] }}</dd>
-          </div>
-          <div v-if="app.furtherInformation?.['Case Officer']">
-            <dt :class="$style.furtherTerm">Case Officer</dt>
-            <dd :class="$style.furtherValue">{{ app.furtherInformation['Case Officer'] }}</dd>
-          </div>
-          <div v-if="app.furtherInformation?.['Ward']">
-            <dt :class="$style.furtherTerm">Ward</dt>
-            <dd :class="$style.furtherValue">{{ app.furtherInformation['Ward'] }}</dd>
-          </div>
-          <div v-if="app.importantDates?.['Determination Deadline']">
-            <dt :class="$style.furtherTerm">Determination Deadline</dt>
-            <dd :class="$style.furtherValue">{{ app.importantDates['Determination Deadline'] }}</dd>
-          </div>
-          <div v-if="app.importantDates?.['Actual Committee Date']">
-            <dt :class="$style.furtherTerm">Meeting Date</dt>
-            <dd :class="$style.furtherValue">
-              {{ app.importantDates['Actual Committee Date'] }}
-            </dd>
-          </div>
-          <div v-if="app.furtherInformation?.['Decision']">
-            <dt :class="$style.furtherTerm">Decision</dt>
-            <dd :class="$style.furtherValue">{{ app.furtherInformation['Decision'] }}</dd>
-          </div>
-          <div v-if="app.importantDates?.['Decision Issued Date']">
-            <dt :class="$style.furtherTerm">Decision Date</dt>
-            <dd :class="$style.furtherValue">{{ app.importantDates['Decision Issued Date'] }}</dd>
+          <div>
+            <h3 :class="$style.sectionTitleBorder">Key Dates</h3>
+            <dl :class="$style.datesList">
+              <div v-for="(value, key) in app.dates" :key="key" :class="$style.dateRow">
+                <dt :class="$style.dateTerm">{{ key }}</dt>
+                <dd :class="$style.dateValue">{{ value }}</dd>
+              </div>
+            </dl>
           </div>
         </div>
-      </div>
 
-      <div :class="$style.tabsWrap">
-        <div :class="$style.tabBar">
-          <nav :class="$style.tabs" aria-label="Tabs">
-            <button v-if="keyDocs.length > 0" @click="activeTab = 'key-documents'" :class="[tabClass('key-documents'), $style.tab]">
-              Key Documents ({{ keyDocs.length }})
-            </button>
-            <button @click="activeTab = 'favourites'" :class="[tabClass('favourites'), $style.tab]">
-              Favourites ({{ favouriteDocs.length }})
-            </button>
-            <button @click="activeTab = 'documents'" :class="[tabClass('documents'), $style.tab]">
-              Documents ({{ enhancedAppDocuments.length }})
-            </button>
-            <button v-if="app.hasComments" @click="activeTab = 'comments'" :class="[tabClass('comments'), $style.tab]">
-              Comments ({{ commentsList.length > 0 ? commentsList.length : (commentsError ? '!' : '...') }})
-            </button>
-            <button v-if="app.location" @click="activeTab = 'location'" :class="[tabClass('location'), $style.tab]">
-              Location
-            </button>
-            <button @click="activeTab = 'insights'" :class="[tabClass('insights'), $style.tab]">
-              Insights (beta)
-            </button>
-          </nav>
-        </div>
-
-        <div :class="$style.tabContent">
-          <div v-show="activeTab === 'insights'">
-            <div v-if="insightsStatus === 'loading'" :class="$style.muted">Loading insights…</div>
-            <div v-else-if="insightsStatus === 'error' && !insights">
-              <p :class="$style.errorText">{{ insightsError }}</p>
-              <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Retry</button>
+        <div v-if="app.furtherInformation" :class="$style.furtherBox">
+          <h3 :class="$style.furtherTitle">Additional Details</h3>
+          <div :class="$style.furtherGrid">
+            <div v-if="app.furtherInformation?.['Application Type']">
+              <dt :class="$style.furtherTerm">Application Type</dt>
+              <dd :class="$style.furtherValue">{{ app.furtherInformation['Application Type'] }}</dd>
             </div>
-            <template v-else-if="insights">
-              <div v-if="insightsStatus === 'running'" :class="$style.insightsRunning">
-                <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+            <div v-if="app.furtherInformation?.['Case Officer']">
+              <dt :class="$style.furtherTerm">Case Officer</dt>
+              <dd :class="$style.furtherValue">{{ app.furtherInformation['Case Officer'] }}</dd>
+            </div>
+            <div v-if="app.furtherInformation?.['Ward']">
+              <dt :class="$style.furtherTerm">Ward</dt>
+              <dd :class="$style.furtherValue">{{ app.furtherInformation['Ward'] }}</dd>
+            </div>
+            <div v-if="app.importantDates?.['Determination Deadline']">
+              <dt :class="$style.furtherTerm">Determination Deadline</dt>
+              <dd :class="$style.furtherValue">{{ app.importantDates['Determination Deadline'] }}</dd>
+            </div>
+            <div v-if="app.importantDates?.['Actual Committee Date']">
+              <dt :class="$style.furtherTerm">Meeting Date</dt>
+              <dd :class="$style.furtherValue">
+                {{ app.importantDates['Actual Committee Date'] }}
+              </dd>
+            </div>
+            <div v-if="app.furtherInformation?.['Decision']">
+              <dt :class="$style.furtherTerm">Decision</dt>
+              <dd :class="$style.furtherValue">{{ app.furtherInformation['Decision'] }}</dd>
+            </div>
+            <div v-if="app.importantDates?.['Decision Issued Date']">
+              <dt :class="$style.furtherTerm">Decision Date</dt>
+              <dd :class="$style.furtherValue">{{ app.importantDates['Decision Issued Date'] }}</dd>
+            </div>
+          </div>
+        </div>
+
+        <div :class="$style.tabsWrap">
+          <div :class="$style.tabBar">
+            <nav :class="$style.tabs" aria-label="Tabs">
+              <button
+                v-if="keyDocs.length > 0"
+                @click="activeTab = 'key-documents'"
+                :class="[tabClass('key-documents'), $style.tab]"
+              >
+                Key Documents ({{ keyDocs.length }})
+              </button>
+              <button @click="activeTab = 'favourites'" :class="[tabClass('favourites'), $style.tab]">
+                Favourites ({{ favouriteDocs.length }})
+              </button>
+              <button @click="activeTab = 'documents'" :class="[tabClass('documents'), $style.tab]">
+                Documents ({{ enhancedAppDocuments.length }})
+              </button>
+              <button
+                v-if="app.hasComments"
+                @click="activeTab = 'comments'"
+                :class="[tabClass('comments'), $style.tab]"
+              >
+                Comments ({{ commentsList.length > 0 ? commentsList.length : commentsError ? '!' : '...' }})
+              </button>
+              <button v-if="app.location" @click="activeTab = 'location'" :class="[tabClass('location'), $style.tab]">
+                Location
+              </button>
+              <button @click="activeTab = 'insights'" :class="[tabClass('insights'), $style.tab]">
+                Insights (beta)
+              </button>
+            </nav>
+          </div>
+
+          <div :class="$style.tabContent">
+            <div v-show="activeTab === 'insights'">
+              <div v-if="insightsStatus === 'loading'" :class="$style.muted">Loading insights…</div>
+              <div v-else-if="insightsStatus === 'error' && !insights">
+                <p :class="$style.errorText">{{ insightsError }}</p>
+                <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Retry</button>
+              </div>
+              <template v-else-if="insights">
+                <div v-if="insightsStatus === 'running'" :class="$style.insightsRunning">
+                  <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none">
+                    <circle
+                      :class="$style.spinnerTrack"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="4"
+                    ></circle>
+                    <path
+                      :class="$style.spinnerHead"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    ></path>
+                  </svg>
+                  <div :class="$style.insightsProgress">
+                    <span>{{ insightsProgressLabel || 'Updating insights…' }}</span>
+                    <div v-if="insightsProgressPercent !== null" :class="$style.insightsProgressTrack">
+                      <div :class="$style.insightsProgressBar" :style="{ width: insightsProgressPercent + '%' }"></div>
+                    </div>
+                  </div>
+                </div>
+                <p v-else-if="insightsStatus === 'error'" :class="$style.errorText">
+                  {{ insightsError }}
+                  <button @click="generateInsights()" :class="$style.insightLinkButton">Retry</button>
+                </p>
+                <div :class="$style.insightsSummary">
+                  <p
+                    v-if="insights.summary.headline && insights.summary.headline !== app.description"
+                    :class="$style.insightsHeadline"
+                  >
+                    {{ insights.summary.headline }}
+                  </p>
+                  <div v-if="Object.keys(insights.summary.metrics).length" :class="$style.metricChips">
+                    <span v-for="(value, key) in insights.summary.metrics" :key="key" :class="$style.metricChip">
+                      <span :class="$style.metricKey">{{ key }}</span> {{ value }}
+                    </span>
+                  </div>
+                  <div v-if="insights.summary.points.length" :class="$style.insightPointsWrap">
+                    <span :class="$style.insightPointsLabel">Included</span>
+                    <ul :class="$style.insightPoints">
+                      <li v-for="point in insights.summary.points" :key="point">{{ point }}</li>
+                    </ul>
+                  </div>
+                  <p v-if="insights.comments.total > 0" :class="$style.commentTally">
+                    Comments: {{ insights.comments.support }} support · {{ insights.comments.object }} object ·
+                    {{ insights.comments.neutral }} neutral ({{ insights.comments.total }} total)
+                  </p>
+                  <div :class="$style.insightsActions">
+                    <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Regenerate</button>
+                    <button
+                      v-if="insights.depth !== 'deep'"
+                      @click="scanMoreInsights()"
+                      :class="[ui.btn, ui.btnOutline]"
+                      title="Scan more documents and pages — slower, but finds more visuals"
+                    >
+                      Scan more documents
+                    </button>
+                  </div>
+                </div>
+
+                <p v-if="insights.coverage" :class="$style.insightsCoverage">
+                  Scanned {{ insights.coverage.documentsAnalysed }} of {{ insights.coverage.documentsTotal }} documents.
+                </p>
+
+                <p v-if="insights.coverage?.partial" :class="$style.insightsPartial">
+                  <span>Analysis was capped, so some documents weren't scanned.</span>
+                  <span :class="$style.insightsPartialActions">
+                    <button
+                      v-if="insights.depth !== 'deep'"
+                      @click="scanMoreInsights()"
+                      :class="$style.insightLinkButton"
+                    >
+                      Scan more
+                    </button>
+                    <button @click="activeTab = 'documents'" :class="$style.insightLinkButton">
+                      Browse all documents
+                    </button>
+                  </span>
+                </p>
+
+                <div v-if="insights.found?.length" :class="$style.insightToolbar">
+                  <div :class="$style.insightViewToggle">
+                    <button
+                      :class="[insightView === 'highlights' ? $style.viewActive : $style.viewInactive]"
+                      @click="insightView = 'highlights'"
+                    >
+                      Highlights ({{ insights.images.length }})
+                    </button>
+                    <button
+                      v-if="hasAllFound"
+                      :class="[insightView === 'all' ? $style.viewActive : $style.viewInactive]"
+                      @click="insightView = 'all'"
+                    >
+                      All found ({{ insights.found.length }})
+                    </button>
+                  </div>
+                  <span v-if="insights.depth === 'deep'" :class="$style.insightDepth">Deep scan</span>
+                </div>
+
+                <div v-if="insightSourceImages.length" :class="$style.insightGroups">
+                  <section v-for="group in insightGroups" :key="group.kind" :class="$style.insightGroup">
+                    <h3 :class="$style.insightGroupTitle">
+                      {{ group.label }} <span :class="$style.insightGroupCount">{{ group.images.length }}</span>
+                      <span v-if="group.truncated" :class="$style.insightGroupNote">
+                        showing {{ group.selected }} of {{ group.available }} found ·
+                        <button @click="activeTab = 'documents'" :class="$style.insightLinkButton">
+                          view documents
+                        </button>
+                      </span>
+                    </h3>
+                    <div :class="$style.insightsGrid">
+                      <figure v-for="image in group.images" :key="image.id" :class="$style.insightFigure">
+                        <a
+                          :href="api.documentPageUrl(app.reference, app.authorityId, image.localFilename, image.page)"
+                          target="_blank"
+                          rel="noopener"
+                          :class="$style.insightLink"
+                          :title="`Open ${image.localFilename} at page ${image.page}`"
+                        >
+                          <img
+                            :src="api.insightImageUrl(app.reference, app.authorityId, image.imageFile)"
+                            :alt="image.label"
+                            loading="lazy"
+                            :class="$style.insightImage"
+                          />
+                        </a>
+                        <figcaption :class="$style.insightCaption">
+                          <span :class="$style.insightKind">{{ kindLabel(image.kind) }}</span>
+                          <span :class="$style.insightLabel">{{ image.label }}</span>
+                          <a
+                            :href="api.documentPageUrl(app.reference, app.authorityId, image.localFilename, image.page)"
+                            target="_blank"
+                            rel="noopener"
+                            :class="$style.insightSource"
+                          >
+                            Page {{ image.page }} · {{ shortDocumentName(image.localFilename) }}
+                          </a>
+                        </figcaption>
+                      </figure>
+                    </div>
+                  </section>
+                </div>
+                <p v-else :class="$style.muted">No relevant images, plans or renders were found.</p>
+              </template>
+              <div v-else-if="insightsStatus === 'running'" :class="$style.insightsRunning">
+                <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none">
+                  <circle
+                    :class="$style.spinnerTrack"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  ></circle>
+                  <path
+                    :class="$style.spinnerHead"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  ></path>
+                </svg>
                 <div :class="$style.insightsProgress">
-                  <span>{{ insightsProgressLabel || 'Updating insights…' }}</span>
+                  <span>{{
+                    insightsProgressLabel
+                      ? `${insightsProgressLabel} — this can take a minute for large applications.`
+                      : 'Generating insights — this can take a minute for large applications.'
+                  }}</span>
                   <div v-if="insightsProgressPercent !== null" :class="$style.insightsProgressTrack">
                     <div :class="$style.insightsProgressBar" :style="{ width: insightsProgressPercent + '%' }"></div>
                   </div>
                 </div>
               </div>
-              <p v-else-if="insightsStatus === 'error'" :class="$style.errorText">
-                {{ insightsError }}
-                <button @click="generateInsights()" :class="$style.insightLinkButton">Retry</button>
-              </p>
-              <div :class="$style.insightsSummary">
-                <p v-if="insights.summary.headline && insights.summary.headline !== app.description" :class="$style.insightsHeadline">{{ insights.summary.headline }}</p>
-                <div v-if="Object.keys(insights.summary.metrics).length" :class="$style.metricChips">
-                  <span v-for="(value, key) in insights.summary.metrics" :key="key" :class="$style.metricChip">
-                    <span :class="$style.metricKey">{{ key }}</span> {{ value }}
-                  </span>
-                </div>
-                <div v-if="insights.summary.points.length" :class="$style.insightPointsWrap">
-                  <span :class="$style.insightPointsLabel">Included</span>
-                  <ul :class="$style.insightPoints">
-                    <li v-for="point in insights.summary.points" :key="point">{{ point }}</li>
-                  </ul>
-                </div>
-                <p v-if="insights.comments.total > 0" :class="$style.commentTally">
-                  Comments: {{ insights.comments.support }} support ·
-                  {{ insights.comments.object }} object ·
-                  {{ insights.comments.neutral }} neutral
-                  ({{ insights.comments.total }} total)
-                </p>
-                <div :class="$style.insightsActions">
-                  <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Regenerate</button>
-                  <button
-                    v-if="insights.depth !== 'deep'"
-                    @click="scanMoreInsights()"
-                    :class="[ui.btn, ui.btnOutline]"
-                    title="Scan more documents and pages — slower, but finds more visuals"
-                  >
-                    Scan more documents
-                  </button>
-                </div>
-              </div>
-
-              <p v-if="insights.coverage" :class="$style.insightsCoverage">
-                Scanned {{ insights.coverage.documentsAnalysed }} of
-                {{ insights.coverage.documentsTotal }} documents.
-              </p>
-
-              <p v-if="insights.coverage?.partial" :class="$style.insightsPartial">
-                <span>Analysis was capped, so some documents weren't scanned.</span>
-                <span :class="$style.insightsPartialActions">
-                  <button v-if="insights.depth !== 'deep'" @click="scanMoreInsights()" :class="$style.insightLinkButton">Scan more</button>
-                  <button @click="activeTab = 'documents'" :class="$style.insightLinkButton">Browse all documents</button>
-                </span>
-              </p>
-
-              <div v-if="insights.found?.length" :class="$style.insightToolbar">
-                <div :class="$style.insightViewToggle">
-                  <button
-                    :class="[insightView === 'highlights' ? $style.viewActive : $style.viewInactive]"
-                    @click="insightView = 'highlights'"
-                  >
-                    Highlights ({{ insights.images.length }})
-                  </button>
-                  <button
-                    v-if="hasAllFound"
-                    :class="[insightView === 'all' ? $style.viewActive : $style.viewInactive]"
-                    @click="insightView = 'all'"
-                  >
-                    All found ({{ insights.found.length }})
-                  </button>
-                </div>
-                <span v-if="insights.depth === 'deep'" :class="$style.insightDepth">Deep scan</span>
-              </div>
-
-              <div v-if="insightSourceImages.length" :class="$style.insightGroups">
-                <section v-for="group in insightGroups" :key="group.kind" :class="$style.insightGroup">
-                  <h3 :class="$style.insightGroupTitle">
-                    {{ group.label }} <span :class="$style.insightGroupCount">{{ group.images.length }}</span>
-                    <span v-if="group.truncated" :class="$style.insightGroupNote">
-                      showing {{ group.selected }} of {{ group.available }} found ·
-                      <button @click="activeTab = 'documents'" :class="$style.insightLinkButton">view documents</button>
-                    </span>
-                  </h3>
-                  <div :class="$style.insightsGrid">
-                    <figure v-for="image in group.images" :key="image.id" :class="$style.insightFigure">
-                      <a :href="api.documentPageUrl(app.reference, app.authorityId, image.localFilename, image.page)" target="_blank" rel="noopener" :class="$style.insightLink" :title="`Open ${image.localFilename} at page ${image.page}`">
-                        <img :src="api.insightImageUrl(app.reference, app.authorityId, image.imageFile)" :alt="image.label" loading="lazy" :class="$style.insightImage" />
-                      </a>
-                      <figcaption :class="$style.insightCaption">
-                        <span :class="$style.insightKind">{{ kindLabel(image.kind) }}</span>
-                        <span :class="$style.insightLabel">{{ image.label }}</span>
-                        <a :href="api.documentPageUrl(app.reference, app.authorityId, image.localFilename, image.page)" target="_blank" rel="noopener" :class="$style.insightSource">
-                          Page {{ image.page }} · {{ shortDocumentName(image.localFilename) }}
-                        </a>
-                      </figcaption>
-                    </figure>
-                  </div>
-                </section>
-              </div>
-              <p v-else :class="$style.muted">No relevant images, plans or renders were found.</p>
-            </template>
-            <div v-else-if="insightsStatus === 'running'" :class="$style.insightsRunning">
-              <svg :class="$style.downloadSpinner" viewBox="0 0 24 24" fill="none"><circle :class="$style.spinnerTrack" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path :class="$style.spinnerHead" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-              <div :class="$style.insightsProgress">
-                <span>{{ insightsProgressLabel ? `${insightsProgressLabel} — this can take a minute for large applications.` : 'Generating insights — this can take a minute for large applications.' }}</span>
-                <div v-if="insightsProgressPercent !== null" :class="$style.insightsProgressTrack">
-                  <div :class="$style.insightsProgressBar" :style="{ width: insightsProgressPercent + '%' }"></div>
-                </div>
+              <div v-else-if="insightsStatus === 'none'">
+                <p :class="$style.muted">No insights have been generated for this application yet.</p>
+                <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Generate insights</button>
               </div>
             </div>
-            <div v-else-if="insightsStatus === 'none'">
-              <p :class="$style.muted">No insights have been generated for this application yet.</p>
-              <button @click="generateInsights()" :class="[ui.btn, ui.btnOutline]">Generate insights</button>
+
+            <div v-show="activeTab === 'key-documents'" v-if="keyDocs.length > 0">
+              <DocumentList
+                :docs="keyDocs"
+                :reference="app.reference"
+                :authority-id="app.authorityId"
+                @changed="onDocChanged"
+              />
             </div>
-          </div>
 
-          <div v-show="activeTab === 'key-documents'" v-if="keyDocs.length > 0">
-            <DocumentList :docs="keyDocs" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged" />
-          </div>
-
-          <div v-show="activeTab === 'favourites'">
-            <div v-if="favouriteDocs.length > 0">
-              <DocumentList :docs="favouriteDocs" :reference="app.reference" :authority-id="app.authorityId" @changed="onDocChanged" />
-            </div>
-            <div v-else :class="$style.emptyCentre">No favourite documents. Star a document to collect it here.</div>
-          </div>
-
-          <div v-show="activeTab === 'documents'">
-            <div :class="$style.docsToolbar">
-              <div :class="$style.docsToolbarLeft">
-                <div :class="$style.searchWrap">
-                  <svg :class="$style.searchIcon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"></path></svg>
-                  <input v-model="docSearch" type="text" placeholder="Search documents..." :class="$style.docSearch" />
-                  <button v-if="docSearch" @click="docSearch = ''" :aria-label="'Clear document search'" :class="$style.clearSearch" title="Clear search">
-                    <svg :class="$style.clearIcon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
-                  </button>
-                </div>
-                <label :class="$style.contentsLabel" title="Also search inside document contents (PDFs, Word files), not just names and metadata">
-                  <input v-model="searchContents" type="checkbox" :class="$style.checkbox" />
-                  <span>Contents</span>
-                </label>
+            <div v-show="activeTab === 'favourites'">
+              <div v-if="favouriteDocs.length > 0">
+                <DocumentList
+                  :docs="favouriteDocs"
+                  :reference="app.reference"
+                  :authority-id="app.authorityId"
+                  @changed="onDocChanged"
+                />
               </div>
-              <select v-if="docTypesWithCounts.length > 1" v-model="selectedDocType" :class="[ui.select, $style.filterSelect]">
-                <option v-for="t in docTypesWithCounts" :key="t.value" :value="t.value">{{ t.label }} ({{ t.count }})</option>
-              </select>
+              <div v-else :class="$style.emptyCentre">No favourite documents. Star a document to collect it here.</div>
             </div>
 
-            <div v-if="searchingContent" :class="$style.searchingNote">Searching document contents…</div>
-
-            <DocumentList v-if="filteredDocs.length > 0" :docs="filteredDocs" :reference="app.reference" :authority-id="app.authorityId" :expand-all="docFilterActive" :snippets="contentSnippets" @changed="onDocChanged" />
-            <div v-else-if="!searchingContent" :class="$style.emptyCentre">No documents match your search.</div>
-          </div>
-
-          <div v-if="activeTab === 'location' && app.location">
-            <div :class="$style.mapFrame">
-              <div ref="locationMapEl" :class="$style.locationMap" title="Application location map"></div>
-            </div>
-            <p :class="$style.locationNote">
-              {{ locationNote }}
-              &middot; <a :href="osmLinkUrl" target="_blank" rel="noopener" :class="$style.link">Open in OpenStreetMap</a>
-            </p>
-          </div>
-
-          <div v-show="activeTab === 'comments'" v-if="app.hasComments">
-            <div v-if="commentsList.length > 0">
+            <div v-show="activeTab === 'documents'">
               <div :class="$style.docsToolbar">
-                <div :class="$style.searchWrap">
-                  <svg :class="$style.searchIcon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"></path></svg>
-                  <input v-model="commentSearch" type="text" placeholder="Search comments..." :class="$style.docSearch" />
-                  <button v-if="commentSearch" @click="commentSearch = ''" :aria-label="'Clear comment search'" :class="$style.clearSearch" title="Clear search">
-                    <svg :class="$style.clearIcon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
-                  </button>
+                <div :class="$style.docsToolbarLeft">
+                  <div :class="$style.searchWrap">
+                    <svg
+                      :class="$style.searchIcon"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"
+                      ></path>
+                    </svg>
+                    <input
+                      v-model="docSearch"
+                      type="text"
+                      placeholder="Search documents..."
+                      :class="$style.docSearch"
+                    />
+                    <button
+                      v-if="docSearch"
+                      @click="docSearch = ''"
+                      :aria-label="'Clear document search'"
+                      :class="$style.clearSearch"
+                      title="Clear search"
+                    >
+                      <svg
+                        :class="$style.clearIcon"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        viewBox="0 0 24 24"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <label
+                    :class="$style.contentsLabel"
+                    title="Also search inside document contents (PDFs, Word files), not just names and metadata"
+                  >
+                    <input v-model="searchContents" type="checkbox" :class="$style.checkbox" />
+                    <span>Contents</span>
+                  </label>
                 </div>
-                <select v-if="commentStancesWithCounts.length > 1" v-model="selectedStance" :class="[ui.select, $style.filterSelect]">
-                  <option v-for="t in commentStancesWithCounts" :key="t.value" :value="t.value">{{ t.label }} ({{ t.count }})</option>
+                <select
+                  v-if="docTypesWithCounts.length > 1"
+                  v-model="selectedDocType"
+                  :class="[ui.select, $style.filterSelect]"
+                >
+                  <option v-for="t in docTypesWithCounts" :key="t.value" :value="t.value">
+                    {{ t.label }} ({{ t.count }})
+                  </option>
                 </select>
               </div>
-              <div v-if="filteredComments.length > 0" :class="$style.commentsWrap">
-                <ul :class="$style.commentsList">
-                  <li v-for="(comment, idx) in filteredComments" :key="idx" :class="$style.comment">
-                    <div :class="$style.commentHeader">
-                      <div :class="$style.commentBody">
-                        <div :class="$style.commentToggle" @click="comment.expanded = !comment.expanded">
-                          <p :class="$style.commentTitle">
-                            <span :class="$style.commentAddress"><Highlight :text="comment.address" :query="commentSearch" /></span>
-                            <span v-if="comment.stance" :class="[getStanceClass(comment.stance), $style.stanceBadge]"><Highlight :text="comment.stance" :query="commentSearch" /></span>
-                          </p>
-                          <p :class="$style.commentMeta">
-                            <span :class="$style.commentMetaItem"><Highlight :text="comment.date" :query="commentSearch" /></span>
-                          </p>
-                        </div>
-                        <div v-show="comment.expanded || hasCommentSearch" :class="$style.commentTextWrap">
-                          <div :class="$style.commentText"><Highlight :text="comment.text" :query="commentSearch" /></div>
-                        </div>
-                      </div>
-                      <div :class="$style.commentActions">
-                        <button type="button" :class="$style.commentChevronButton" :aria-expanded="comment.expanded || hasCommentSearch" @click="comment.expanded = !comment.expanded">
-                          <svg :class="[$style.commentChevron, comment.expanded || hasCommentSearch ? '' : $style.commentChevronCollapsed]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-              <div v-else :class="$style.emptyCentre">No comments match your search.</div>
+
+              <div v-if="searchingContent" :class="$style.searchingNote">Searching document contents…</div>
+
+              <DocumentList
+                v-if="filteredDocs.length > 0"
+                :docs="filteredDocs"
+                :reference="app.reference"
+                :authority-id="app.authorityId"
+                :expand-all="docFilterActive"
+                :snippets="contentSnippets"
+                @changed="onDocChanged"
+              />
+              <div v-else-if="!searchingContent" :class="$style.emptyCentre">No documents match your search.</div>
             </div>
-            <div v-else-if="commentsError" :class="$style.commentsError">{{ commentsError }}</div>
+
+            <div v-if="activeTab === 'location' && app.location">
+              <div :class="$style.mapFrame">
+                <div ref="locationMapEl" :class="$style.locationMap" title="Application location map"></div>
+              </div>
+              <p :class="$style.locationNote">
+                {{ locationNote }}
+                &middot;
+                <a :href="osmLinkUrl" target="_blank" rel="noopener" :class="$style.link">Open in OpenStreetMap</a>
+              </p>
+            </div>
+
+            <div v-show="activeTab === 'comments'" v-if="app.hasComments">
+              <div v-if="commentsList.length > 0">
+                <div :class="$style.docsToolbar">
+                  <div :class="$style.searchWrap">
+                    <svg
+                      :class="$style.searchIcon"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"
+                      ></path>
+                    </svg>
+                    <input
+                      v-model="commentSearch"
+                      type="text"
+                      placeholder="Search comments..."
+                      :class="$style.docSearch"
+                    />
+                    <button
+                      v-if="commentSearch"
+                      @click="commentSearch = ''"
+                      :aria-label="'Clear comment search'"
+                      :class="$style.clearSearch"
+                      title="Clear search"
+                    >
+                      <svg
+                        :class="$style.clearIcon"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        viewBox="0 0 24 24"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <select
+                    v-if="commentStancesWithCounts.length > 1"
+                    v-model="selectedStance"
+                    :class="[ui.select, $style.filterSelect]"
+                  >
+                    <option v-for="t in commentStancesWithCounts" :key="t.value" :value="t.value">
+                      {{ t.label }} ({{ t.count }})
+                    </option>
+                  </select>
+                </div>
+                <div v-if="filteredComments.length > 0" :class="$style.commentsWrap">
+                  <ul :class="$style.commentsList">
+                    <li v-for="(comment, idx) in filteredComments" :key="idx" :class="$style.comment">
+                      <div :class="$style.commentHeader">
+                        <div :class="$style.commentBody">
+                          <div :class="$style.commentToggle" @click="comment.expanded = !comment.expanded">
+                            <p :class="$style.commentTitle">
+                              <span :class="$style.commentAddress"
+                                ><Highlight :text="comment.address" :query="commentSearch"
+                              /></span>
+                              <span v-if="comment.stance" :class="[getStanceClass(comment.stance), $style.stanceBadge]"
+                                ><Highlight :text="comment.stance" :query="commentSearch"
+                              /></span>
+                            </p>
+                            <p :class="$style.commentMeta">
+                              <span :class="$style.commentMetaItem"
+                                ><Highlight :text="comment.date" :query="commentSearch"
+                              /></span>
+                            </p>
+                          </div>
+                          <div v-show="comment.expanded || hasCommentSearch" :class="$style.commentTextWrap">
+                            <div :class="$style.commentText">
+                              <Highlight :text="comment.text" :query="commentSearch" />
+                            </div>
+                          </div>
+                        </div>
+                        <div :class="$style.commentActions">
+                          <button
+                            type="button"
+                            :class="$style.commentChevronButton"
+                            :aria-expanded="comment.expanded || hasCommentSearch"
+                            @click="comment.expanded = !comment.expanded"
+                          >
+                            <svg
+                              :class="[
+                                $style.commentChevron,
+                                comment.expanded || hasCommentSearch ? '' : $style.commentChevronCollapsed,
+                              ]"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 9l-7 7-7-7"
+                              ></path>
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+                <div v-else :class="$style.emptyCentre">No comments match your search.</div>
+              </div>
+              <div v-else-if="commentsError" :class="$style.commentsError">{{ commentsError }}</div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
     </template>
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick, useCssModule } from 'vue'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import { timeAgo, progressText, isKeyDocument, shortDocumentName } from '../utils'
-import type { ApplicationMeta, ApplicationInsights, ApplicationLocation, Comment, EnhancedDocument, DocumentSearchHit, DocumentSnippet, InsightImageKind } from '../../../src/types.js'
-import { KIND_ORDER, KIND_GROUP_LABELS, kindLabel } from '../../../src/insights/kinds.js'
-import { createMap } from '../map'
-import * as api from '../api'
-import { useInsights } from '../composables/useInsights'
-import DocumentList from '../components/DocumentList.vue'
-import Highlight from '../components/Highlight.vue'
-import { useRoute } from 'vue-router'
-import { queueItems } from '../queueStore'
-import ui from '../styles/primitives.module.css'
+import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick, useCssModule } from 'vue';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { timeAgo, progressText, isKeyDocument, shortDocumentName } from '../utils';
+import type {
+  ApplicationMeta,
+  ApplicationInsights,
+  ApplicationLocation,
+  Comment,
+  EnhancedDocument,
+  DocumentSearchHit,
+  DocumentSnippet,
+  InsightImageKind,
+} from '../../../src/types.js';
+import { KIND_ORDER, KIND_GROUP_LABELS, kindLabel } from '../../../src/insights/kinds.js';
+import { createMap } from '../map';
+import * as api from '../api';
+import { useInsights } from '../composables/useInsights';
+import DocumentList from '../components/DocumentList.vue';
+import Highlight from '../components/Highlight.vue';
+import { useRoute } from 'vue-router';
+import { queueItems } from '../queueStore';
+import ui from '../styles/primitives.module.css';
 
-const route = useRoute()
-const styles = useCssModule()
-const refParam = computed(() => route.params.ref as string)
-const app = ref<ApplicationMeta | null>(null)
-const loading = ref(true)
-const syncError = ref('')
+const route = useRoute();
+const styles = useCssModule();
+const refParam = computed(() => route.params.ref as string);
+const app = ref<ApplicationMeta | null>(null);
+const loading = ref(true);
+const syncError = ref('');
 
 // Automatically-derived summary and the most relevant images/plans/renders.
 // State and polling live in the shared composable (also used by the review tool).
@@ -376,145 +598,150 @@ const {
   error: insightsError,
   load: loadInsights,
   generate: generateInsights,
-  reset: resetInsights
-} = useInsights(() => app.value?.reference ?? '', () => app.value?.authorityId)
+  reset: resetInsights,
+} = useInsights(
+  () => app.value?.reference ?? '',
+  () => app.value?.authorityId,
+);
 // 'highlights' = the curated, capped set; 'all' = every distinct candidate found.
-const insightView = ref<'highlights' | 'all'>('highlights')
-const syncMessage = ref('')
-const error = ref('')
-const syncing = ref(false)
-const selectedStance = ref('All')
+const insightView = ref<'highlights' | 'all'>('highlights');
+const syncMessage = ref('');
+const error = ref('');
+const syncing = ref(false);
+const selectedStance = ref('All');
 
 // While the application is queued or being downloaded, its metadata is written
 // to disk progressively (details, then comments, then documents), so poll the
 // API while the queue item is live to stream content into this page.
 const downloadingItem = computed(() =>
-  queueItems.value.find(q => q.reference === refParam.value && (q.status === 'pending' || q.status === 'in_progress'))
-)
-const isDownloading = computed(() => !!downloadingItem.value)
-const downloadProgress = computed(() => downloadingItem.value?.progress)
-const waitingForDownload = computed(() => !app.value && isDownloading.value)
+  queueItems.value.find(
+    (q) => q.reference === refParam.value && (q.status === 'pending' || q.status === 'in_progress'),
+  ),
+);
+const isDownloading = computed(() => !!downloadingItem.value);
+const downloadProgress = computed(() => downloadingItem.value?.progress);
+const waitingForDownload = computed(() => !app.value && isDownloading.value);
 
-const commentsList = ref<Comment[]>([])
-const activeTab = ref('documents')
-const commentsError = ref('')
-const docSearch = ref('')
-const commentSearch = ref('')
+const commentsList = ref<Comment[]>([]);
+const activeTab = ref('documents');
+const commentsError = ref('');
+const docSearch = ref('');
+const commentSearch = ref('');
 // Matched content context per localFilename, populated by the debounced content
 // search and shown on matching document rows.
-const contentSnippets = ref<Record<string, DocumentSnippet>>({})
-const searchingContent = ref(false)
-const searchContents = ref(true)
+const contentSnippets = ref<Record<string, DocumentSnippet>>({});
+const searchingContent = ref(false);
+const searchContents = ref(true);
 const getStanceClass = (stance?: string) => {
-  if (!stance) return ui.toneGray
-  const lower = stance.toLowerCase()
-  if (lower.includes('object')) return ui.toneRed
-  if (lower.includes('support')) return ui.toneGreen
-  if (lower.includes('neutral')) return ui.toneYellow
-  return ui.toneGray
-}
-const selectedDocType = ref('All')
+  if (!stance) return ui.toneGray;
+  const lower = stance.toLowerCase();
+  if (lower.includes('object')) return ui.toneRed;
+  if (lower.includes('support')) return ui.toneGreen;
+  if (lower.includes('neutral')) return ui.toneYellow;
+  return ui.toneGray;
+};
+const selectedDocType = ref('All');
 
-const docFilterActive = computed(() => docSearch.value.trim() !== '' || selectedDocType.value !== 'All')
+const docFilterActive = computed(() => docSearch.value.trim() !== '' || selectedDocType.value !== 'All');
 
-const tabClass = (tab: string) => (activeTab.value === tab ? styles.tabActive : styles.tabInactive)
+const tabClass = (tab: string) => (activeTab.value === tab ? styles.tabActive : styles.tabInactive);
 
 // Live progress text and bar while a scan runs, from the streamed counters.
 const insightsProgressLabel = computed(() => {
-  const p = insightsProgress.value
-  if (!p || p.documentsTotal === 0) return ''
-  return `Scanning ${Math.min(p.documentsAnalysed, p.documentsTotal)} of ${p.documentsTotal} documents`
-})
+  const p = insightsProgress.value;
+  if (!p || p.documentsTotal === 0) return '';
+  return `Scanning ${Math.min(p.documentsAnalysed, p.documentsTotal)} of ${p.documentsTotal} documents`;
+});
 const insightsProgressPercent = computed<number | null>(() => {
-  const p = insightsProgress.value
-  if (!p || p.documentsTotal === 0) return null
-  return Math.min(100, Math.round((p.documentsAnalysed / p.documentsTotal) * 100))
-})
+  const p = insightsProgress.value;
+  if (!p || p.documentsTotal === 0) return null;
+  return Math.min(100, Math.round((p.documentsAnalysed / p.documentsTotal) * 100));
+});
 
 // The image list currently on show: the curated highlights, or every distinct
 // candidate found before the selection caps.
 const insightSourceImages = computed<ApplicationInsights['images']>(() => {
-  if (!insights.value) return []
-  if (insightView.value === 'all') return insights.value.found ?? insights.value.images
-  return insights.value.images
-})
+  if (!insights.value) return [];
+  if (insightView.value === 'all') return insights.value.found ?? insights.value.images;
+  return insights.value.images;
+});
 
 // Group the flat insights image list by kind for a clearer gallery, in a stable
 // order rather than by score. `available` is how many of that kind were found
 // before the selection caps, so we can flag when the group is truncated.
 const insightGroups = computed(() => {
-  if (!insights.value) return []
-  const availableByKind: Record<string, number> = {}
-  for (const entry of insights.value.coverage?.images ?? []) availableByKind[entry.kind] = entry.available
-  const groups = new Map<InsightImageKind, ApplicationInsights['images']>()
+  if (!insights.value) return [];
+  const availableByKind: Record<string, number> = {};
+  for (const entry of insights.value.coverage?.images ?? []) availableByKind[entry.kind] = entry.available;
+  const groups = new Map<InsightImageKind, ApplicationInsights['images']>();
   for (const image of insightSourceImages.value) {
-    const list = groups.get(image.kind) ?? []
-    list.push(image)
-    groups.set(image.kind, list)
+    const list = groups.get(image.kind) ?? [];
+    list.push(image);
+    groups.set(image.kind, list);
   }
   return [...groups.entries()]
     .map(([kind, images]) => {
-      const available = availableByKind[kind] ?? images.length
+      const available = availableByKind[kind] ?? images.length;
       return {
         kind,
         label: KIND_GROUP_LABELS[kind],
         images,
         selected: images.length,
         available,
-        truncated: images.length < available
-      }
+        truncated: images.length < available,
+      };
     })
-    .sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind))
-})
+    .sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
+});
 
-const hasAllFound = computed(() => (insights.value?.found?.length ?? 0) > (insights.value?.images.length ?? 0))
+const hasAllFound = computed(() => (insights.value?.found?.length ?? 0) > (insights.value?.images.length ?? 0));
 
 const locationNote = computed(() => {
-  const loc = app.value?.location
-  if (!loc) return ''
+  const loc = app.value?.location;
+  if (!loc) return '';
   const kind = loc.polygons?.length
     ? 'Site boundary'
     : loc.source === 'wfs'
       ? 'Site location'
-      : 'Approximate location (postcode centroid)'
-  return `${kind}. Coordinates: ${loc.center.lat.toFixed(6)}, ${loc.center.lon.toFixed(6)}`
-})
+      : 'Approximate location (postcode centroid)';
+  return `${kind}. Coordinates: ${loc.center.lat.toFixed(6)}, ${loc.center.lon.toFixed(6)}`;
+});
 
-const locationMapEl = ref<HTMLDivElement | null>(null)
-let locationMap: L.Map | null = null
+const locationMapEl = ref<HTMLDivElement | null>(null);
+let locationMap: L.Map | null = null;
 
 // Convert stored [lon, lat] rings into Leaflet's [lat, lon] nested arrays.
 const locationPolygons = (loc: ApplicationLocation): L.LatLngExpression[][][] =>
-  (loc.polygons ?? []).map((poly) => poly.map((ring) => ring.map(([lon, lat]) => [lat, lon] as [number, number])))
+  (loc.polygons ?? []).map((poly) => poly.map((ring) => ring.map(([lon, lat]) => [lat, lon] as [number, number])));
 
 const destroyLocationMap = () => {
-  locationMap?.remove()
-  locationMap = null
-}
+  locationMap?.remove();
+  locationMap = null;
+};
 
 const buildLocationMap = () => {
-  destroyLocationMap()
-  const loc = app.value?.location
-  if (!locationMapEl.value || !loc) return
-  const map = createMap(locationMapEl.value)
-  const bounds = L.latLngBounds([])
+  destroyLocationMap();
+  const loc = app.value?.location;
+  if (!locationMapEl.value || !loc) return;
+  const map = createMap(locationMapEl.value);
+  const bounds = L.latLngBounds([]);
   for (const rings of locationPolygons(loc)) {
-    L.polygon(rings, { color: '#2563eb', weight: 2, fillColor: '#2563eb', fillOpacity: 0.2 }).addTo(map)
+    L.polygon(rings, { color: '#2563eb', weight: 2, fillColor: '#2563eb', fillOpacity: 0.2 }).addTo(map);
     for (const ring of rings) {
-      for (const latlng of ring) bounds.extend(latlng)
+      for (const latlng of ring) bounds.extend(latlng);
     }
   }
-  L.marker([loc.center.lat, loc.center.lon]).addTo(map)
-  bounds.extend([loc.center.lat, loc.center.lon] as L.LatLngExpression)
-  map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17 })
-  locationMap = map
-}
+  L.marker([loc.center.lat, loc.center.lon]).addTo(map);
+  bounds.extend([loc.center.lat, loc.center.lon] as L.LatLngExpression);
+  map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17 });
+  locationMap = map;
+};
 
 const osmLinkUrl = computed(() => {
-  const loc = app.value?.location
-  if (!loc) return ''
-  return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(loc.center.lat)}&mlon=${encodeURIComponent(loc.center.lon)}#map=17/${encodeURIComponent(loc.center.lat)}/${encodeURIComponent(loc.center.lon)}`
-})
+  const loc = app.value?.location;
+  if (!loc) return '';
+  return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(loc.center.lat)}&mlon=${encodeURIComponent(loc.center.lon)}#map=17/${encodeURIComponent(loc.center.lat)}/${encodeURIComponent(loc.center.lon)}`;
+});
 
 // Leaflet needs a sized, mounted container, so build only while the Location
 // tab is showing and tear the map down when it is hidden or the app changes.
@@ -522,309 +749,321 @@ watch(
   () => [activeTab.value, app.value?.reference] as const,
   async ([tab]) => {
     if (tab !== 'location' || !app.value?.location) {
-      destroyLocationMap()
-      return
+      destroyLocationMap();
+      return;
     }
-    await nextTick()
-    buildLocationMap()
-  }
-)
+    await nextTick();
+    buildLocationMap();
+  },
+);
 
-onBeforeUnmount(destroyLocationMap)
+onBeforeUnmount(destroyLocationMap);
 const syncApp = async () => {
-  if (!app.value) return
-  syncing.value = true
-  syncError.value = ''
-  syncMessage.value = ''
+  if (!app.value) return;
+  syncing.value = true;
+  syncError.value = '';
+  syncMessage.value = '';
   try {
-    await api.downloadApplication(app.value.reference, app.value.authorityId)
-    syncMessage.value = 'Sync queued. Check the Queue page for progress.'
+    await api.downloadApplication(app.value.reference, app.value.authorityId);
+    syncMessage.value = 'Sync queued. Check the Queue page for progress.';
   } catch (err: any) {
-    syncError.value = err.message || 'Failed to sync'
+    syncError.value = err.message || 'Failed to sync';
   } finally {
-    syncing.value = false
+    syncing.value = false;
   }
-}
+};
 
-const savingFlags = ref(false)
+const savingFlags = ref(false);
 
 const toggleStar = async () => {
-  if (!app.value) return
-  savingFlags.value = true
+  if (!app.value) return;
+  savingFlags.value = true;
   try {
-    const flags = await api.setApplicationFlags(app.value.reference, { starred: !app.value.starred }, app.value.authorityId)
-    app.value.starred = flags.starred
+    const flags = await api.setApplicationFlags(
+      app.value.reference,
+      { starred: !app.value.starred },
+      app.value.authorityId,
+    );
+    app.value.starred = flags.starred;
   } catch (e) {
-    console.error(e)
+    console.error(e);
   } finally {
-    savingFlags.value = false
+    savingFlags.value = false;
   }
-}
+};
 
 const toggleArchive = async () => {
-  if (!app.value) return
+  if (!app.value) return;
   if (!app.value.archived) {
-    const ok = window.confirm(`Archive "${app.value.reference}"? It will be hidden from the main list.`)
-    if (!ok) return
+    const ok = window.confirm(`Archive "${app.value.reference}"? It will be hidden from the main list.`);
+    if (!ok) return;
   }
-  savingFlags.value = true
+  savingFlags.value = true;
   try {
-    const flags = await api.setApplicationFlags(app.value.reference, { archived: !app.value.archived }, app.value.authorityId)
-    app.value.archived = flags.archived
+    const flags = await api.setApplicationFlags(
+      app.value.reference,
+      { archived: !app.value.archived },
+      app.value.authorityId,
+    );
+    app.value.archived = flags.archived;
   } catch (e) {
-    console.error(e)
+    console.error(e);
   } finally {
-    savingFlags.value = false
+    savingFlags.value = false;
   }
-}
+};
 
 const enhancedAppDocuments = computed<EnhancedDocument[]>(() => {
-  if (!app.value?.documents) return []
+  if (!app.value?.documents) return [];
   // The portal (and therefore metadata.json) can list the same file more than
   // once. Collapse duplicates by filename so every rendered row has a unique
   // key — duplicate keys in a v-for break Vue's diffing and leave stale rows.
-  const seen = new Set<string>()
+  const seen = new Set<string>();
   const unique = app.value.documents.filter((d) => {
-    if (!d.localFilename || seen.has(d.localFilename)) return false
-    seen.add(d.localFilename)
-    return true
-  })
+    if (!d.localFilename || seen.has(d.localFilename)) return false;
+    seen.add(d.localFilename);
+    return true;
+  });
   const docs: EnhancedDocument[] = unique.map((d) => ({
     ...d,
     url: api.documentUrl(app.value!.reference, app.value!.authorityId, d.localFilename),
     isSuperseded: d.documentType.toLowerCase().includes('superseded'),
     supersededBy: null,
-    replaces: []
-  }))
+    replaces: [],
+  }));
 
   // Find relationships based on matching descriptions
   docs.forEach((doc) => {
     if (doc.isSuperseded && doc.description) {
       // Find newer active document with same description
-      const active = docs.find((d) => !d.isSuperseded && d.description?.toLowerCase() === doc.description.toLowerCase())
+      const active = docs.find(
+        (d) => !d.isSuperseded && d.description?.toLowerCase() === doc.description.toLowerCase(),
+      );
       if (active) {
-        doc.supersededBy = active
-        active.replaces.push(doc)
+        doc.supersededBy = active;
+        active.replaces.push(doc);
       }
     }
-  })
-  return docs
-})
+  });
+  return docs;
+});
 
 const keyDocs = computed(() => {
-  if (!enhancedAppDocuments.value.length) return []
-  return enhancedAppDocuments.value.filter((d) => isKeyDocument(d))
-})
+  if (!enhancedAppDocuments.value.length) return [];
+  return enhancedAppDocuments.value.filter((d) => isKeyDocument(d));
+});
 
 const favouriteDocs = computed(() => {
-  if (!enhancedAppDocuments.value.length) return []
-  return enhancedAppDocuments.value.filter((d) => d.starred)
-})
+  if (!enhancedAppDocuments.value.length) return [];
+  return enhancedAppDocuments.value.filter((d) => d.starred);
+});
 
 const onDocChanged = (doc: EnhancedDocument, payload: { starred: boolean; note: string }) => {
-  if (!app.value) return
-  const raw = app.value.documents.find((d) => d.localFilename === doc.localFilename)
+  if (!app.value) return;
+  const raw = app.value.documents.find((d) => d.localFilename === doc.localFilename);
   if (raw) {
-    raw.starred = payload.starred
-    raw.note = payload.note
+    raw.starred = payload.starred;
+    raw.note = payload.note;
   }
-}
+};
 
 const docTypesWithCounts = computed(() => {
-  if (!enhancedAppDocuments.value.length) return []
-  const counts: Record<string, number> = { 'All': enhancedAppDocuments.value.length }
+  if (!enhancedAppDocuments.value.length) return [];
+  const counts: Record<string, number> = { All: enhancedAppDocuments.value.length };
   enhancedAppDocuments.value.forEach((d) => {
-    const type = d.documentType
-    if (type) counts[type] = (counts[type] || 0) + 1
-  })
-  const types = Array.from(new Set(enhancedAppDocuments.value.map((d) => d.documentType).filter(Boolean))).sort() as string[]
-  
+    const type = d.documentType;
+    if (type) counts[type] = (counts[type] || 0) + 1;
+  });
+  const types = Array.from(
+    new Set(enhancedAppDocuments.value.map((d) => d.documentType).filter(Boolean)),
+  ).sort() as string[];
+
   return [
     { value: 'All', label: 'All', count: counts['All'] },
-    ...types.map(t => ({ value: t, label: t, count: counts[t] }))
-  ]
-})
+    ...types.map((t) => ({ value: t, label: t, count: counts[t] })),
+  ];
+});
 
 const commentStancesWithCounts = computed(() => {
-  if (!commentsList.value.length) return []
-  const counts: Record<string, number> = { 'All': commentsList.value.length }
-  commentsList.value.forEach(c => {
-    const stance = c.stance || 'None'
-    counts[stance] = (counts[stance] || 0) + 1
-  })
-  
-  const stances = Array.from(new Set(commentsList.value.map(c => c.stance || 'None'))).sort() as string[]
+  if (!commentsList.value.length) return [];
+  const counts: Record<string, number> = { All: commentsList.value.length };
+  commentsList.value.forEach((c) => {
+    const stance = c.stance || 'None';
+    counts[stance] = (counts[stance] || 0) + 1;
+  });
+
+  const stances = Array.from(new Set(commentsList.value.map((c) => c.stance || 'None'))).sort() as string[];
   return [
     { value: 'All', label: 'All', count: counts['All'] },
-    ...stances.map(s => ({ value: s, label: s, count: counts[s] }))
-  ]
-})
+    ...stances.map((s) => ({ value: s, label: s, count: counts[s] })),
+  ];
+});
 
-const hasCommentSearch = computed(() => commentSearch.value.trim() !== '')
+const hasCommentSearch = computed(() => commentSearch.value.trim() !== '');
 
 const filteredComments = computed(() => {
-  let list = commentsList.value
+  let list = commentsList.value;
   if (selectedStance.value !== 'All') {
-    list = list.filter(c => (c.stance || 'None') === selectedStance.value)
+    list = list.filter((c) => (c.stance || 'None') === selectedStance.value);
   }
-  const q = commentSearch.value.trim().toLowerCase()
+  const q = commentSearch.value.trim().toLowerCase();
   if (q) {
-    list = list.filter(c => {
-      const haystack = `${c.address} ${c.date} ${c.stance} ${c.text}`.toLowerCase()
-      return haystack.includes(q)
-    })
+    list = list.filter((c) => {
+      const haystack = `${c.address} ${c.date} ${c.stance} ${c.text}`.toLowerCase();
+      return haystack.includes(q);
+    });
   }
-  return list
-})
+  return list;
+});
 
 const filteredDocs = computed(() => {
-  if (!enhancedAppDocuments.value.length) return []
-  let docs = enhancedAppDocuments.value
+  if (!enhancedAppDocuments.value.length) return [];
+  let docs = enhancedAppDocuments.value;
   if (selectedDocType.value !== 'All') {
-    docs = docs.filter((d) => d.documentType === selectedDocType.value)
+    docs = docs.filter((d) => d.documentType === selectedDocType.value);
   }
-  const q = docSearch.value.trim().toLowerCase()
+  const q = docSearch.value.trim().toLowerCase();
   if (q) {
     docs = docs.filter((d) => {
-      const haystack = `${d.description || ''} ${d.documentType || ''} ${d.localFilename || ''} ${d.datePublished || ''} ${d.note || ''}`.toLowerCase()
-      return haystack.includes(q) || Object.prototype.hasOwnProperty.call(contentSnippets.value, d.localFilename)
-    })
+      const haystack =
+        `${d.description || ''} ${d.documentType || ''} ${d.localFilename || ''} ${d.datePublished || ''} ${d.note || ''}`.toLowerCase();
+      return haystack.includes(q) || Object.prototype.hasOwnProperty.call(contentSnippets.value, d.localFilename);
+    });
   }
-  return docs
-})
+  return docs;
+});
 
 // Content search is debounced and server-side (PDFs are extracted on first
 // search), so it runs after the instant metadata filter and merges its results
 // into the same list.
-let contentSearchTimer: ReturnType<typeof setTimeout> | null = null
+let contentSearchTimer: ReturnType<typeof setTimeout> | null = null;
 const runContentSearch = async (query: string) => {
-  if (!app.value || !searchContents.value) return
-  searchingContent.value = true
+  if (!app.value || !searchContents.value) return;
+  searchingContent.value = true;
   try {
-    const hits: DocumentSearchHit[] = await api.searchDocuments(app.value.reference, query, app.value.authorityId)
+    const hits: DocumentSearchHit[] = await api.searchDocuments(app.value.reference, query, app.value.authorityId);
     // Ignore stale responses if the user has since changed the query or toggled
     // content search off.
-    if (!searchContents.value || docSearch.value.trim() !== query) return
-    const snippets: Record<string, DocumentSnippet> = {}
-    for (const hit of hits) snippets[hit.localFilename] = hit.snippet
-    contentSnippets.value = snippets
+    if (!searchContents.value || docSearch.value.trim() !== query) return;
+    const snippets: Record<string, DocumentSnippet> = {};
+    for (const hit of hits) snippets[hit.localFilename] = hit.snippet;
+    contentSnippets.value = snippets;
   } catch (e) {
-    console.error(e)
+    console.error(e);
   } finally {
-    searchingContent.value = false
+    searchingContent.value = false;
   }
-}
+};
 
 watch([docSearch, searchContents], () => {
-  if (contentSearchTimer) clearTimeout(contentSearchTimer)
-  const query = docSearch.value.trim()
+  if (contentSearchTimer) clearTimeout(contentSearchTimer);
+  const query = docSearch.value.trim();
   if (!query || !searchContents.value) {
-    contentSnippets.value = {}
-    searchingContent.value = false
-    return
+    contentSnippets.value = {};
+    searchingContent.value = false;
+    return;
   }
-  contentSearchTimer = setTimeout(() => runContentSearch(query), 300)
-})
+  contentSearchTimer = setTimeout(() => runContentSearch(query), 300);
+});
 
-const commentKey = (c: { address: string; date: string; stance: string }) =>
-  `${c.address}|${c.date}|${c.stance}`
+const commentKey = (c: { address: string; date: string; stance: string }) => `${c.address}|${c.date}|${c.stance}`;
 
 const loadComments = async () => {
   if (!app.value?.hasComments) {
-    commentsList.value = []
-    commentsError.value = ''
-    return
+    commentsList.value = [];
+    commentsError.value = '';
+    return;
   }
   try {
-    const data = await api.fetchComments(app.value.reference, app.value.authorityId)
+    const data = await api.fetchComments(app.value.reference, app.value.authorityId);
     // Re-fetching comments (while a download streams in) must not collapse
     // comments the user has already expanded, so keep their state by content.
-    const expandedByKey = new Map<string, boolean>()
+    const expandedByKey = new Map<string, boolean>();
     for (const c of commentsList.value) {
-      expandedByKey.set(commentKey(c), !!c.expanded)
+      expandedByKey.set(commentKey(c), !!c.expanded);
     }
     commentsList.value = data.map((c: Comment) => ({
       ...c,
-      expanded: expandedByKey.get(commentKey(c)) ?? false
-    }))
-    commentsError.value = ''
+      expanded: expandedByKey.get(commentKey(c)) ?? false,
+    }));
+    commentsError.value = '';
   } catch (err) {
-    commentsError.value = 'Failed to load comments.'
+    commentsError.value = 'Failed to load comments.';
   }
-}
+};
 
-let fetchInFlight = false
+let fetchInFlight = false;
 
 const scanMoreInsights = () => {
-  insightView.value = 'highlights'
-  return generateInsights(true)
-}
+  insightView.value = 'highlights';
+  return generateInsights(true);
+};
 
 const fetchApp = async () => {
-  const refNow = refParam.value
-  if (fetchInFlight || !refNow) return
-  fetchInFlight = true
+  const refNow = refParam.value;
+  if (fetchInFlight || !refNow) return;
+  fetchInFlight = true;
   try {
-    const fresh = await api.fetchApplication(refNow)
-    const firstLoad = app.value === null
-    app.value = fresh
-    error.value = ''
-    document.title = `PlanBrowser | ${fresh.reference}`
-    await loadComments()
-    await loadInsights()
+    const fresh = await api.fetchApplication(refNow);
+    const firstLoad = app.value === null;
+    app.value = fresh;
+    error.value = '';
+    document.title = `PlanBrowser | ${fresh.reference}`;
+    await loadComments();
+    await loadInsights();
     if (firstLoad && keyDocs.value.length > 0 && activeTab.value === 'documents') {
-      activeTab.value = 'key-documents'
+      activeTab.value = 'key-documents';
     }
   } catch (e: any) {
-    console.error(e)
+    console.error(e);
     // While the app is queued/downloading the metadata may simply not be on
     // disk yet; leave the error blank and let the next poll retry.
     if (!isDownloading.value) {
-      error.value = e.message || 'Failed to load'
+      error.value = e.message || 'Failed to load';
     }
   } finally {
-    loading.value = false
-    fetchInFlight = false
+    loading.value = false;
+    fetchInFlight = false;
   }
-}
+};
 
 // The queue is polled globally, so watch it and re-fetch this application
 // whenever it is (or has just been) downloaded — that streams the progressively
 // committed metadata into the page and grabs the final state on completion.
-let lastWasDownloading = false
+let lastWasDownloading = false;
 watch(queueItems, async () => {
-  const nowDownloading = isDownloading.value
+  const nowDownloading = isDownloading.value;
   if (nowDownloading || lastWasDownloading) {
-    lastWasDownloading = nowDownloading
-    await fetchApp()
+    lastWasDownloading = nowDownloading;
+    await fetchApp();
   } else {
-    lastWasDownloading = nowDownloading
+    lastWasDownloading = nowDownloading;
   }
-})
+});
 
 // If the user navigates from one application to another without leaving the
 // viewer, reset and load the new reference rather than showing stale content.
 watch(refParam, () => {
-  if (!refParam.value) return
-  resetInsights()
-  app.value = null
-  insightView.value = 'highlights'
-  error.value = ''
-  commentsList.value = []
-  commentsError.value = ''
-  docSearch.value = ''
-  contentSnippets.value = {}
-  searchingContent.value = false
-  lastWasDownloading = false
-  loading.value = true
-  fetchApp()
-})
+  if (!refParam.value) return;
+  resetInsights();
+  app.value = null;
+  insightView.value = 'highlights';
+  error.value = '';
+  commentsList.value = [];
+  commentsError.value = '';
+  docSearch.value = '';
+  contentSnippets.value = {};
+  searchingContent.value = false;
+  lastWasDownloading = false;
+  loading.value = true;
+  fetchApp();
+});
 
 onMounted(async () => {
-  document.title = 'PlanBrowser'
-  await fetchApp()
-  lastWasDownloading = isDownloading.value
-})
+  document.title = 'PlanBrowser';
+  await fetchApp();
+  lastWasDownloading = isDownloading.value;
+});
 </script>
 
 <style module>

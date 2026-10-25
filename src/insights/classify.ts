@@ -81,7 +81,7 @@ function namedKind(profile: DocumentProfile, titles: TitleCandidate[], text: str
   const fromTitle = (title: TitleCandidate, strength: string): Evidence => ({
     kind: title.kind,
     why: `${strength} page title ${quote(title.text)}`,
-    title: title.text
+    title: title.text,
   });
   const strong = titles.find((title) => title.strong);
   if (strong) return fromTitle(strong, 'qualified');
@@ -100,11 +100,16 @@ export function classifyPage(
   profile: DocumentProfile,
   page: string | PageLine[],
   stats: PagePixelStats,
-  options: ClassifyOptions = {}
+  options: ClassifyOptions = {},
 ): PageClassification {
   const lines = typeof page === 'string' ? linesFromText(page) : page;
   const text = typeof page === 'string' ? page : linesToText(page);
-  const reject = (why: string): PageClassification => ({ kind: 'other', score: 0, label: profile.label, reason: `rejected: ${why}` });
+  const reject = (why: string): PageClassification => ({
+    kind: 'other',
+    score: 0,
+    label: profile.label,
+    reason: `rejected: ${why}`,
+  });
 
   // --- Appearance -----------------------------------------------------------
   if (isFlatGraphic(stats)) return reject('flat graphic (cover or divider)');
@@ -114,10 +119,16 @@ export function classifyPage(
   // A large embedded image with real tonal content: a render or photo inset
   // beside body copy, without letting flat decorative graphics through.
   const figure = options.hasLargeImage === true && stats.distinctColors >= 50;
-  const appearance = [photographic && 'photographic', fullBleed && 'full-bleed', figure && 'embedded figure', prose && 'prose']
+  const appearance = [
+    photographic && 'photographic',
+    fullBleed && 'full-bleed',
+    figure && 'embedded figure',
+    prose && 'prose',
+  ]
     .filter(Boolean)
     .join(', ');
-  const because = (evidence: Evidence): string => `${evidence.kind} from ${evidence.why}${appearance ? ` [${appearance}]` : ''}`;
+  const because = (evidence: Evidence): string =>
+    `${evidence.kind} from ${evidence.why}${appearance ? ` [${appearance}]` : ''}`;
   // Trusted drawing documents (whose pages are often note-heavy) are exempt
   // from the prose test.
   if (!photographic && !figure && !profile.drawing && prose) return reject('prose page');
@@ -132,14 +143,18 @@ export function classifyPage(
   const named = trustNames ? namedKind(profile, titles, prose ? '' : text) : undefined;
   // The image's own caption outranks the document name for render-vs-photo.
   const captionKind = options.caption ? visualKindFromText(options.caption) : undefined;
-  const caption: Evidence | undefined = captionKind ? { kind: captionKind, why: `caption ${quote(options.caption ?? '')}` } : undefined;
+  const caption: Evidence | undefined = captionKind
+    ? { kind: captionKind, why: `caption ${quote(options.caption ?? '')}` }
+    : undefined;
   // An unnamed visual needs positive evidence before it is shown. A render may be
   // inferred in a design/statement document; in a reference volume (appendix,
   // figure book) an unnamed visual is more likely a map or diagram.
   const unnamedVisual = (allowRender: boolean): Evidence | undefined =>
     caption ??
     (profile.namesPhoto ? { kind: 'photo', why: 'document names photos/viewpoints' } : undefined) ??
-    (allowRender ? { kind: 'render', why: profile.designVisual ? 'design document visual' : 'photographic page' } : undefined);
+    (allowRender
+      ? { kind: 'render', why: profile.designVisual ? 'design document visual' : 'photographic page' }
+      : undefined);
 
   // --- Resolution -----------------------------------------------------------
   let evidence = named;
@@ -165,7 +180,8 @@ export function classifyPage(
   // Ambiguous pages of a drawing document are kept as `other`; anything else
   // without a kind (a plain text page, a form, a letter) is dropped.
   if (!evidence) {
-    if (profile.referenceVolume || (!profile.drawing && !photographic)) return reject(`no visual kind${appearance ? ` [${appearance}]` : ''}`);
+    if (profile.referenceVolume || (!profile.drawing && !photographic))
+      return reject(`no visual kind${appearance ? ` [${appearance}]` : ''}`);
     evidence = { kind: 'other', why: 'drawing document page' };
   }
   const kind = evidence.kind;

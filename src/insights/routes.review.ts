@@ -10,7 +10,7 @@ import {
   readReviewStore,
   removeReviewLabels,
   sanitizeLabels,
-  sanitizePageRefs
+  sanitizePageRefs,
 } from './labels.js';
 import { closePdf, openPdf, renderPageToPng } from './render.js';
 import { THUMB_WIDTH } from './generate.js';
@@ -49,10 +49,7 @@ reviewRouter.get('/api/applications/:ref/insights/labels', (req, res) => {
 });
 
 reviewRouter.post('/api/applications/:ref/insights/labels', (req, res) => {
-  const found = resolveApplicationMeta(
-    req.params.ref,
-    resolveAuthorityId(req.body?.authority ?? req.query.authority)
-  );
+  const found = resolveApplicationMeta(req.params.ref, resolveAuthorityId(req.body?.authority ?? req.query.authority));
   if (!found) {
     res.status(404).json({ error: 'Application not found' });
     return;

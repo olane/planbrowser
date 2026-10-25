@@ -142,7 +142,7 @@ export function analysePixels(pixels: Uint8ClampedArray | Uint8Array, width: num
     dominantColorRatio: total ? dominant / total : 0,
     grayscale: total ? grey / total : 0,
     edgeDensity: pairs ? edges / pairs : 0,
-    phash: perceptualHash(pixels, width, height)
+    phash: perceptualHash(pixels, width, height),
   };
 }
 

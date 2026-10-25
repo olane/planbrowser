@@ -13,7 +13,7 @@ function image(overrides: Partial<InsightImage>): InsightImage {
     width: 1600,
     height: 1130,
     score: 50,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -26,7 +26,7 @@ describe('selectImages', () => {
 
   it('caps the number of images per kind', () => {
     const candidates = Array.from({ length: 20 }, (_, i) =>
-      image({ id: i.toString(16).padStart(40, '0'), kind: 'plan', localFilename: `plan-${i}.pdf`, score: 100 - i })
+      image({ id: i.toString(16).padStart(40, '0'), kind: 'plan', localFilename: `plan-${i}.pdf`, score: 100 - i }),
     );
     const out = selectImages(candidates, { caps: { plan: 3 } });
     expect(out.images.filter((i) => i.kind === 'plan')).toHaveLength(3);
@@ -38,7 +38,7 @@ describe('selectImages', () => {
     const out = selectImages([
       image({ id: '1'.repeat(40), kind: 'photo', score: 90, phash: 'aaaaaaaaaaaaaaaa' }),
       image({ id: '2'.repeat(40), kind: 'photo', score: 80, phash: 'aaaaaaaaaaaaaaab' }),
-      image({ id: '3'.repeat(40), kind: 'photo', score: 70, phash: '0123456789abcdef' })
+      image({ id: '3'.repeat(40), kind: 'photo', score: 70, phash: '0123456789abcdef' }),
     ]).images;
     expect(out).toHaveLength(2);
     expect(out.map((i) => i.id)).toContain('1'.repeat(40));
@@ -46,7 +46,7 @@ describe('selectImages', () => {
 
   it('respects the overall cap', () => {
     const candidates = Array.from({ length: 20 }, (_, i) =>
-      image({ id: i.toString(16).padStart(40, '0'), kind: 'render', localFilename: `render-${i}.pdf`, score: 100 - i })
+      image({ id: i.toString(16).padStart(40, '0'), kind: 'render', localFilename: `render-${i}.pdf`, score: 100 - i }),
     );
     const out = selectImages(candidates, { total: 5 });
     expect(out.images).toHaveLength(5);
@@ -56,7 +56,7 @@ describe('selectImages', () => {
 
   it('limits images from a single document', () => {
     const candidates = Array.from({ length: 6 }, (_, i) =>
-      image({ id: i.toString(16).padStart(40, '0'), kind: 'plan', localFilename: 'one.pdf', score: 100 - i })
+      image({ id: i.toString(16).padStart(40, '0'), kind: 'plan', localFilename: 'one.pdf', score: 100 - i }),
     );
     const out = selectImages(candidates, { maxPerDocument: 2 });
     expect(out.images).toHaveLength(2);
@@ -67,7 +67,7 @@ describe('selectImages', () => {
     const out = selectImages([
       image({ id: '1'.repeat(40), kind: 'other', score: 200 }),
       image({ id: '2'.repeat(40), kind: 'render', score: 10 }),
-      image({ id: '3'.repeat(40), kind: 'plan', score: 10 })
+      image({ id: '3'.repeat(40), kind: 'plan', score: 10 }),
     ]).images;
     expect(out.map((i) => i.kind)).toEqual(['render', 'plan', 'other']);
   });
@@ -80,7 +80,7 @@ describe('selectImages', () => {
 
   it('returns every deduped candidate in `deduped`, not just the chosen ones', () => {
     const candidates = Array.from({ length: 5 }, (_, i) =>
-      image({ id: i.toString(16).padStart(40, '0'), kind: 'plan', localFilename: `plan-${i}.pdf`, score: 100 - i })
+      image({ id: i.toString(16).padStart(40, '0'), kind: 'plan', localFilename: `plan-${i}.pdf`, score: 100 - i }),
     );
     const out = selectImages(candidates, { caps: { plan: 2 }, maxPerDocument: 5 });
     expect(out.images).toHaveLength(2);

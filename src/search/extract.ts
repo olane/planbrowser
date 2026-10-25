@@ -26,7 +26,7 @@ async function extractDocx(filePath: string): Promise<string> {
 
 const EXTRACTORS: Record<string, (filePath: string) => Promise<string>> = {
   pdf: extractPdf,
-  docx: extractDocx
+  docx: extractDocx,
 };
 
 // Returns a document's extracted text, or null when the file type is not

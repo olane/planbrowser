@@ -42,7 +42,7 @@ function multiply(m: Matrix, n: Matrix): Matrix {
     m[0] * n[2] + m[2] * n[3],
     m[1] * n[2] + m[3] * n[3],
     m[0] * n[4] + m[2] * n[5] + m[4],
-    m[1] * n[4] + m[3] * n[5] + m[5]
+    m[1] * n[4] + m[3] * n[5] + m[5],
   ];
 }
 
@@ -119,7 +119,7 @@ export function imagePlacements(fnArray: number[], argsArray: unknown[], ops: Im
       case ops.paintImageMaskXObject: {
         placements.push({
           box: bounds([apply(ctm, 0, 0), apply(ctm, 1, 0), apply(ctm, 1, 1), apply(ctm, 0, 1)]),
-          pixelArea: pixelArea(fn, args, ops)
+          pixelArea: pixelArea(fn, args, ops),
         });
         break;
       }
@@ -138,12 +138,7 @@ function itemBox(item: TextItem): Box {
 // Join the text within `gap` of `box` (overlapping or just outside), nearest
 // first. For a full-bleed image that is the whole page; for an inset figure it
 // is the surrounding caption/labels.
-export function captionForBox(
-  items: TextItem[],
-  box: Box,
-  pageHeight: number,
-  gap = pageHeight * 0.05
-): string {
+export function captionForBox(items: TextItem[], box: Box, pageHeight: number, gap = pageHeight * 0.05): string {
   const scored: { text: string; distance: number; x: number; y: number }[] = [];
   for (const item of items) {
     const text = (item.str ?? '').trim();

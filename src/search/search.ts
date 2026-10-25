@@ -14,7 +14,7 @@ function snippet(text: string, query: string): DocumentSnippet | null {
   return {
     before: text.slice(Math.max(0, idx - SNIPPET_CONTEXT), idx),
     match: text.slice(idx, idx + query.length),
-    after: text.slice(idx + query.length, idx + query.length + SNIPPET_CONTEXT + 40)
+    after: text.slice(idx + query.length, idx + query.length + SNIPPET_CONTEXT + 40),
   };
 }
 
@@ -36,7 +36,7 @@ function countOccurrences(text: string, query: string): number {
 export async function searchApplicationDocuments(
   reference: string,
   authorityId: string | undefined,
-  query: string
+  query: string,
 ): Promise<DocumentSearchHit[]> {
   const q = query.trim();
   if (!q) return [];
@@ -93,8 +93,8 @@ export async function searchApplicationDocuments(
         documentType: doc.documentType,
         description: doc.description,
         datePublished: doc.datePublished,
-        snippet: match
-      }
+        snippet: match,
+      },
     });
   }
 

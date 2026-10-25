@@ -40,7 +40,7 @@ function toTextItems(items: RawTextItem[]): TextItem[] {
       y: t[5] || 0,
       width: Number(raw.width) || 0,
       height,
-      fontSize: fontSize || undefined
+      fontSize: fontSize || undefined,
     });
   }
   return out;
@@ -121,7 +121,7 @@ function resolvedOps(): Promise<ImageOps> {
         paintFormXObjectEnd: Number(ops.paintFormXObjectEnd),
         paintImageXObject: Number(ops.paintImageXObject),
         paintInlineImageXObject: Number(ops.paintInlineImageXObject),
-        paintImageMaskXObject: Number(ops.paintImageMaskXObject)
+        paintImageMaskXObject: Number(ops.paintImageMaskXObject),
       };
     });
   }
@@ -152,7 +152,7 @@ export async function scanPage(pdf: PdfDocument, page: number, captionMinArea: n
     return {
       imageCount: images.length,
       largestImageArea,
-      caption
+      caption,
     };
   } catch {
     return EMPTY_SCAN;
@@ -164,7 +164,7 @@ export async function scanPage(pdf: PdfDocument, page: number, captionMinArea: n
 export async function renderPageToPng(pdf: PdfDocument, page: number, width: number): Promise<Buffer> {
   const buffer = await renderPageAsImage(pdf, page, {
     width,
-    canvasImport: () => import('@napi-rs/canvas')
+    canvasImport: () => import('@napi-rs/canvas'),
   });
   return Buffer.from(buffer);
 }

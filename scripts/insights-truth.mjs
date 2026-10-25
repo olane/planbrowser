@@ -110,7 +110,7 @@ export function scoreSample(insights, spec) {
     const inSetLabels = goodLabels.filter(inSet(set));
     return {
       high: inSetLabels.filter((l) => l.rank === 'high').length,
-      low: inSetLabels.filter((l) => l.rank === 'low').length
+      low: inSetLabels.filter((l) => l.rank === 'low').length,
     };
   };
 
@@ -140,9 +140,9 @@ export function scoreSample(insights, spec) {
         highlightsHigh: ranks(images).high,
         highlightsLow: ranks(images).low,
         foundHigh: ranks(found).high,
-        foundLow: ranks(found).low
-      }
-    }
+        foundLow: ranks(found).low,
+      },
+    },
   };
 }
 

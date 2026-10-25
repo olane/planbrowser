@@ -32,7 +32,9 @@ describe('normalizePostcode', () => {
 
 describe('extractPostcode', () => {
   it('extracts the postcode from the end of a scraped address', () => {
-    expect(extractPostcode('Corpus Christi College Trumpington Street Cambridge Cambridgeshire CB2 1RH')).toBe('CB2 1RH');
+    expect(extractPostcode('Corpus Christi College Trumpington Street Cambridge Cambridgeshire CB2 1RH')).toBe(
+      'CB2 1RH',
+    );
     expect(extractPostcode('12-18 Hoxton Street London N1 6NG')).toBe('N1 6NG');
     expect(extractPostcode('Flat 4 22 Kings Road Wigan WN1 1XX')).toBe('WN1 1XX');
   });

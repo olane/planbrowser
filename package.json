@@ -2,8 +2,14 @@
   "name": "planbrowser",
   "version": "2.3.0",
   "description": "",
-  "main": "electron/main.mjs",
+  "keywords": [],
+  "license": "ISC",
+  "author": {
+    "name": "olane",
+    "email": "hello@olane.dev"
+  },
   "type": "module",
+  "main": "electron/main.mjs",
   "scripts": {
     "build": "tsc",
     "server": "npm run build && node dist/server.js",
@@ -13,28 +19,15 @@
     "electron:pack": "npm run build && npm run build --prefix ui && electron-builder --dir",
     "electron:dist": "npm run build && npm run build --prefix ui && electron-builder",
     "test": "vitest run",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "check": "npm run lint && npm run format:check",
     "samples": "npm run build && node scripts/fetch-samples.mjs",
     "insights:report": "npm run build && node scripts/insights-report.mjs",
     "insights:eval": "npm run build && node scripts/insights-eval.mjs",
     "insights:labels": "npm run build && node scripts/insights-labels.mjs"
-  },
-  "keywords": [],
-  "author": {
-    "name": "olane",
-    "email": "hello@olane.dev"
-  },
-  "license": "ISC",
-  "devDependencies": {
-    "@types/adm-zip": "^0.5.8",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/node": "^26.4.0",
-    "concurrently": "^10.0.5",
-    "domhandler": "^5.0.3",
-    "electron": "^33.0.0",
-    "electron-builder": "^25.1.8",
-    "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.9",
@@ -46,6 +39,20 @@
     "playwright": "^1.62.1",
     "proj4": "^2.21.0",
     "unpdf": "^1.8.1"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.4.0",
+    "concurrently": "^10.0.5",
+    "domhandler": "^5.0.3",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "oxfmt": "^0.74.0",
+    "oxlint": "^1.89.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
   },
   "build": {
     "appId": "dev.olane.planbrowser",

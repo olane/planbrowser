@@ -30,7 +30,12 @@ export class DownloadQueue {
   }
 
   enqueue(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID) {
-    const existing = this.queue.find(item => item.reference === reference && item.authorityId === authorityId && (item.status === 'pending' || item.status === 'in_progress' || item.status === 'cancelled'));
+    const existing = this.queue.find(
+      (item) =>
+        item.reference === reference &&
+        item.authorityId === authorityId &&
+        (item.status === 'pending' || item.status === 'in_progress' || item.status === 'cancelled'),
+    );
     if (existing) {
       if (existing.status === 'cancelled') {
         this.resetToPending(existing);
@@ -44,7 +49,7 @@ export class DownloadQueue {
       reference,
       authorityId,
       status: 'pending',
-      enqueuedAt: new Date().toISOString()
+      enqueuedAt: new Date().toISOString(),
     };
     this.queue.push(item);
 
@@ -60,7 +65,7 @@ export class DownloadQueue {
       pending: 1,
       completed: 2,
       failed: 2,
-      cancelled: 2
+      cancelled: 2,
     };
     return [...this.queue].sort((a, b) => {
       const byStatus = statusOrder[a.status] - statusOrder[b.status];
@@ -70,7 +75,7 @@ export class DownloadQueue {
   }
 
   retry(id: string) {
-    const item = this.queue.find(q => q.id === id);
+    const item = this.queue.find((q) => q.id === id);
     if (!item || item.status !== 'failed') {
       return undefined;
     }
@@ -84,7 +89,7 @@ export class DownloadQueue {
   // so it can be re-queued if the cancellation was a mistake. In-flight work is
   // aborted; its eventual result is discarded via the run-id guard.
   cancel(id: string) {
-    const item = this.queue.find(q => q.id === id);
+    const item = this.queue.find((q) => q.id === id);
     if (!item || (item.status !== 'pending' && item.status !== 'in_progress')) {
       return undefined;
     }
@@ -107,7 +112,7 @@ export class DownloadQueue {
   }
 
   requeue(id: string) {
-    const item = this.queue.find(q => q.id === id);
+    const item = this.queue.find((q) => q.id === id);
     if (!item || item.status !== 'cancelled') {
       return undefined;
     }
@@ -118,7 +123,9 @@ export class DownloadQueue {
   }
 
   clearCompleted() {
-    this.queue = this.queue.filter(item => item.status !== 'completed' && item.status !== 'failed' && item.status !== 'cancelled');
+    this.queue = this.queue.filter(
+      (item) => item.status !== 'completed' && item.status !== 'failed' && item.status !== 'cancelled',
+    );
   }
 
   private resetToPending(item: QueueItem) {
@@ -143,7 +150,7 @@ export class DownloadQueue {
 
     try {
       while (true) {
-        const item = this.queue.find(q => q.status === 'pending');
+        const item = this.queue.find((q) => q.status === 'pending');
         if (!item) break;
 
         const runId = ++this.currentRunId;
@@ -155,14 +162,19 @@ export class DownloadQueue {
         delete item.error;
 
         try {
-          await downloadApplication(item.reference, item.authorityId, (message, current, total) => {
-            if (this.currentRunId !== runId) return;
-            item.progress = {
-              message,
-              ...(current !== undefined ? { current } : {}),
-              ...(total !== undefined ? { total } : {})
-            };
-          }, abort.signal);
+          await downloadApplication(
+            item.reference,
+            item.authorityId,
+            (message, current, total) => {
+              if (this.currentRunId !== runId) return;
+              item.progress = {
+                message,
+                ...(current !== undefined ? { current } : {}),
+                ...(total !== undefined ? { total } : {}),
+              };
+            },
+            abort.signal,
+          );
           if (this.currentRunId === runId) {
             item.status = 'completed';
             delete item.progress;

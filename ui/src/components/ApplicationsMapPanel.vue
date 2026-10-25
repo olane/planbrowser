@@ -2,17 +2,18 @@
   <div :class="$style.mapWrap">
     <ApplicationsMap :apps="apps" @select="emit('select', $event)" />
     <p v-if="unmapped > 0" :class="$style.mapNote">
-      {{ unmapped }} {{ unmapped === 1 ? 'application has' : 'applications have' }} no location {{ unmapped === 1 ? 'and isn\u2019t' : "and aren\u2019t" }} shown on the map.
+      {{ unmapped }} {{ unmapped === 1 ? 'application has' : 'applications have' }} no location
+      {{ unmapped === 1 ? 'and isn\u2019t' : 'and aren\u2019t' }} shown on the map.
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { ApplicationMeta } from '../../../src/types.js'
-import ApplicationsMap from './ApplicationsMap.vue'
+import type { ApplicationMeta } from '../../../src/types.js';
+import ApplicationsMap from './ApplicationsMap.vue';
 
-defineProps<{ apps: ApplicationMeta[]; unmapped: number }>()
-const emit = defineEmits<{ select: [reference: string] }>()
+defineProps<{ apps: ApplicationMeta[]; unmapped: number }>();
+const emit = defineEmits<{ select: [reference: string] }>();
 </script>
 
 <style module>

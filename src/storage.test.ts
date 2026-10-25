@@ -27,7 +27,7 @@ function meta(reference: string, authorityId?: string): ApplicationMeta {
     dates: {},
     documents: [],
     hasComments: false,
-    scrapedAt: '2024-01-01T00:00:00.000Z'
+    scrapedAt: '2024-01-01T00:00:00.000Z',
   };
 }
 
@@ -38,15 +38,11 @@ function writeMeta(relDir: string, value: ApplicationMeta): void {
 
 describe('getApplicationDir', () => {
   it('namespaces by authority and normalises the reference', () => {
-    expect(getApplicationDir('24/00123/FUL', 'cambridge')).toBe(
-      path.join(tmpDir, 'cambridge', '24-00123-FUL')
-    );
+    expect(getApplicationDir('24/00123/FUL', 'cambridge')).toBe(path.join(tmpDir, 'cambridge', '24-00123-FUL'));
   });
 
   it('defaults to the cambridge authority', () => {
-    expect(getApplicationDir('24/00123/FUL')).toBe(
-      path.join(tmpDir, 'cambridge', '24-00123-FUL')
-    );
+    expect(getApplicationDir('24/00123/FUL')).toBe(path.join(tmpDir, 'cambridge', '24-00123-FUL'));
   });
 });
 
@@ -72,10 +68,12 @@ describe('saveApplicationMeta / getApplication', () => {
     app.documents = [
       { localFilename: 'a.pdf', datePublished: '01 Jan 2026', documentType: 'Drawings', description: 'A' },
       { localFilename: 'a.pdf', datePublished: '01 Jan 2026', documentType: 'Drawings', description: 'A' },
-      { localFilename: 'b.pdf', datePublished: '02 Jan 2026', documentType: 'Drawings', description: 'B' }
+      { localFilename: 'b.pdf', datePublished: '02 Jan 2026', documentType: 'Drawings', description: 'B' },
     ];
     saveApplicationMeta('24/00123/FUL', app, 'cambridge');
-    const stored = JSON.parse(fs.readFileSync(path.join(tmpDir, 'cambridge', '24-00123-FUL', 'metadata.json'), 'utf-8'));
+    const stored = JSON.parse(
+      fs.readFileSync(path.join(tmpDir, 'cambridge', '24-00123-FUL', 'metadata.json'), 'utf-8'),
+    );
     expect(stored.documents.map((d: { localFilename: string }) => d.localFilename)).toEqual(['a.pdf', 'b.pdf']);
   });
 
@@ -83,7 +81,7 @@ describe('saveApplicationMeta / getApplication', () => {
     const app = meta('24/00123/FUL', 'cambridge');
     app.documents = [
       { localFilename: 'a.pdf', datePublished: '01 Jan 2026', documentType: 'Drawings', description: 'A' },
-      { localFilename: 'a.pdf', datePublished: '01 Jan 2026', documentType: 'Drawings', description: 'A' }
+      { localFilename: 'a.pdf', datePublished: '01 Jan 2026', documentType: 'Drawings', description: 'A' },
     ];
     writeMeta(path.join('cambridge', '24-00123-FUL'), app);
     const got = getApplication('24/00123/FUL', 'cambridge');

@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  kindFromText,
-  kindsFromText,
-  profileDocument,
-  normalise,
-  visualKindFromText
-} from './keywords.js';
+import { kindFromText, kindsFromText, profileDocument, normalise, visualKindFromText } from './keywords.js';
 
 const priorOf = (doc: { documentType?: string; description?: string; localFilename?: string }) =>
   profileDocument(doc).prior;
@@ -75,22 +69,42 @@ describe('profileDocument.superseded', () => {
 
 describe('profileDocument.designVisual', () => {
   it('accepts design statements and visual documents', () => {
-    expect(profileDocument({ documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' }).designVisual).toBe(true);
-    expect(profileDocument({ documentType: 'Application Information', description: 'LANDSCAPE AND VISUAL IMPACT ASSESSMENT' }).designVisual).toBe(true);
+    expect(
+      profileDocument({ documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' })
+        .designVisual,
+    ).toBe(true);
+    expect(
+      profileDocument({
+        documentType: 'Application Information',
+        description: 'LANDSCAPE AND VISUAL IMPACT ASSESSMENT',
+      }).designVisual,
+    ).toBe(true);
   });
   it('rejects appendix/figure/report volumes', () => {
     expect(profileDocument({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' }).designVisual).toBe(false);
-    expect(profileDocument({ documentType: 'Application Survey / Assessment / Statement', description: 'TRANSPORT ASSESSMENT' }).designVisual).toBe(false);
+    expect(
+      profileDocument({
+        documentType: 'Application Survey / Assessment / Statement',
+        description: 'TRANSPORT ASSESSMENT',
+      }).designVisual,
+    ).toBe(false);
   });
 });
 
 describe('profileDocument.referenceVolume', () => {
   it('flags appendices, figure books and schedules', () => {
-    expect(profileDocument({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' }).referenceVolume).toBe(true);
-    expect(profileDocument({ documentType: 'Application Information', description: 'LVIA APPENDIX 01 METHODOLOGY' }).referenceVolume).toBe(true);
+    expect(profileDocument({ documentType: 'Drawings', description: 'APPENDIX 02-FIGURES' }).referenceVolume).toBe(
+      true,
+    );
+    expect(
+      profileDocument({ documentType: 'Application Information', description: 'LVIA APPENDIX 01 METHODOLOGY' })
+        .referenceVolume,
+    ).toBe(true);
   });
   it('does not flag ordinary drawings', () => {
-    expect(profileDocument({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' }).referenceVolume).toBe(false);
+    expect(profileDocument({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' }).referenceVolume).toBe(
+      false,
+    );
   });
 });
 
@@ -127,7 +141,9 @@ describe('document prior', () => {
 describe('keyword fixes', () => {
   it("matches artist's impression after normalisation", () => {
     expect(kindFromText("Artist's impression of the square")).toBe('render');
-    expect(priorOf({ documentType: 'Supporting Documents', description: "Artist's Impression" }).score).toBeGreaterThan(0);
+    expect(priorOf({ documentType: 'Supporting Documents', description: "Artist's Impression" }).score).toBeGreaterThan(
+      0,
+    );
   });
   it('matches plural photos', () => {
     expect(kindFromText('Site Photos')).toBe('photo');
@@ -148,7 +164,10 @@ describe('kindsFromText', () => {
 
 describe('profileDocument', () => {
   it('computes the name facts once', () => {
-    const profile = profileDocument({ documentType: 'Design and Access Statement', description: 'DESIGN & ACCESS STATEMENT' });
+    const profile = profileDocument({
+      documentType: 'Design and Access Statement',
+      description: 'DESIGN & ACCESS STATEMENT',
+    });
     expect(profile.designAndAccess).toBe(true);
     expect(profile.designVisual).toBe(true);
     expect(profile.drawing).toBe(false);
@@ -156,6 +175,8 @@ describe('profileDocument', () => {
     expect(profile.prior.score).toBeGreaterThan(5);
   });
   it('flags admin files by description/filename', () => {
-    expect(profileDocument({ documentType: 'Application Information', description: 'Application Form' }).admin).toBe(true);
+    expect(profileDocument({ documentType: 'Application Information', description: 'Application Form' }).admin).toBe(
+      true,
+    );
   });
 });

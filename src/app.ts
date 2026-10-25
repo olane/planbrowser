@@ -47,7 +47,6 @@ function sanitizeSort(input: unknown): SortSpec {
   return { field: field as SortSpec['field'], order: order === 'asc' ? 'asc' : 'desc' };
 }
 
-
 export function createApp(): express.Express {
   const app = express();
   app.use(cors());
@@ -192,13 +191,13 @@ export function createApp(): express.Express {
     try {
       const events = readActivity();
       const appsById = new Map(
-        getApplications().map((a) => [`${a.authorityId || DEFAULT_AUTHORITY_ID}/${a.reference}`, a])
+        getApplications().map((a) => [`${a.authorityId || DEFAULT_AUTHORITY_ID}/${a.reference}`, a]),
       );
       res.json(
         events.map((e) => ({
           ...e,
-          application: appsById.get(`${e.authorityId || DEFAULT_AUTHORITY_ID}/${e.reference}`) ?? null
-        }))
+          application: appsById.get(`${e.authorityId || DEFAULT_AUTHORITY_ID}/${e.reference}`) ?? null,
+        })),
       );
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -244,7 +243,12 @@ export function createApp(): express.Express {
         return res.status(400).json({ error: 'Postcode is required' });
       }
       const radius = typeof body.radius === 'string' && body.radius ? body.radius : '2';
-      const saved = saveSearch({ postcode, radius, filters: sanitizeFilters(body.filters), sort: sanitizeSort(body.sort) });
+      const saved = saveSearch({
+        postcode,
+        radius,
+        filters: sanitizeFilters(body.filters),
+        sort: sanitizeSort(body.sort),
+      });
       res.json(saved);
     } catch (err: any) {
       res.status(500).json({ error: err.message });

@@ -3,7 +3,10 @@ import type { AnyNode } from 'domhandler';
 import proj4 from 'proj4';
 import type { ApplicationLocation, LocationPolygon } from './types.js';
 
-proj4.defs('EPSG:27700', '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.1502,0.247,0.8421,-20.4894 +units=m +no_defs');
+proj4.defs(
+  'EPSG:27700',
+  '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.1502,0.247,0.8421,-20.4894 +units=m +no_defs',
+);
 
 type Coordinate = [number, number];
 
@@ -121,7 +124,7 @@ export function coordsToLocation(coords: Coordinate[]): ApplicationLocation {
   const [maxLon, maxLat] = proj4('EPSG:27700', 'EPSG:4326', [maxX, maxY]);
   return {
     center: { lat: centerLat, lon: centerLon },
-    bbox: { minLon, minLat, maxLon, maxLat }
+    bbox: { minLon, minLat, maxLon, maxLat },
   };
 }
 
@@ -148,5 +151,8 @@ export function geometryToLocation(geometry: WfsGeometry): ApplicationLocation |
 }
 
 export function escapeXml(s: string): string {
-  return s.replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c] as string));
+  return s.replace(
+    /[<>&'"]/g,
+    (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[c] as string,
+  );
 }

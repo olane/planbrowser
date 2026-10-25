@@ -24,14 +24,19 @@ export function extractDocId(urlOrName: string): string | undefined {
   return m?.[1];
 }
 
-export async function downloadDocuments(page: Page, download: DownloadFn, outDir: string, onProgress?: (message: string, current?: number, total?: number) => void, previousDocs?: DocumentMeta[], onCommitted?: (docs: DocumentMeta[]) => void, signal?: AbortSignal): Promise<DocumentMeta[]> {
+export async function downloadDocuments(
+  page: Page,
+  download: DownloadFn,
+  outDir: string,
+  onProgress?: (message: string, current?: number, total?: number) => void,
+  previousDocs?: DocumentMeta[],
+  onCommitted?: (docs: DocumentMeta[]) => void,
+  signal?: AbortSignal,
+): Promise<DocumentMeta[]> {
   console.log('Navigating to Documents tab...');
   const docsTab = page.locator('#tab_documents');
-  if (await docsTab.count() > 0) {
-    await Promise.all([
-      page.waitForNavigation(),
-      docsTab.click()
-    ]);
+  if ((await docsTab.count()) > 0) {
+    await Promise.all([page.waitForNavigation(), docsTab.click()]);
   } else {
     console.log('No documents tab found. Maybe there are no documents.');
     return [];
@@ -61,7 +66,9 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
   const DESCRIPTION = col(5, descIdx);
   const VIEW = col(6, viewIdx);
   if (hasUsableHeaders) {
-    console.log(`Document table columns detected: date=${dateIdx}, type=${typeIdx}, description=${descIdx}, view=${viewIdx}`);
+    console.log(
+      `Document table columns detected: date=${dateIdx}, type=${typeIdx}, description=${descIdx}, view=${viewIdx}`,
+    );
   }
 
   const rows = page.locator('#Documents tbody tr:not(:first-child)');
@@ -75,35 +82,35 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
     const date = await row.locator('td').nth(DATE).innerText();
     const type = await row.locator('td').nth(TYPE).innerText();
     const description = await row.locator('td').nth(DESCRIPTION).innerText();
-    
+
     const linkLocator = row.locator('td').nth(VIEW).locator('a');
-    if (await linkLocator.count() > 0) {
+    if ((await linkLocator.count()) > 0) {
       const baseName = `${date.replace(/\//g, '-')} - ${type.replace(/\//g, '-').trim()} - ${description.replace(/[^a-zA-Z0-9 -]/g, '').trim()}`;
-      
+
       const viewHref = (await linkLocator.getAttribute('href')) ?? '';
 
       const bulkCheckLocator = row.locator('.bulkCheck');
-      const hasBulkCheck = await bulkCheckLocator.count() > 0;
+      const hasBulkCheck = (await bulkCheckLocator.count()) > 0;
       let zipFilename = '';
       if (hasBulkCheck) {
         const value = await bulkCheckLocator.getAttribute('value');
         if (value) {
-            zipFilename = value.split('/').pop() || '';
+          zipFilename = value.split('/').pop() || '';
         }
       }
-      
+
       allDocs.push({
-          row,
-          baseName,
-          datePublished: date.trim(),
-          documentType: type.trim(),
-          description: description.trim(),
-          docId: extractDocId(viewHref) ?? extractDocId(zipFilename),
-          viewHref,
-          hasBulkCheck,
-          bulkCheckLocator,
-          linkLocator,
-          zipFilename
+        row,
+        baseName,
+        datePublished: date.trim(),
+        documentType: type.trim(),
+        description: description.trim(),
+        docId: extractDocId(viewHref) ?? extractDocId(zipFilename),
+        viewHref,
+        hasBulkCheck,
+        bulkCheckLocator,
+        linkLocator,
+        zipFilename,
       });
     }
   }
@@ -140,11 +147,16 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
 
   // Optional fields (docId) must be omitted rather than set to undefined under
   // exactOptionalPropertyTypes, so build the metadata fields for a row here.
-  const docMetaFields = (doc: { datePublished: string; documentType: string; description: string; docId: string | undefined }) => ({
+  const docMetaFields = (doc: {
+    datePublished: string;
+    documentType: string;
+    description: string;
+    docId: string | undefined;
+  }) => ({
     datePublished: doc.datePublished,
     documentType: doc.documentType,
     description: doc.description,
-    ...(doc.docId ? { docId: doc.docId } : {})
+    ...(doc.docId ? { docId: doc.docId } : {}),
   });
 
   const total = uniqueDocs.length;
@@ -156,14 +168,14 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
   for (const doc of uniqueDocs) {
     const recorded = doc.docId ? previousByDocId.get(doc.docId) : undefined;
     const sharesName = (rowsPerBaseName.get(doc.baseName) ?? 0) > 1;
-    const fileOnDisk = existingFiles.find(f => f.startsWith(doc.baseName + '.'));
+    const fileOnDisk = existingFiles.find((f) => f.startsWith(doc.baseName + '.'));
 
     // Same document as a previous scrape and its file is still there: re-use it.
     if (recorded && existingFiles.includes(recorded.localFilename)) {
       console.log(`Skipping existing: ${recorded.localFilename}`);
       docs.push({
         localFilename: recorded.localFilename,
-        ...docMetaFields(doc)
+        ...docMetaFields(doc),
       });
       onCommitted?.(docs);
       reusedFiles.add(recorded.localFilename);
@@ -178,7 +190,7 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
       console.log(`Skipping existing: ${fileOnDisk}`);
       docs.push({
         localFilename: fileOnDisk,
-        ...docMetaFields(doc)
+        ...docMetaFields(doc),
       });
       onCommitted?.(docs);
       reusedFiles.add(fileOnDisk);
@@ -212,99 +224,99 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
     return candidate;
   };
 
-  const bulkDownloadable = missingDocs.filter(d => d.hasBulkCheck && d.zipFilename);
-  const individualDownloadable = missingDocs.filter(d => !d.hasBulkCheck || !d.zipFilename);
+  const bulkDownloadable = missingDocs.filter((d) => d.hasBulkCheck && d.zipFilename);
+  const individualDownloadable = missingDocs.filter((d) => !d.hasBulkCheck || !d.zipFilename);
 
   if (missingDocs.length > 0) {
-      console.log(`Need to download ${bulkDownloadable.length} in bulk, and ${individualDownloadable.length} individually.`);
+    console.log(
+      `Need to download ${bulkDownloadable.length} in bulk, and ${individualDownloadable.length} individually.`,
+    );
   }
 
   const CHUNK_SIZE = 25;
   for (let i = 0; i < bulkDownloadable.length; i += CHUNK_SIZE) {
-      if (signal?.aborted) throw new Error('Download cancelled');
-      const chunk = bulkDownloadable.slice(i, i + CHUNK_SIZE);
-      console.log(`Downloading bulk batch ${Math.floor(i/CHUNK_SIZE) + 1} with ${chunk.length} documents...`);
-      
-      for (const doc of chunk) {
-          await doc.bulkCheckLocator.check();
-      }
-      
-      const btn = page.locator('#downloadFiles');
-      try {
-        await page.waitForFunction(() => {
+    if (signal?.aborted) throw new Error('Download cancelled');
+    const chunk = bulkDownloadable.slice(i, i + CHUNK_SIZE);
+    console.log(`Downloading bulk batch ${Math.floor(i / CHUNK_SIZE) + 1} with ${chunk.length} documents...`);
+
+    for (const doc of chunk) {
+      await doc.bulkCheckLocator.check();
+    }
+
+    const btn = page.locator('#downloadFiles');
+    try {
+      await page.waitForFunction(
+        () => {
           const b = document.querySelector<HTMLInputElement>('#downloadFiles');
           return b && !b.disabled;
-        }, undefined, { timeout: 5000 });
-      } catch (e) {
-        // Force enable if the page scripts failed to do so
-        await btn.evaluate(node => node.removeAttribute('disabled'));
-      }
-      
-      try {
-        const { filePath: zipPath, filename: zipName } = await download(
-          () => btn.click({ noWaitAfter: true }),
-          300000
-        );
-        
-        const zip = new AdmZip(zipPath);
-        
-        for (const doc of chunk) {
-            const entry = zip.getEntry(doc.zipFilename);
-            if (entry) {
-                const data = entry.getData();
-                const ext = path.extname(doc.zipFilename) || '.pdf';
-                const finalName = allocateFilename(`${doc.baseName}${ext}`);
-                fs.writeFileSync(path.join(outDir, finalName), data);
-                docs.push({
-                    localFilename: finalName,
-                    ...docMetaFields(doc)
-                });
-                onCommitted?.(docs);
-                console.log(`Extracted: ${finalName}`);
-                done++;
-                report();
-            } else {
-                console.warn(`Could not find ${doc.zipFilename} in the downloaded zip! Falling back to individual for this item.`);
-                individualDownloadable.push(doc);
-            }
-        }
-        
-        fs.unlinkSync(zipPath);
-        
-      } catch (e) {
-          console.error(`Failed to download batch:`, e);
-          for (const doc of chunk) {
-              individualDownloadable.push(doc);
-          }
-      }
-      
+        },
+        undefined,
+        { timeout: 5000 },
+      );
+    } catch (e) {
+      // Force enable if the page scripts failed to do so
+      await btn.evaluate((node) => node.removeAttribute('disabled'));
+    }
+
+    try {
+      const { filePath: zipPath, filename: zipName } = await download(() => btn.click({ noWaitAfter: true }), 300000);
+
+      const zip = new AdmZip(zipPath);
+
       for (const doc of chunk) {
-          await doc.bulkCheckLocator.uncheck();
+        const entry = zip.getEntry(doc.zipFilename);
+        if (entry) {
+          const data = entry.getData();
+          const ext = path.extname(doc.zipFilename) || '.pdf';
+          const finalName = allocateFilename(`${doc.baseName}${ext}`);
+          fs.writeFileSync(path.join(outDir, finalName), data);
+          docs.push({
+            localFilename: finalName,
+            ...docMetaFields(doc),
+          });
+          onCommitted?.(docs);
+          console.log(`Extracted: ${finalName}`);
+          done++;
+          report();
+        } else {
+          console.warn(
+            `Could not find ${doc.zipFilename} in the downloaded zip! Falling back to individual for this item.`,
+          );
+          individualDownloadable.push(doc);
+        }
       }
-      
+
+      fs.unlinkSync(zipPath);
+    } catch (e) {
+      console.error(`Failed to download batch:`, e);
+      for (const doc of chunk) {
+        individualDownloadable.push(doc);
+      }
+    }
+
+    for (const doc of chunk) {
+      await doc.bulkCheckLocator.uncheck();
+    }
   }
 
   for (const doc of individualDownloadable) {
-      if (signal?.aborted) throw new Error('Download cancelled');
-      console.log(`Downloading individually: ${doc.baseName}`);
-      try {
-        const { filePath, filename } = await download(
-          () => doc.linkLocator.click(),
-          30000
-        );
-        const suggestedExt = path.extname(filename) || '.pdf';
-        const finalName = allocateFilename(`${doc.baseName}${suggestedExt}`);
-        fs.copyFileSync(filePath, path.join(outDir, finalName));
-        docs.push({
-          localFilename: finalName,
-          ...docMetaFields(doc)
-        });
-        onCommitted?.(docs);
-      } catch (e) {
-        console.error(`Failed to download ${doc.baseName}:`, e);
-      }
-      done++;
-      report();
+    if (signal?.aborted) throw new Error('Download cancelled');
+    console.log(`Downloading individually: ${doc.baseName}`);
+    try {
+      const { filePath, filename } = await download(() => doc.linkLocator.click(), 30000);
+      const suggestedExt = path.extname(filename) || '.pdf';
+      const finalName = allocateFilename(`${doc.baseName}${suggestedExt}`);
+      fs.copyFileSync(filePath, path.join(outDir, finalName));
+      docs.push({
+        localFilename: finalName,
+        ...docMetaFields(doc),
+      });
+      onCommitted?.(docs);
+    } catch (e) {
+      console.error(`Failed to download ${doc.baseName}:`, e);
+    }
+    done++;
+    report();
   }
 
   // When distinct documents share a rendered name and this run downloaded them
@@ -312,7 +324,7 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
   // produced is an ambiguous leftover from before portal ids were recorded (we
   // can't tell which document it belonged to). Drop it so it doesn't linger as an
   // unreferenced duplicate.
-  const produced = new Set(docs.map(d => d.localFilename));
+  const produced = new Set(docs.map((d) => d.localFilename));
   const leftoversToRemove = new Set<string>();
   for (const doc of uniqueDocs) {
     if ((rowsPerBaseName.get(doc.baseName) ?? 0) <= 1) continue;
@@ -332,41 +344,35 @@ export async function downloadDocuments(page: Page, download: DownloadFn, outDir
 
 export async function scrapeComments(page: Page, reference: string, authorityId: string): Promise<boolean> {
   console.log('Navigating to Comments tab...');
-  
+
   const commentsTab = page.locator('#tab_makeComment');
-  if (await commentsTab.count() > 0) {
-    await Promise.all([
-      page.waitForNavigation(),
-      commentsTab.click()
-    ]);
-    
+  if ((await commentsTab.count()) > 0) {
+    await Promise.all([page.waitForNavigation(), commentsTab.click()]);
+
     const neighbourCommentsTab = page.locator('#subtab_neighbourComments');
-    if (await neighbourCommentsTab.count() > 0) {
-      await Promise.all([
-        page.waitForNavigation(),
-        neighbourCommentsTab.click()
-      ]);
+    if ((await neighbourCommentsTab.count()) > 0) {
+      await Promise.all([page.waitForNavigation(), neighbourCommentsTab.click()]);
       const allComments: Comment[] = [];
-      
+
       while (true) {
         await page.waitForSelector('.comment', { timeout: 5000 }).catch(() => {});
-        const commentsOnPage = await page.$$eval('.comment', nodes => nodes.map(node => {
-          const address = (node.querySelector('.consultationAddress') as HTMLElement)?.innerText?.trim() || '';
-          const stance = (node.querySelector('.consultationStance') as HTMLElement)?.innerText?.replace(/[()]/g, '').trim() || '';
-          let dateText = (node.querySelector('.comment-wrapper h2') as HTMLElement)?.innerText?.trim() || '';
-          dateText = dateText.replace('Comment submitted date:', '').trim();
-          const text = (node.querySelector('.comment-text') as HTMLElement)?.innerText?.trim() || '';
-          return { address, stance, date: dateText, text };
-        }));
-        
+        const commentsOnPage = await page.$$eval('.comment', (nodes) =>
+          nodes.map((node) => {
+            const address = (node.querySelector('.consultationAddress') as HTMLElement)?.innerText?.trim() || '';
+            const stance =
+              (node.querySelector('.consultationStance') as HTMLElement)?.innerText?.replace(/[()]/g, '').trim() || '';
+            let dateText = (node.querySelector('.comment-wrapper h2') as HTMLElement)?.innerText?.trim() || '';
+            dateText = dateText.replace('Comment submitted date:', '').trim();
+            const text = (node.querySelector('.comment-text') as HTMLElement)?.innerText?.trim() || '';
+            return { address, stance, date: dateText, text };
+          }),
+        );
+
         allComments.push(...commentsOnPage);
-        
+
         const nextBtn = page.locator('p.pager.bottom a.next');
-        if (await nextBtn.count() > 0) {
-          await Promise.all([
-            page.waitForNavigation(),
-            nextBtn.click()
-          ]);
+        if ((await nextBtn.count()) > 0) {
+          await Promise.all([page.waitForNavigation(), nextBtn.click()]);
         } else {
           break;
         }
@@ -387,7 +393,11 @@ export async function scrapeComments(page: Page, reference: string, authorityId:
   return false;
 }
 
-export async function scrapeLocation(page: Page, reference: string, authority: AuthorityConfig): Promise<ApplicationLocation | null> {
+export async function scrapeLocation(
+  page: Page,
+  reference: string,
+  authority: AuthorityConfig,
+): Promise<ApplicationLocation | null> {
   if (!authority.map) {
     console.log(`No map configuration for ${authority.id}; skipping location lookup.`);
     return null;
@@ -446,7 +456,7 @@ async function createElectronPage(): Promise<PageHandle> {
   const electronApp = await electron.launch({
     executablePath: process.execPath,
     args: [`--user-data-dir=${userDataDir}`],
-    env: { ...process.env, PLANBROWSER_SCRAPER_MODE: '1' }
+    env: { ...process.env, PLANBROWSER_SCRAPER_MODE: '1' },
   });
   const page = await electronApp.firstWindow();
   // Electron surfaces page alert()/confirm()/prompt() as native dialogs
@@ -458,7 +468,9 @@ async function createElectronPage(): Promise<PageHandle> {
     (window as any).confirm = () => true;
     (window as any).prompt = () => null;
   });
-  page.on('dialog', (dialog) => { void dialog.accept(); });
+  page.on('dialog', (dialog) => {
+    void dialog.accept();
+  });
   const session = await page.context().newCDPSession(page);
   await session.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir });
   return {
@@ -473,14 +485,16 @@ async function createElectronPage(): Promise<PageHandle> {
       await trigger();
       const deadline = Date.now() + timeout;
       while (Date.now() < deadline) {
-        const file = fs.readdirSync(downloadDir).find((f) => !before.has(f) && !f.endsWith('.crdownload') && !f.endsWith('.download'));
+        const file = fs
+          .readdirSync(downloadDir)
+          .find((f) => !before.has(f) && !f.endsWith('.crdownload') && !f.endsWith('.download'));
         if (file) {
           return { filePath: path.join(downloadDir, file), filename: file };
         }
         await new Promise((r) => setTimeout(r, 200));
       }
       throw new Error('Download timed out');
-    }
+    },
   };
 }
 
@@ -488,7 +502,8 @@ async function createChromiumPage(): Promise<PageHandle> {
   const browser = await chromium.launch({ headless: true, chromiumSandbox: false });
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    userAgent:
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   });
   const page = await context.newPage();
   const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'planbrowser-dl-'));
@@ -500,22 +515,17 @@ async function createChromiumPage(): Promise<PageHandle> {
       fs.rmSync(downloadDir, { recursive: true, force: true });
     },
     download: async (trigger, timeout) => {
-      const [dl] = await Promise.all([
-        page.waitForEvent('download', { timeout }),
-        trigger()
-      ]);
+      const [dl] = await Promise.all([page.waitForEvent('download', { timeout }), trigger()]);
       const filename = dl.suggestedFilename() || 'download';
       const filePath = path.join(downloadDir, filename);
       await dl.saveAs(filePath);
       return { filePath, filename };
-    }
+    },
   };
 }
 
 function createPage(): Promise<PageHandle> {
-  return process.env.PLANBROWSER_ELECTRON === '1'
-    ? createElectronPage()
-    : createChromiumPage();
+  return process.env.PLANBROWSER_ELECTRON === '1' ? createElectronPage() : createChromiumPage();
 }
 
 // Pick a stable, shareable URL for an application. After a single-result search
@@ -535,7 +545,12 @@ export function resolvePortalUrl(currentUrl: string, hrefs: string[]): string {
   return first ?? currentUrl;
 }
 
-export async function downloadApplication(reference: string, authorityId: string = DEFAULT_AUTHORITY_ID, onProgress?: (message: string, current?: number, total?: number) => void, signal?: AbortSignal) {
+export async function downloadApplication(
+  reference: string,
+  authorityId: string = DEFAULT_AUTHORITY_ID,
+  onProgress?: (message: string, current?: number, total?: number) => void,
+  signal?: AbortSignal,
+) {
   const authority = getAuthority(authorityId);
   console.log(`Starting search for reference: ${reference} (authority: ${authority.id})`);
 
@@ -562,7 +577,9 @@ export async function downloadApplication(reference: string, authorityId: string
 
   // Aborting tears down the browser, which makes the in-flight Playwright
   // operation reject and unwinds through the try/finally below.
-  const onAbort = () => { void close(); };
+  const onAbort = () => {
+    void close();
+  };
   if (signal) {
     if (signal.aborted) {
       await close();
@@ -573,28 +590,32 @@ export async function downloadApplication(reference: string, authorityId: string
 
   try {
     await page.goto(`${authority.baseUrl}/search.do?action=advanced&searchType=Application`);
-    
-    await page.fill('#reference', reference);
-    await Promise.all([
-      page.waitForNavigation(),
-      page.click('input[type="submit"]')
-    ]);
 
-    if (await page.locator('#searchResultsContainer').count() > 0) {
-      throw new Error(`Multiple results found for reference "${reference}" on ${authority.name}. Cannot determine the exact match.`);
-    } else if (await page.locator('.messagebox:has-text("No results found")').count() > 0) {
+    await page.fill('#reference', reference);
+    await Promise.all([page.waitForNavigation(), page.click('input[type="submit"]')]);
+
+    if ((await page.locator('#searchResultsContainer').count()) > 0) {
+      throw new Error(
+        `Multiple results found for reference "${reference}" on ${authority.name}. Cannot determine the exact match.`,
+      );
+    } else if ((await page.locator('.messagebox:has-text("No results found")').count()) > 0) {
       throw new Error(`Application reference "${reference}" not found on ${authority.name} (${authority.baseUrl}).`);
-    } else if (!await page.locator('#applicationDetails').count() && !await page.locator('#simpleDetailsTable').count()) {
+    } else if (
+      !(await page.locator('#applicationDetails').count()) &&
+      !(await page.locator('#simpleDetailsTable').count())
+    ) {
       const html = (await page.content()).slice(0, 500);
-      throw new Error(`Did not land on the application details page for "${reference}" on ${authority.name}. Unexpected page structure (is this portal actually Idox?). HTML: ${html}`);
+      throw new Error(
+        `Did not land on the application details page for "${reference}" on ${authority.name}. Unexpected page structure (is this portal actually Idox?). HTML: ${html}`,
+      );
     }
-    
+
     const title = await page.title();
     console.log(`Page title: ${title}`);
-    
+
     const currentUrl = page.url();
     const detailHrefs = await page.evaluate(() =>
-      Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href*="applicationDetails.do"]')).map((a) => a.href)
+      Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href*="applicationDetails.do"]')).map((a) => a.href),
     );
 
     const meta: ApplicationMeta = {
@@ -607,7 +628,7 @@ export async function downloadApplication(reference: string, authorityId: string
       documents: [],
       hasComments: false,
       scrapedAt: new Date().toISOString(),
-      portalUrl: resolvePortalUrl(currentUrl, detailHrefs)
+      portalUrl: resolvePortalUrl(currentUrl, detailHrefs),
     };
 
     onProgress?.('Fetching application details');
@@ -616,17 +637,19 @@ export async function downloadApplication(reference: string, authorityId: string
     const rowCount = await detailsTable.count();
     for (let i = 0; i < rowCount; i++) {
       const row = detailsTable.nth(i);
-      if (await row.locator('th').count() > 0 && await row.locator('td').count() > 0) {
+      if ((await row.locator('th').count()) > 0 && (await row.locator('td').count()) > 0) {
         const th = await row.locator('th').innerText();
         const td = await row.locator('td').innerText();
-        
+
         const key = th.trim().replace(/:$/, '');
         const value = td.trim();
-        
+
         if (key === 'Reference') {
           meta.reference = value || meta.reference;
           if (meta.reference.toUpperCase() !== reference.toUpperCase()) {
-            throw new Error(`Landing page reference "${meta.reference}" does not match requested reference "${reference}" on ${authority.name}. Aborting to avoid downloading the wrong application.`);
+            throw new Error(
+              `Landing page reference "${meta.reference}" does not match requested reference "${reference}" on ${authority.name}. Aborting to avoid downloading the wrong application.`,
+            );
           }
         } else if (key === 'Address') {
           meta.address = value;
@@ -640,39 +663,40 @@ export async function downloadApplication(reference: string, authorityId: string
       }
     }
 
-
     // Get tab URLs before we navigate away
     const tabLinks = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('a')).filter(a => a.href.includes('activeTab=')).map(a => ({
-        text: a.textContent.trim(),
-        href: a.href
-      }));
+      return Array.from(document.querySelectorAll('a'))
+        .filter((a) => a.href.includes('activeTab='))
+        .map((a) => ({
+          text: a.textContent.trim(),
+          href: a.href,
+        }));
     });
 
     const scrapeTabTable = async (tabName: string) => {
-      const tab = tabLinks.find(t => t.text.includes(tabName) || t.text === tabName);
+      const tab = tabLinks.find((t) => t.text.includes(tabName) || t.text === tabName);
       if (tab) {
         console.log(`Navigating to ${tabName} tab...`);
-        await Promise.all([
-          page.waitForNavigation(),
-          page.goto(tab.href)
-        ]);
+        await Promise.all([page.waitForNavigation(), page.goto(tab.href)]);
         return await page.evaluate(() => {
           const rows = document.querySelectorAll('table tr');
-          return Array.from(rows).reduce((acc, tr) => {
-            const th = tr.querySelector('th')?.textContent.trim();
-            const td = tr.querySelector('td')?.textContent.trim();
-            if (th && td) {
-              acc[th.replace(/:$/, '')] = td;
-            }
-            return acc;
-          }, {} as Record<string, string>);
+          return Array.from(rows).reduce(
+            (acc, tr) => {
+              const th = tr.querySelector('th')?.textContent.trim();
+              const td = tr.querySelector('td')?.textContent.trim();
+              if (th && td) {
+                acc[th.replace(/:$/, '')] = td;
+              }
+              return acc;
+            },
+            {} as Record<string, string>,
+          );
         });
       }
       return undefined;
     };
 
-    const further = await scrapeTabTable('Further Information') || await scrapeTabTable('Details');
+    const further = (await scrapeTabTable('Further Information')) || (await scrapeTabTable('Details'));
     if (further) {
       meta.furtherInformation = further;
     }
@@ -706,7 +730,7 @@ export async function downloadApplication(reference: string, authorityId: string
       datePublished: d.datePublished,
       documentType: d.documentType,
       description: d.description,
-      ...(d.docId ? { docId: d.docId } : {})
+      ...(d.docId ? { docId: d.docId } : {}),
     });
     meta.hasComments = previous?.hasComments ?? false;
     meta.documents = (previous?.documents ?? []).map(stripDocFlags);
@@ -734,10 +758,18 @@ export async function downloadApplication(reference: string, authorityId: string
     // Documents last — they are the largest and slowest part of a download.
     // Each file is written to disk as it arrives and metadata.json is re-saved
     // as documents are committed, so a viewer sees them appear as they land.
-    meta.documents = await downloadDocuments(page, download, outDir, onProgress, previous?.documents, (docs) => {
-      meta.documents = docs;
-      persist();
-    }, signal);
+    meta.documents = await downloadDocuments(
+      page,
+      download,
+      outDir,
+      onProgress,
+      previous?.documents,
+      (docs) => {
+        meta.documents = docs;
+        persist();
+      },
+      signal,
+    );
     persist();
     throwIfAborted();
 
@@ -748,13 +780,12 @@ export async function downloadApplication(reference: string, authorityId: string
         authorityId: authority.id,
         message,
         changes,
-        newDocuments
+        newDocuments,
       });
     }
 
     console.log(`Done! Files saved in ${outDir}`);
     return meta;
-
   } catch (err) {
     if (signal?.aborted) {
       throw new Error('Download cancelled');

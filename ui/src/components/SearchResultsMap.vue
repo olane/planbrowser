@@ -6,13 +6,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, useCssModule } from 'vue'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import type { PlanItRecord } from '../../../src/types.js'
-import { createMap, escapeHtml, pinIcon, truncate } from '../map'
-import MapLegend from './MapLegend.vue'
-import { useMapColorMode } from '../useMapColorMode'
+import { ref, computed, onMounted, onBeforeUnmount, watch, useCssModule } from 'vue';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import type { PlanItRecord } from '../../../src/types.js';
+import { createMap, escapeHtml, pinIcon, truncate } from '../map';
+import MapLegend from './MapLegend.vue';
+import { useMapColorMode } from '../useMapColorMode';
 import {
   APP_TYPE_COLORS,
   APP_TYPE_ORDER,
@@ -24,64 +24,72 @@ import {
   outcomeColor,
   presentBuckets,
   legendFor,
-  type LegendEntry
-} from '../mapColours'
+  type LegendEntry,
+} from '../mapColours';
 
 const props = defineProps<{
-  results: PlanItRecord[]
-  area?: { lat: number; lon: number; radiusKm: number } | null
-}>()
-const emit = defineEmits<{ select: [uid: string] }>()
+  results: PlanItRecord[];
+  area?: { lat: number; lon: number; radiusKm: number } | null;
+}>();
+const emit = defineEmits<{ select: [uid: string] }>();
 
-const styles = useCssModule()
+const styles = useCssModule();
 
-const mapEl = ref<HTMLDivElement | null>(null)
-let map: L.Map | null = null
-let markerLayer: L.LayerGroup | null = null
-let areaLayer: L.Circle | null = null
+const mapEl = ref<HTMLDivElement | null>(null);
+let map: L.Map | null = null;
+let markerLayer: L.LayerGroup | null = null;
+let areaLayer: L.Circle | null = null;
 
-const { colorMode, setColorMode } = useMapColorMode('planbrowser.mapColorMode.search', 'type')
+const { colorMode, setColorMode } = useMapColorMode('planbrowser.mapColorMode.search', 'type');
 
 const markerFill = (rec: PlanItRecord) =>
-  colorMode.value === 'type' ? appTypeColor(rec.app_type) : outcomeColor(rec.app_state)
+  colorMode.value === 'type' ? appTypeColor(rec.app_type) : outcomeColor(rec.app_state);
 
-const PIN_CLASS = 'search-result-pin'
-const activePinIcon = pinIcon('#dc2626', PIN_CLASS, '#991b1b')
+const PIN_CLASS = 'search-result-pin';
+const activePinIcon = pinIcon('#dc2626', PIN_CLASS, '#991b1b');
 
 const legendEntries = computed<LegendEntry[]>(() => {
   if (colorMode.value === 'type') {
-    const buckets = presentBuckets(props.results.map((r) => r.app_type), normaliseAppType, APP_TYPE_ORDER)
-    return legendFor(buckets, APP_TYPE_COLORS)
+    const buckets = presentBuckets(
+      props.results.map((r) => r.app_type),
+      normaliseAppType,
+      APP_TYPE_ORDER,
+    );
+    return legendFor(buckets, APP_TYPE_COLORS);
   }
-  const buckets = presentBuckets(props.results.map((r) => r.app_state), normaliseOutcome, OUTCOME_ORDER)
-  return legendFor(buckets, OUTCOME_COLORS)
-})
+  const buckets = presentBuckets(
+    props.results.map((r) => r.app_state),
+    normaliseOutcome,
+    OUTCOME_ORDER,
+  );
+  return legendFor(buckets, OUTCOME_COLORS);
+});
 
 const points = computed(() => {
-  const pts: { lat: number; lon: number; rec: PlanItRecord }[] = []
+  const pts: { lat: number; lon: number; rec: PlanItRecord }[] = [];
   for (const r of props.results) {
-    const lat = typeof r.location_y === 'number' ? r.location_y : r.location?.coordinates?.[1]
-    const lon = typeof r.location_x === 'number' ? r.location_x : r.location?.coordinates?.[0]
+    const lat = typeof r.location_y === 'number' ? r.location_y : r.location?.coordinates?.[1];
+    const lon = typeof r.location_x === 'number' ? r.location_x : r.location?.coordinates?.[0];
     if (typeof lat === 'number' && typeof lon === 'number') {
-      pts.push({ lat, lon, rec: r })
+      pts.push({ lat, lon, rec: r });
     }
   }
-  return pts
-})
+  return pts;
+});
 
-let markersByUid = new Map<string, L.Marker>()
-let activeUid: string | null = null
+let markersByUid = new Map<string, L.Marker>();
+let activeUid: string | null = null;
 
 const renderMapLayers = () => {
-  if (!map || !markerLayer) return
-  markerLayer.clearLayers()
-  markersByUid = new Map()
+  if (!map || !markerLayer) return;
+  markerLayer.clearLayers();
+  markersByUid = new Map();
   if (areaLayer) {
-    map.removeLayer(areaLayer)
-    areaLayer = null
+    map.removeLayer(areaLayer);
+    areaLayer = null;
   }
 
-  const bounds = L.latLngBounds([])
+  const bounds = L.latLngBounds([]);
 
   if (props.area && props.area.radiusKm > 0) {
     areaLayer = L.circle([props.area.lat, props.area.lon], {
@@ -90,9 +98,9 @@ const renderMapLayers = () => {
       weight: 1.5,
       fillColor: '#3b82f6',
       fillOpacity: 0.08,
-      interactive: false
-    }).addTo(map)
-    bounds.extend(areaLayer.getBounds())
+      interactive: false,
+    }).addTo(map);
+    bounds.extend(areaLayer.getBounds());
   }
 
   for (const p of points.value) {
@@ -101,63 +109,71 @@ const renderMapLayers = () => {
       <div class="${styles.popupDesc}">${escapeHtml(truncate(p.rec.description || '', 6))}</div>
       <div class="${styles.popupMeta}">${escapeHtml([p.rec.app_type, p.rec.app_state].filter(Boolean).join(' | '))}</div>
       <button class="jump-link ${styles.popupLink}">Show in results</button>
-    </div>`
-    const marker = L.marker([p.lat, p.lon], { icon: p.rec.uid === activeUid ? activePinIcon : pinIcon(markerFill(p.rec), PIN_CLASS) }).addTo(markerLayer)
-    markersByUid.set(p.rec.uid, marker)
-    marker.bindPopup(popupContent)
+    </div>`;
+    const marker = L.marker([p.lat, p.lon], {
+      icon: p.rec.uid === activeUid ? activePinIcon : pinIcon(markerFill(p.rec), PIN_CLASS),
+    }).addTo(markerLayer);
+    markersByUid.set(p.rec.uid, marker);
+    marker.bindPopup(popupContent);
     marker.on('popupopen', (e) => {
-      const link = e.popup.getElement()?.querySelector('.jump-link') as HTMLElement | null
-      if (link) link.onclick = () => emit('select', p.rec.uid)
-    })
-    bounds.extend([p.lat, p.lon] as L.LatLngExpression)
+      const link = e.popup.getElement()?.querySelector('.jump-link') as HTMLElement | null;
+      if (link) link.onclick = () => emit('select', p.rec.uid);
+    });
+    bounds.extend([p.lat, p.lon] as L.LatLngExpression);
   }
 
   if (bounds.isValid()) {
-    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 })
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
   }
-}
+};
 
 const focus = (uid: string) => {
-  if (!map) return
-  const marker = markersByUid.get(uid)
-  const point = points.value.find(p => p.rec.uid === uid)
-  if (!marker || !point) return
+  if (!map) return;
+  const marker = markersByUid.get(uid);
+  const point = points.value.find((p) => p.rec.uid === uid);
+  if (!marker || !point) return;
   if (activeUid && activeUid !== uid) {
-    const prev = points.value.find(p => p.rec.uid === activeUid)
-    markersByUid.get(activeUid)?.setIcon(pinIcon(prev ? markerFill(prev.rec) : appTypeColor(), PIN_CLASS))
+    const prev = points.value.find((p) => p.rec.uid === activeUid);
+    markersByUid.get(activeUid)?.setIcon(pinIcon(prev ? markerFill(prev.rec) : appTypeColor(), PIN_CLASS));
   }
-  activeUid = uid
-  marker.setIcon(activePinIcon)
-  map.flyTo([point.lat, point.lon], Math.max(map.getZoom(), 16), { duration: 0.6 })
-  marker.openPopup()
-}
+  activeUid = uid;
+  marker.setIcon(activePinIcon);
+  map.flyTo([point.lat, point.lon], Math.max(map.getZoom(), 16), { duration: 0.6 });
+  marker.openPopup();
+};
 
-defineExpose({ focus })
+defineExpose({ focus });
 
 onMounted(() => {
-  if (!mapEl.value) return
-  map = createMap(mapEl.value)
-  markerLayer = L.layerGroup().addTo(map)
-  renderMapLayers()
-})
+  if (!mapEl.value) return;
+  map = createMap(mapEl.value);
+  markerLayer = L.layerGroup().addTo(map);
+  renderMapLayers();
+});
 
-watch(() => props.results, () => renderMapLayers())
-watch(() => props.area, () => renderMapLayers())
+watch(
+  () => props.results,
+  () => renderMapLayers(),
+);
+watch(
+  () => props.area,
+  () => renderMapLayers(),
+);
 
 // Recolour in place so switching mode doesn't re-fit/reset the current view.
 watch(colorMode, () => {
   for (const p of points.value) {
-    if (p.rec.uid === activeUid) continue
-    markersByUid.get(p.rec.uid)?.setIcon(pinIcon(markerFill(p.rec), PIN_CLASS))
+    if (p.rec.uid === activeUid) continue;
+    markersByUid.get(p.rec.uid)?.setIcon(pinIcon(markerFill(p.rec), PIN_CLASS));
   }
-})
+});
 
 onBeforeUnmount(() => {
-  map?.remove()
-  map = null
-  markerLayer = null
-  areaLayer = null
-})
+  map?.remove();
+  map = null;
+  markerLayer = null;
+  areaLayer = null;
+});
 </script>
 
 <style module>

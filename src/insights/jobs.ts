@@ -45,7 +45,7 @@ export function startInsights(reference: string, authorityId?: string, opts: Gen
     // never mistaken for a finished result.
     onSnapshot: (insights) => {
       running.snapshot = insights;
-    }
+    },
   })
     .catch((err: unknown) => {
       lastError.set(reference, err instanceof Error ? err.message : String(err));

@@ -39,6 +39,6 @@ export function diffMeta(previous: ApplicationMeta | null, meta: ApplicationMeta
   return {
     changes,
     message: changes.length > 0 ? 'Application updated' : 'No changes detected',
-    newDocuments: newDocs
+    newDocuments: newDocs,
   };
 }

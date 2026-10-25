@@ -31,7 +31,7 @@ export function selectDocumentPages(
   pageCount: number,
   scanned: ScannedPage[],
   cap: number,
-  titleScores: number[] = []
+  titleScores: number[] = [],
 ): number[] {
   const pages = Math.max(pageCount, 1);
   if (frontPages) {

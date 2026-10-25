@@ -38,7 +38,7 @@ insightsRouter.get('/api/applications/:ref/insights', (req, res) => {
   res.json({
     status: state.status,
     ...(state.insights ? { insights: state.insights } : {}),
-    ...(state.progress ? { progress: state.progress } : {})
+    ...(state.progress ? { progress: state.progress } : {}),
   });
 });
 

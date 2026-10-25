@@ -12,7 +12,7 @@ function app(overrides: Partial<ApplicationMeta> = {}): ApplicationMeta {
     documents: [],
     hasComments: false,
     scrapedAt: '2024-01-01T00:00:00.000Z',
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -26,7 +26,9 @@ describe('isAwaitingDecision', () => {
   });
 
   it('treats decided/refused/withdrawn statuses as no longer awaiting', () => {
-    expect(isAwaitingDecision(app({ status: 'Decided', furtherInformation: { Decision: 'Refused Permission' } }))).toBe(false);
+    expect(isAwaitingDecision(app({ status: 'Decided', furtherInformation: { Decision: 'Refused Permission' } }))).toBe(
+      false,
+    );
     expect(isAwaitingDecision(app({ status: 'Decided', furtherInformation: { Decision: 'Approved' } }))).toBe(false);
     expect(isAwaitingDecision(app({ status: 'Withdrawn', furtherInformation: { Decision: 'Withdrawn' } }))).toBe(false);
   });
@@ -45,9 +47,23 @@ describe('isAwaitingDecision', () => {
 describe('selectSyncApps', () => {
   const awaiting = app({ reference: '24/0001/FUL', status: 'Awaiting decision' });
   const awaitingStarred = app({ reference: '24/0002/FUL', status: 'Awaiting decision', starred: true });
-  const decidedStarred = app({ reference: '24/0003/FUL', status: 'Decided', furtherInformation: { Decision: 'Approved' }, starred: true });
-  const decided = app({ reference: '24/0004/FUL', status: 'Decided', furtherInformation: { Decision: 'Refused Permission' } });
-  const archivedAwaitingStarred = app({ reference: '24/0005/FUL', status: 'Awaiting decision', starred: true, archived: true });
+  const decidedStarred = app({
+    reference: '24/0003/FUL',
+    status: 'Decided',
+    furtherInformation: { Decision: 'Approved' },
+    starred: true,
+  });
+  const decided = app({
+    reference: '24/0004/FUL',
+    status: 'Decided',
+    furtherInformation: { Decision: 'Refused Permission' },
+  });
+  const archivedAwaitingStarred = app({
+    reference: '24/0005/FUL',
+    status: 'Awaiting decision',
+    starred: true,
+    archived: true,
+  });
   const apps = [awaiting, awaitingStarred, decidedStarred, decided, archivedAwaitingStarred];
 
   it('selects starred only when only starred is ticked', () => {
@@ -67,11 +83,21 @@ describe('selectSyncApps', () => {
   });
 
   it('never selects archived applications', () => {
-    expect(selectSyncApps(apps, { all: true, starred: false, awaitingDecision: false })).toEqual([awaiting, awaitingStarred, decidedStarred, decided]);
+    expect(selectSyncApps(apps, { all: true, starred: false, awaitingDecision: false })).toEqual([
+      awaiting,
+      awaitingStarred,
+      decidedStarred,
+      decided,
+    ]);
     expect(selectSyncApps(apps, { starred: true, awaitingDecision: false })).not.toContain(archivedAwaitingStarred);
   });
 
   it('selects every active application when all is set, regardless of other criteria', () => {
-    expect(selectSyncApps(apps, { all: true, starred: true, awaitingDecision: true })).toEqual([awaiting, awaitingStarred, decidedStarred, decided]);
+    expect(selectSyncApps(apps, { all: true, starred: true, awaitingDecision: true })).toEqual([
+      awaiting,
+      awaitingStarred,
+      decidedStarred,
+      decided,
+    ]);
   });
 });

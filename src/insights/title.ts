@@ -34,9 +34,11 @@ export interface TitleCandidate {
 const TITLE_KEYWORD =
   /(site plan|location plan|block plan|floor plan|roof plan|basement plan|elevation|section|layout|master ?plan|general arrangement|render|visual|photomontage|parameter plan|(?:ground|first|second|third|lower|upper) floor)/i;
 // Legend/key/scale chrome shares drawing words but is not the drawing title.
-const CHROME = /legend|key ?plan|\bscale\b|revision|\bnotes?\b|north (?:point|arrow)|title block|drawing (?:schedule|register|list)/i;
+const CHROME =
+  /legend|key ?plan|\bscale\b|revision|\bnotes?\b|north (?:point|arrow)|title block|drawing (?:schedule|register|list)/i;
 // Notes and cross-references ("refer to elevations", "to be read with site plan").
-const NOTE = /\b(?:refer|see|read (?:with|in conjunction)|to be|do not|shown on|for (?:information|details)|contractor|must|shall|should|all dimensions|indicative only)\b/i;
+const NOTE =
+  /\b(?:refer|see|read (?:with|in conjunction)|to be|do not|shown on|for (?:information|details)|contractor|must|shall|should|all dimensions|indicative only)\b/i;
 const QUALIFIER = /\b(?:proposed|existing)\b/i;
 // A page listing many drawing titles is a drawing register, not a drawing.
 const REGISTER_TITLES = 6;
@@ -58,7 +60,7 @@ export function titleCandidates(lines: PageLine[]): TitleCandidate[] {
       (a, b) =>
         Number(b.candidate.strong) - Number(a.candidate.strong) ||
         b.candidate.size - a.candidate.size ||
-        a.index - b.index
+        a.index - b.index,
     )
     .map(({ candidate }) => candidate);
 }

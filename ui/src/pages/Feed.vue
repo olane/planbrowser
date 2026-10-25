@@ -3,7 +3,9 @@
     <section>
       <h2 :class="$style.title">Activity Feed</h2>
       <div v-if="loading" :class="$style.muted">Loading...</div>
-      <div v-else-if="events.length === 0" :class="$style.muted">No activity yet. Changes to synced applications will appear here.</div>
+      <div v-else-if="events.length === 0" :class="$style.muted">
+        No activity yet. Changes to synced applications will appear here.
+      </div>
       <div v-else :class="$style.list">
         <div v-for="event in events" :key="event.id">
           <!-- Full application card with the changes shown inside it -->
@@ -28,8 +30,12 @@
               <ul v-if="event.newDocuments && event.newDocuments.length > 0" :class="$style.newDocs">
                 <li v-for="doc in event.newDocuments" :key="doc.localFilename" :class="$style.newDoc">
                   <span :class="[ui.toneGreen, $style.newBadge]">New</span>
-                  <a :href="documentUrl(event, doc)" target="_blank" :class="$style.docLink">{{ doc.description || doc.documentType || doc.localFilename }}</a>
-                  <div :class="$style.docMeta">{{ doc.datePublished }}<template v-if="doc.documentType"> &middot; {{ doc.documentType }}</template></div>
+                  <a :href="documentUrl(event, doc)" target="_blank" :class="$style.docLink">{{
+                    doc.description || doc.documentType || doc.localFilename
+                  }}</a>
+                  <div :class="$style.docMeta">
+                    {{ doc.datePublished }}<template v-if="doc.documentType"> &middot; {{ doc.documentType }}</template>
+                  </div>
                 </li>
               </ul>
             </template>
@@ -41,7 +47,11 @@
               <div>
                 <div :class="$style.cardMetaRow">
                   <span :class="$style.cardRef">{{ event.reference }}</span>
-                  <span v-if="authorityName(event.authorityId) && event.authorityId !== DEFAULT_AUTHORITY_ID" :class="$style.cardAuthority">{{ authorityName(event.authorityId) }}</span>
+                  <span
+                    v-if="authorityName(event.authorityId) && event.authorityId !== DEFAULT_AUTHORITY_ID"
+                    :class="$style.cardAuthority"
+                    >{{ authorityName(event.authorityId) }}</span
+                  >
                   <span :class="$style.cardTime">{{ timeAgo(event.happenedAt) }}</span>
                   <span :class="$style.cardGone">(no longer downloaded)</span>
                 </div>
@@ -67,34 +77,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import type { ActivityEvent, DocumentMeta } from '../../../src/types.js'
-import { DEFAULT_AUTHORITY_ID, authorityName } from '../../../src/authorities.js'
-import { timeAgo } from '../utils'
-import ApplicationCard from '../components/ApplicationCard.vue'
-import * as api from '../api'
-import ui from '../styles/primitives.module.css'
+import { ref, onMounted } from 'vue';
+import type { ActivityEvent, DocumentMeta } from '../../../src/types.js';
+import { DEFAULT_AUTHORITY_ID, authorityName } from '../../../src/authorities.js';
+import { timeAgo } from '../utils';
+import ApplicationCard from '../components/ApplicationCard.vue';
+import * as api from '../api';
+import ui from '../styles/primitives.module.css';
 
-const events = ref<ActivityEvent[]>([])
-const loading = ref(true)
+const events = ref<ActivityEvent[]>([]);
+const loading = ref(true);
 
 const documentUrl = (event: ActivityEvent, doc: DocumentMeta) =>
-  api.documentUrl(event.reference, event.authorityId, doc.localFilename)
+  api.documentUrl(event.reference, event.authorityId, doc.localFilename);
 
 const fetchFeed = async () => {
   try {
-    events.value = await api.fetchFeed()
+    events.value = await api.fetchFeed();
   } catch (e) {
-    console.error(e)
+    console.error(e);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 onMounted(() => {
-  document.title = 'PlanBrowser | Feed'
-  fetchFeed()
-})
+  document.title = 'PlanBrowser | Feed';
+  fetchFeed();
+});
 </script>
 
 <style module>

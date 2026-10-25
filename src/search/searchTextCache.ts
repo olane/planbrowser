@@ -31,7 +31,7 @@ export function readSearchText(dir: string): SearchTextFile {
             documents[filename] = {
               text: entry.text,
               mtimeMs: typeof entry.mtimeMs === 'number' ? entry.mtimeMs : -1,
-              size: typeof entry.size === 'number' ? entry.size : -1
+              size: typeof entry.size === 'number' ? entry.size : -1,
             };
           }
         }

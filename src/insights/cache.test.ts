@@ -2,14 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import {
-  INSIGHTS_VERSION,
-  isValidAssetFile,
-  pruneAssets,
-  readInsights,
-  writeAsset,
-  writeInsights
-} from './cache.js';
+import { INSIGHTS_VERSION, isValidAssetFile, pruneAssets, readInsights, writeAsset, writeInsights } from './cache.js';
 import type { ApplicationInsights } from '../types.js';
 
 let dir: string;
@@ -31,7 +24,7 @@ function insights(overrides: Partial<ApplicationInsights> = {}): ApplicationInsi
     summary: { headline: '', points: [], metrics: {} },
     images: [],
     comments: { support: 0, object: 0, neutral: 0, total: 0 },
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -41,7 +34,14 @@ describe('isValidAssetFile', () => {
     expect(isValidAssetFile(valid)).toBe(true);
   });
   it('rejects traversal and non-asset names', () => {
-    for (const name of ['../../metadata.json', '..%2fmetadata.json', 'foo.png', `${'a'.repeat(39)}.png`, `${'a'.repeat(40)}.jpg`, 'insights.json']) {
+    for (const name of [
+      '../../metadata.json',
+      '..%2fmetadata.json',
+      'foo.png',
+      `${'a'.repeat(39)}.png`,
+      `${'a'.repeat(40)}.jpg`,
+      'insights.json',
+    ]) {
       expect(isValidAssetFile(name)).toBe(false);
     }
   });
