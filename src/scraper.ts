@@ -788,7 +788,7 @@ export async function downloadApplication(
     return meta;
   } catch (err) {
     if (signal?.aborted) {
-      throw new Error('Download cancelled');
+      throw new Error('Download cancelled', { cause: err });
     }
     console.error('Error during execution:', err);
     throw err;
