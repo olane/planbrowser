@@ -24,10 +24,15 @@ beforeEach(() => {
     status: 'Awaiting decision',
     dates: {},
     documents: [
-      { localFilename: 'plan.txt', datePublished: '01 Jan 2026', documentType: 'Drawings', description: 'PROPOSED SITE PLAN' }
+      {
+        localFilename: 'plan.txt',
+        datePublished: '01 Jan 2026',
+        documentType: 'Drawings',
+        description: 'PROPOSED SITE PLAN',
+      },
     ],
     hasComments: false,
-    scrapedAt: new Date(0).toISOString()
+    scrapedAt: new Date(0).toISOString(),
   };
   fs.writeFileSync(path.join(dir, 'metadata.json'), JSON.stringify(meta));
 });
@@ -67,14 +72,14 @@ describe('rankDocuments', () => {
     localFilename,
     datePublished: '',
     documentType,
-    description
+    description,
   });
 
   it('opens the Design & Access Statement first, ahead of renders and plans', () => {
     const ranked = rankDocuments([
       doc('render.pdf', 'Drawings', 'ARTIST IMPRESSION OF THE SCHEME'),
       doc('plan.pdf', 'Drawings', 'PROPOSED SITE PLAN'),
-      doc('das.pdf', 'Design and Access Statement', 'DESIGN AND ACCESS STATEMENT')
+      doc('das.pdf', 'Design and Access Statement', 'DESIGN AND ACCESS STATEMENT'),
     ]);
     expect(ranked.map((entry) => entry.doc.localFilename)).toEqual(['das.pdf', 'render.pdf', 'plan.pdf']);
   });
@@ -82,7 +87,7 @@ describe('rankDocuments', () => {
   it('falls back to the name prior for everything else', () => {
     const ranked = rankDocuments([
       doc('plan.pdf', 'Drawings', 'PROPOSED SITE PLAN'),
-      doc('report.pdf', 'Application Survey / Assessment / Statement', 'TRANSPORT ASSESSMENT')
+      doc('report.pdf', 'Application Survey / Assessment / Statement', 'TRANSPORT ASSESSMENT'),
     ]);
     expect(ranked.map((entry) => entry.doc.localFilename)).toEqual(['plan.pdf', 'report.pdf']);
   });
@@ -97,7 +102,7 @@ describe('isCurrent', () => {
     summary: { headline: '', points: [], metrics: {} },
     images: [],
     comments: { support: 0, object: 0, neutral: 0, total: 0 },
-    ...overrides
+    ...overrides,
   });
 
   it('accepts a finished result from the current strategy', () => {

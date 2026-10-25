@@ -31,21 +31,23 @@ export function readSearchText(dir: string): SearchTextFile {
             documents[filename] = {
               text: entry.text,
               mtimeMs: typeof entry.mtimeMs === 'number' ? entry.mtimeMs : -1,
-              size: typeof entry.size === 'number' ? entry.size : -1
+              size: typeof entry.size === 'number' ? entry.size : -1,
             };
           }
         }
       }
       return { version: parsed.version ?? 1, documents };
     }
-  } catch (e) {
+  } catch {
     // Missing or unreadable cache: start fresh.
   }
   return { version: 1, documents: {} };
 }
 
 export function writeSearchText(dir: string, file: SearchTextFile): void {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
   const target = cachePath(dir);
   const tmp = `${target}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(file, null, 2));

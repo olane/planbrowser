@@ -11,6 +11,13 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "../src/types.ts", "../src/authorities.ts", "../src/refs.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "../src/types.ts",
+    "../src/authorities.ts",
+    "../src/refs.ts"
+  ],
   "exclude": ["src/**/*.test.ts"]
 }

@@ -23,8 +23,11 @@ let replaced = 0;
 for (const [reference, labels] of Object.entries(incoming)) {
   const before = new Set(readLabels(reference).map((label) => `${label.file}#${label.page}`));
   for (const label of labels) {
-    if (before.has(`${label.file}#${label.page}`)) replaced++;
-    else added++;
+    if (before.has(`${label.file}#${label.page}`)) {
+      replaced++;
+    } else {
+      added++;
+    }
   }
   mergeLabels(reference, labels);
 }

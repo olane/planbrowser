@@ -21,10 +21,10 @@
 </template>
 
 <script setup lang="ts">
-import { COLOR_MODES, type ColorMode, type LegendEntry } from '../mapColours'
+import { COLOR_MODES, type ColorMode, type LegendEntry } from '../mapColours';
 
-defineProps<{ mode: ColorMode; entries: LegendEntry[] }>()
-const emit = defineEmits<{ (e: 'update:mode', value: ColorMode): void }>()
+defineProps<{ mode: ColorMode; entries: LegendEntry[] }>();
+const emit = defineEmits<{ (e: 'update:mode', value: ColorMode): void }>();
 </script>
 
 <style module>
@@ -57,7 +57,9 @@ const emit = defineEmits<{ (e: 'update:mode', value: ColorMode): void }>()
   background: none;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: color 150ms, background-color 150ms;
+  transition:
+    color 150ms,
+    background-color 150ms;
 }
 
 .modeActive {

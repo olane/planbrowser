@@ -39,11 +39,15 @@ export function normalise(value) {
 }
 
 export function findApplication(reference) {
-  if (!fs.existsSync(root)) return null;
+  if (!fs.existsSync(root)) {
+    return null;
+  }
   for (const authority of fs.readdirSync(root)) {
     const dir = path.join(root, authority, reference.replace(/\//g, '-'));
     const metaPath = path.join(dir, 'metadata.json');
-    if (!fs.existsSync(metaPath)) continue;
+    if (!fs.existsSync(metaPath)) {
+      continue;
+    }
     try {
       return { meta: JSON.parse(fs.readFileSync(metaPath, 'utf-8')), dir };
     } catch {
@@ -55,9 +59,15 @@ export function findApplication(reference) {
 
 export function matchImage(image, spec) {
   const hay = normalise(`${image.localFilename} ${image.label ?? ''}`);
-  if (!hay.includes(normalise(spec.doc))) return false;
-  if (spec.page !== undefined && image.page !== spec.page) return false;
-  if (spec.kind !== undefined && image.kind !== spec.kind) return false;
+  if (!hay.includes(normalise(spec.doc))) {
+    return false;
+  }
+  if (spec.page !== undefined && image.page !== spec.page) {
+    return false;
+  }
+  if (spec.kind !== undefined && image.kind !== spec.kind) {
+    return false;
+  }
   return true;
 }
 
@@ -87,14 +97,19 @@ export function scoreSample(insights, spec) {
     let kindJudged = 0;
     for (const image of set) {
       const label = labelOf(image);
-      if (!label) unlabelled++;
-      else if (label.verdict === 'good') {
+      if (!label) {
+        unlabelled++;
+      } else if (label.verdict === 'good') {
         good++;
         if (label.kind) {
           kindJudged++;
-          if (label.kind === image.kind) kindRight++;
+          if (label.kind === image.kind) {
+            kindRight++;
+          }
         }
-      } else bad++;
+      } else {
+        bad++;
+      }
     }
     return { good, bad, unlabelled, precision: ratio(good, good + bad), kindAccuracy: ratio(kindRight, kindJudged) };
   };
@@ -110,7 +125,7 @@ export function scoreSample(insights, spec) {
     const inSetLabels = goodLabels.filter(inSet(set));
     return {
       high: inSetLabels.filter((l) => l.rank === 'high').length,
-      low: inSetLabels.filter((l) => l.rank === 'low').length
+      low: inSetLabels.filter((l) => l.rank === 'low').length,
     };
   };
 
@@ -140,9 +155,9 @@ export function scoreSample(insights, spec) {
         highlightsHigh: ranks(images).high,
         highlightsLow: ranks(images).low,
         foundHigh: ranks(found).high,
-        foundLow: ranks(found).low
-      }
-    }
+        foundLow: ranks(found).low,
+      },
+    },
   };
 }
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { geocodePostcode, locationFromAddress } from './geocode.js';
 
 type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
@@ -32,7 +32,10 @@ describe('geocodePostcode', () => {
 describe('locationFromAddress', () => {
   it('resolves a postcode from the address to a point location', async () => {
     const fetch = stubFetch(() => jsonResponse({ result: { latitude: 52.2037, longitude: 0.1178 } }));
-    const loc = await locationFromAddress('Corpus Christi College Trumpington Street Cambridge Cambridgeshire CB2 1RH', fetch);
+    const loc = await locationFromAddress(
+      'Corpus Christi College Trumpington Street Cambridge Cambridgeshire CB2 1RH',
+      fetch,
+    );
     expect(loc).not.toBeNull();
     expect(loc!.center).toEqual({ lat: 52.2037, lon: 0.1178 });
     expect(loc!.source).toBe('postcode');

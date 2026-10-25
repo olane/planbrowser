@@ -20,7 +20,12 @@
           <button type="submit" :disabled="isSearching" :class="[ui.btn, ui.btnPrimary, $style.submit]">
             {{ isSearching ? 'Searching...' : 'Search' }}
           </button>
-          <button type="button" :disabled="!searchForm.postcode || isSaving" :class="[ui.btn, ui.btnOutline, $style.submit]" @click="saveCurrentSearch">
+          <button
+            type="button"
+            :disabled="!searchForm.postcode || isSaving"
+            :class="[ui.btn, ui.btnOutline, $style.submit]"
+            @click="saveCurrentSearch"
+          >
             {{ isSaving ? 'Saving...' : 'Save search' }}
           </button>
         </div>
@@ -46,7 +51,12 @@
           <div :class="$style.filters">
             <div>
               <label :class="$style.label">Keyword</label>
-              <input v-model="searchForm.search" type="text" placeholder='e.g. "solar panel" or photovoltaic' :class="ui.input" />
+              <input
+                v-model="searchForm.search"
+                type="text"
+                placeholder='e.g. "solar panel" or photovoltaic'
+                :class="ui.input"
+              />
             </div>
             <div>
               <label :class="$style.label">Developer / Agent</label>
@@ -72,7 +82,13 @@
                     </select>
                   </div>
                   <div v-if="timeModes[group.key] === 'recent'">
-                    <input v-model="searchForm[group.recentKey]" type="number" min="0" placeholder="Days (0 = today)" :class="ui.input" />
+                    <input
+                      v-model="searchForm[group.recentKey]"
+                      type="number"
+                      min="0"
+                      placeholder="Days (0 = today)"
+                      :class="ui.input"
+                    />
                   </div>
                   <div v-else :class="$style.rangeFields">
                     <div>
@@ -112,12 +128,27 @@
           </span>
         </h3>
         <div ref="mapWrapRef">
-          <SearchResultsMap v-if="resultsWithLocations.length > 0 || searchArea" ref="mapRef" :results="searchResults" :area="searchArea" :class="$style.resultsMap" @select="scrollToResult" />
+          <SearchResultsMap
+            v-if="resultsWithLocations.length > 0 || searchArea"
+            ref="mapRef"
+            :results="searchResults"
+            :area="searchArea"
+            :class="$style.resultsMap"
+            @select="scrollToResult"
+          />
         </div>
         <div :class="$style.resultsList">
-          <div v-for="res in searchResults" :key="res.uid" :ref="(el) => setResultRef(res.uid, el)" :class="$style.resultCard">
+          <div
+            v-for="res in searchResults"
+            :key="res.uid"
+            :ref="(el) => setResultRef(res.uid, el)"
+            :class="$style.resultCard"
+          >
             <div :class="$style.resultBody">
-              <div :class="$style.resultUid">{{ res.uid }}<span v-if="res.app_type" :class="$style.resultType">({{ res.app_type }})</span><span v-if="isNewResult(res.uid)" :class="$style.newBadge">New</span></div>
+              <div :class="$style.resultUid">
+                {{ res.uid }}<span v-if="res.app_type" :class="$style.resultType">({{ res.app_type }})</span
+                ><span v-if="isNewResult(res.uid)" :class="$style.newBadge">New</span>
+              </div>
               <div :class="$style.resultDesc">{{ res.description }}</div>
               <div v-if="res.address" :class="$style.resultAddress">{{ res.address }}</div>
               <div :class="$style.resultStateRow">
@@ -126,13 +157,27 @@
               </div>
             </div>
             <div :class="$style.resultActions">
-              <router-link v-if="isDownloaded(res.uid)" :to="`/app/${encodeURIComponent(res.uid)}`" :class="$style.viewLink">
+              <router-link
+                v-if="isDownloaded(res.uid)"
+                :to="`/app/${encodeURIComponent(res.uid)}`"
+                :class="$style.viewLink"
+              >
                 View
               </router-link>
-              <button v-else-if="canDownload(res)" @click="downloadApp(res.uid, res.area_name)" :disabled="['pending', 'in_progress'].includes(getQueueStatus(res.uid))" :class="[ui.btn, ui.btnSuccess, $style.downloadButton]">
+              <button
+                v-else-if="canDownload(res)"
+                @click="downloadApp(res.uid, res.area_name)"
+                :disabled="['pending', 'in_progress'].includes(getQueueStatus(res.uid))"
+                :class="[ui.btn, ui.btnSuccess, $style.downloadButton]"
+              >
                 {{ getQueueStatusText(res.uid) }}
               </button>
-              <span v-else :class="$style.notIdox" title="This planning authority does not run an Idox Public Access portal, so planbrowser cannot download its documents.">Not on Idox portal</span>
+              <span
+                v-else
+                :class="$style.notIdox"
+                title="This planning authority does not run an Idox Public Access portal, so planbrowser cannot download its documents."
+                >Not on Idox portal</span
+              >
               <div v-if="getQueueError(res.uid)" :class="$style.resultError">{{ getQueueError(res.uid) }}</div>
               <div v-else-if="downloadErrors[res.uid]" :class="$style.resultError">{{ downloadErrors[res.uid] }}</div>
               <button v-if="hasLocation(res)" @click="showOnMap(res.uid)" :class="$style.showOnMap">Show on map</button>
@@ -140,9 +185,7 @@
           </div>
         </div>
       </div>
-      <div v-else-if="hasSearched" :class="$style.muted">
-        No results found.
-      </div>
+      <div v-else-if="hasSearched" :class="$style.muted">No results found.</div>
     </section>
 
     <hr :class="$style.rule" />
@@ -154,11 +197,20 @@
         <div v-for="saved in savedSearches" :key="saved.id" :class="$style.savedCard">
           <div :class="$style.savedBody">
             <div :class="$style.savedTitle">{{ saved.postcode }} · {{ saved.radius }} km</div>
-            <div v-if="summariseFilters(saved.filters)" :class="$style.savedFilters">{{ summariseFilters(saved.filters) }}</div>
-            <div :class="$style.savedMeta">{{ saved.lastRunAt ? `Last run ${timeAgo(saved.lastRunAt)}` : 'Never run' }}</div>
+            <div v-if="summariseFilters(saved.filters)" :class="$style.savedFilters">
+              {{ summariseFilters(saved.filters) }}
+            </div>
+            <div :class="$style.savedMeta">
+              {{ saved.lastRunAt ? `Last run ${timeAgo(saved.lastRunAt)}` : 'Never run' }}
+            </div>
           </div>
           <div :class="$style.savedActions">
-            <button type="button" :disabled="runningSearchId === saved.id" :class="[ui.btn, ui.btnSuccess]" @click="runSavedSearch(saved)">
+            <button
+              type="button"
+              :disabled="runningSearchId === saved.id"
+              :class="[ui.btn, ui.btnSuccess]"
+              @click="runSavedSearch(saved)"
+            >
               {{ runningSearchId === saved.id ? 'Running...' : 'Run' }}
             </button>
             <button type="button" :class="$style.savedDelete" @click="deleteSearch(saved.id)">Delete</button>
@@ -175,20 +227,26 @@
       <h2 :class="$style.title">Direct Reference Lookup</h2>
       <form @submit.prevent="lookupReference" :class="$style.lookupForm">
         <div :class="$style.row">
-        <div :class="[$style.colFixed]">
-          <label :class="$style.label">Application Reference</label>
-          <input v-model="directReference" required type="text" placeholder="e.g. 24/02737/FUL" :class="ui.input" />
-        </div>
-        <div :class="[$style.colFixed]">
-          <label :class="$style.label">Authority (default: cambridge)</label>
-          <input v-model="directAuthority" list="authority-list" type="text" placeholder="cambridge" :class="ui.input" />
-          <datalist id="authority-list">
-            <option v-for="a in AUTHORITIES" :key="a.id" :value="a.id">{{ a.name }}</option>
-          </datalist>
-        </div>
-        <button type="submit" :disabled="isLookingUp" :class="[ui.btn, ui.btnPrimary, $style.submit]">
-          {{ isLookingUp ? 'Fetching...' : 'Fetch' }}
-        </button>
+          <div :class="[$style.colFixed]">
+            <label :class="$style.label">Application Reference</label>
+            <input v-model="directReference" required type="text" placeholder="e.g. 24/02737/FUL" :class="ui.input" />
+          </div>
+          <div :class="[$style.colFixed]">
+            <label :class="$style.label">Authority (default: cambridge)</label>
+            <input
+              v-model="directAuthority"
+              list="authority-list"
+              type="text"
+              placeholder="cambridge"
+              :class="ui.input"
+            />
+            <datalist id="authority-list">
+              <option v-for="a in AUTHORITIES" :key="a.id" :value="a.id">{{ a.name }}</option>
+            </datalist>
+          </div>
+          <button type="submit" :disabled="isLookingUp" :class="[ui.btn, ui.btnPrimary, $style.submit]">
+            {{ isLookingUp ? 'Fetching...' : 'Fetch' }}
+          </button>
         </div>
         <div v-if="lookupMessage" :class="$style.successBanner">
           {{ lookupMessage }}
@@ -201,26 +259,26 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed, useCssModule } from 'vue'
-import { timeAgo, progressText } from '../utils'
-import type { PlanItRecord, SearchFilters, SavedSearch, SortField, SortOrder, SortSpec } from '../../../src/types.js'
-import { queueItems, refreshQueue, getQueueStatus } from '../queueStore'
-import { useApplications } from '../composables/useApplications'
-import { AUTHORITIES, DEFAULT_AUTHORITY_ID, isKnownAuthority } from '../../../src/authorities.js'
-import { normalizePostcode } from '../../../src/postcode.js'
-import * as api from '../api'
-import { useRouter } from 'vue-router'
-import MultiSelect from '../components/MultiSelect.vue'
-import SearchResultsMap from '../components/SearchResultsMap.vue'
-import { APP_TYPE_ORDER } from '../mapColours'
-import ui from '../styles/primitives.module.css'
+import { ref, onMounted, computed, useCssModule } from 'vue';
+import { timeAgo, progressText } from '../utils';
+import type { PlanItRecord, SearchFilters, SavedSearch, SortField, SortOrder, SortSpec } from '../../../src/types.js';
+import { queueItems, refreshQueue, getQueueStatus } from '../queueStore';
+import { useApplications } from '../composables/useApplications';
+import { AUTHORITIES, DEFAULT_AUTHORITY_ID, isKnownAuthority } from '../../../src/authorities.js';
+import { normalizePostcode } from '../../../src/postcode.js';
+import * as api from '../api';
+import { useRouter } from 'vue-router';
+import MultiSelect from '../components/MultiSelect.vue';
+import SearchResultsMap from '../components/SearchResultsMap.vue';
+import { APP_TYPE_ORDER } from '../mapColours';
+import ui from '../styles/primitives.module.css';
 
-const router = useRouter()
-const styles = useCssModule()
+const router = useRouter();
+const styles = useCssModule();
 
-const APP_TYPES: string[] = [...APP_TYPE_ORDER]
-const APP_STATES = ['Undecided', 'Permitted', 'Conditions', 'Rejected', 'Withdrawn', 'Referred', 'Unresolved', 'Other']
-const APP_SIZES = ['Large', 'Medium', 'Small']
+const APP_TYPES: string[] = [...APP_TYPE_ORDER];
+const APP_STATES = ['Undecided', 'Permitted', 'Conditions', 'Rejected', 'Withdrawn', 'Referred', 'Unresolved', 'Other'];
+const APP_SIZES = ['Large', 'Medium', 'Small'];
 
 const SORT_OPTIONS: { field: SortField; label: string }[] = [
   { field: 'start_date', label: 'Date submitted' },
@@ -231,68 +289,70 @@ const SORT_OPTIONS: { field: SortField; label: string }[] = [
   { field: 'address', label: 'Address' },
   { field: 'postcode', label: 'Postcode' },
   { field: 'app_type', label: 'Application type' },
-  { field: 'app_state', label: 'Decision status' }
-]
+  { field: 'app_state', label: 'Decision status' },
+];
 
-const searchError = ref('')
-const searchResults = ref<PlanItRecord[]>([])
-const totalResults = ref<number | undefined>(undefined)
-const isSearching = ref(false)
-const hasSearched = ref(false)
+const searchError = ref('');
+const searchResults = ref<PlanItRecord[]>([]);
+const totalResults = ref<number | undefined>(undefined);
+const isSearching = ref(false);
+const hasSearched = ref(false);
 // Snapshot of the search area so editing the radius does not move the circle
 // until the next search runs. Null when the postcode could not be geocoded.
-const searchArea = ref<{ lat: number; lon: number; radiusKm: number } | null>(null)
+const searchArea = ref<{ lat: number; lon: number; radiusKm: number } | null>(null);
 
 // Saved searches, plus the set of references that are new since the last run
 // (used to badge freshly-appeared results when re-running a saved search).
-const savedSearches = ref<SavedSearch[]>([])
-const isSaving = ref(false)
-const saveSearchMessage = ref('')
-const saveSearchError = ref('')
-const runningSearchId = ref<string | null>(null)
-const newUids = ref<Set<string>>(new Set())
+const savedSearches = ref<SavedSearch[]>([]);
+const isSaving = ref(false);
+const saveSearchMessage = ref('');
+const saveSearchError = ref('');
+const runningSearchId = ref<string | null>(null);
+const newUids = ref<Set<string>>(new Set());
 
-const isNewResult = (uid: string) => newUids.value.has(uid)
+const isNewResult = (uid: string) => newUids.value.has(uid);
 
 const fetchSavedSearches = async () => {
   try {
-    savedSearches.value = await api.fetchSavedSearches()
+    savedSearches.value = await api.fetchSavedSearches();
   } catch (e) {
-    console.error(e)
+    console.error(e);
   }
-}
+};
 
 // Track which downloaded applications already exist so results flip between a
 // "Download" button and a "View" link.
-const { apps: downloadedApps, fetchApps } = useApplications()
-const isDownloaded = (reference: string) => downloadedApps.value.some(app => app.reference === reference)
+const { apps: downloadedApps, fetchApps } = useApplications();
+const isDownloaded = (reference: string) => downloadedApps.value.some((app) => app.reference === reference);
 
 // Persist the last search's location across visits.
-const LAST_SEARCH_KEY = 'planbrowser.lastSearch'
+const LAST_SEARCH_KEY = 'planbrowser.lastSearch';
 
 function loadLastSearch(): { postcode: string; radius: string } | null {
   try {
-    const raw = localStorage.getItem(LAST_SEARCH_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
+    const raw = localStorage.getItem(LAST_SEARCH_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
     if (typeof parsed?.postcode === 'string' && typeof parsed?.radius === 'string') {
-      return { postcode: parsed.postcode, radius: parsed.radius }
+      return { postcode: parsed.postcode, radius: parsed.radius };
     }
   } catch {
     // localStorage unavailable or the stored value is malformed; use defaults.
   }
-  return null
+  return null;
 }
 
 function saveLastSearch(postcode: string, radius: string) {
   try {
-    localStorage.setItem(LAST_SEARCH_KEY, JSON.stringify({ postcode, radius }))
+    localStorage.setItem(LAST_SEARCH_KEY, JSON.stringify({ postcode, radius }));
   } catch {
     // Ignore persistence failures.
   }
 }
 
-const lastSearch = loadLastSearch()
+const lastSearch = loadLastSearch();
 
 const searchForm = ref({
   postcode: lastSearch?.postcode ?? '',
@@ -315,95 +375,121 @@ const searchForm = ref({
   different_start: '',
   different_end: '',
   sortField: 'start_date' as SortField,
-  sortOrder: 'desc' as SortOrder
-})
+  sortOrder: 'desc' as SortOrder,
+});
 
-type TimeFieldKey = 'recent' | 'start_date' | 'end_date' | 'changed' | 'changed_start' | 'changed_end' | 'decided' | 'decided_start' | 'decided_end' | 'different' | 'different_start' | 'different_end'
+type TimeFieldKey =
+  | 'recent'
+  | 'start_date'
+  | 'end_date'
+  | 'changed'
+  | 'changed_start'
+  | 'changed_end'
+  | 'decided'
+  | 'decided_start'
+  | 'decided_end'
+  | 'different'
+  | 'different_start'
+  | 'different_end';
 
 interface TimeGroup {
-  key: string
-  label: string
-  recentKey: TimeFieldKey
-  fromKey: TimeFieldKey
-  toKey: TimeFieldKey
+  key: string;
+  label: string;
+  recentKey: TimeFieldKey;
+  fromKey: TimeFieldKey;
+  toKey: TimeFieldKey;
 }
 
 const timeGroups: TimeGroup[] = [
   { key: 'start', label: 'Start date', recentKey: 'recent', fromKey: 'start_date', toKey: 'end_date' },
   { key: 'changed', label: 'Last changed', recentKey: 'changed', fromKey: 'changed_start', toKey: 'changed_end' },
   { key: 'decided', label: 'Decided date', recentKey: 'decided', fromKey: 'decided_start', toKey: 'decided_end' },
-  { key: 'different', label: 'Data changed', recentKey: 'different', fromKey: 'different_start', toKey: 'different_end' }
-]
+  {
+    key: 'different',
+    label: 'Data changed',
+    recentKey: 'different',
+    fromKey: 'different_start',
+    toKey: 'different_end',
+  },
+];
 
 const timeModes = ref<Record<string, 'recent' | 'range'>>({
   start: 'recent',
   changed: 'recent',
   decided: 'recent',
-  different: 'recent'
-})
+  different: 'recent',
+});
 
-const simpleFilterKeys: (keyof SearchFilters)[] = ['search', 'developer', 'app_type', 'app_state', 'app_size']
+const simpleFilterKeys: (keyof SearchFilters)[] = ['search', 'developer', 'app_type', 'app_state', 'app_size'];
 
-const buildSort = (): SortSpec => ({ field: searchForm.value.sortField, order: searchForm.value.sortOrder })
+const buildSort = (): SortSpec => ({ field: searchForm.value.sortField, order: searchForm.value.sortOrder });
 
 const buildFilters = (): SearchFilters => {
-  const filters: SearchFilters = {}
+  const filters: SearchFilters = {};
   for (const key of simpleFilterKeys) {
-    const value = searchForm.value[key]
-    if (value) filters[key] = value
+    const value = searchForm.value[key];
+    if (value) {
+      filters[key] = value;
+    }
   }
   for (const group of timeGroups) {
     if (timeModes.value[group.key] === 'recent') {
-      const value = searchForm.value[group.recentKey]
-      if (value) filters[group.recentKey] = value
+      const value = searchForm.value[group.recentKey];
+      if (value) {
+        filters[group.recentKey] = value;
+      }
     } else {
-      const from = searchForm.value[group.fromKey]
-      const to = searchForm.value[group.toKey]
-      if (from) filters[group.fromKey] = from
-      if (to) filters[group.toKey] = to
+      const from = searchForm.value[group.fromKey];
+      const to = searchForm.value[group.toKey];
+      if (from) {
+        filters[group.fromKey] = from;
+      }
+      if (to) {
+        filters[group.toKey] = to;
+      }
     }
   }
-  return filters
-}
+  return filters;
+};
 
 const resetFilters = () => {
   for (const key of simpleFilterKeys) {
-    searchForm.value[key] = ''
+    searchForm.value[key] = '';
   }
   for (const group of timeGroups) {
-    timeModes.value[group.key] = 'recent'
-    searchForm.value[group.recentKey] = ''
-    searchForm.value[group.fromKey] = ''
-    searchForm.value[group.toKey] = ''
+    timeModes.value[group.key] = 'recent';
+    searchForm.value[group.recentKey] = '';
+    searchForm.value[group.fromKey] = '';
+    searchForm.value[group.toKey] = '';
   }
-}
+};
 
 const applyFilters = (filters: SearchFilters) => {
-  resetFilters()
+  resetFilters();
   for (const key of simpleFilterKeys) {
-    searchForm.value[key] = filters[key] ?? ''
+    searchForm.value[key] = filters[key] ?? '';
   }
   for (const group of timeGroups) {
-    const from = filters[group.fromKey]
-    const to = filters[group.toKey]
+    const from = filters[group.fromKey];
+    const to = filters[group.toKey];
     if (from || to) {
-      timeModes.value[group.key] = 'range'
-      searchForm.value[group.fromKey] = from ?? ''
-      searchForm.value[group.toKey] = to ?? ''
+      timeModes.value[group.key] = 'range';
+      searchForm.value[group.fromKey] = from ?? '';
+      searchForm.value[group.toKey] = to ?? '';
     } else {
-      timeModes.value[group.key] = 'recent'
-      searchForm.value[group.recentKey] = filters[group.recentKey] ?? ''
+      timeModes.value[group.key] = 'recent';
+      searchForm.value[group.recentKey] = filters[group.recentKey] ?? '';
     }
   }
-}
+};
 
 const applySearchToForm = (saved: SavedSearch) => {
-  searchForm.value.postcode = saved.postcode
-  searchForm.value.radius = saved.radius
-  searchForm.value.sortField = saved.sort?.field ?? 'start_date'
-  searchForm.value.sortOrder = saved.sort?.order ?? 'desc'
-  applyFilters(saved.filters)
-}
+  searchForm.value.postcode = saved.postcode;
+  searchForm.value.radius = saved.radius;
+  searchForm.value.sortField = saved.sort?.field ?? 'start_date';
+  searchForm.value.sortOrder = saved.sort?.order ?? 'desc';
+  applyFilters(saved.filters);
+};
 
 const FILTER_LABELS: Partial<Record<keyof SearchFilters, string>> = {
   search: 'keyword',
@@ -422,220 +508,237 @@ const FILTER_LABELS: Partial<Record<keyof SearchFilters, string>> = {
   decided_end: 'decided to',
   different: 'data changed (days)',
   different_start: 'data changed from',
-  different_end: 'data changed to'
-}
+  different_end: 'data changed to',
+};
 
 const summariseFilters = (filters: SearchFilters): string => {
-  const parts: string[] = []
+  const parts: string[] = [];
   for (const [key, value] of Object.entries(filters)) {
-    if (!value) continue
-    const label = FILTER_LABELS[key as keyof SearchFilters]
-    parts.push(label ? `${label} ${value}` : value)
+    if (!value) {
+      continue;
+    }
+    const label = FILTER_LABELS[key as keyof SearchFilters];
+    parts.push(label ? `${label} ${value}` : value);
   }
-  return parts.join(' · ')
-}
+  return parts.join(' · ');
+};
 
-const resultsWithLocations = computed(() => searchResults.value.filter(hasLocation))
+const resultsWithLocations = computed(() => searchResults.value.filter(hasLocation));
 
-const canDownload = (res: PlanItRecord) => isKnownAuthority(res.area_name)
+const canDownload = (res: PlanItRecord) => isKnownAuthority(res.area_name);
 
-const downloadErrors = ref<Record<string, string>>({})
+const downloadErrors = ref<Record<string, string>>({});
 
 const hasLocation = (r: PlanItRecord) => {
-  const lat = typeof r.location_y === 'number' ? r.location_y : r.location?.coordinates?.[1]
-  const lon = typeof r.location_x === 'number' ? r.location_x : r.location?.coordinates?.[0]
-  return typeof lat === 'number' && typeof lon === 'number'
-}
+  const lat = typeof r.location_y === 'number' ? r.location_y : r.location?.coordinates?.[1];
+  const lon = typeof r.location_x === 'number' ? r.location_x : r.location?.coordinates?.[0];
+  return typeof lat === 'number' && typeof lon === 'number';
+};
 
-const mapRef = ref<InstanceType<typeof SearchResultsMap> | null>(null)
-const mapWrapRef = ref<HTMLElement | null>(null)
+const mapRef = ref<InstanceType<typeof SearchResultsMap> | null>(null);
+const mapWrapRef = ref<HTMLElement | null>(null);
 const showOnMap = (uid: string) => {
-  mapWrapRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  mapRef.value?.focus(uid)
-}
+  mapWrapRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  mapRef.value?.focus(uid);
+};
 
-const resultRefs = new Map<string, HTMLElement>()
+const resultRefs = new Map<string, HTMLElement>();
 const setResultRef = (uid: string, el: unknown) => {
-  if (el instanceof HTMLElement) resultRefs.set(uid, el)
-  else resultRefs.delete(uid)
-}
+  if (el instanceof HTMLElement) {
+    resultRefs.set(uid, el);
+  } else {
+    resultRefs.delete(uid);
+  }
+};
 const scrollToResult = (uid: string) => {
-  const el = resultRefs.get(uid)
-  if (!el) return
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  el.classList.add(styles.resultHighlight)
-  setTimeout(() => el.classList.remove(styles.resultHighlight), 2000)
-}
+  const el = resultRefs.get(uid);
+  if (!el) {
+    return;
+  }
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add(styles.resultHighlight);
+  setTimeout(() => el.classList.remove(styles.resultHighlight), 2000);
+};
 
-const directReference = ref('')
-const directAuthority = ref('')
-const isLookingUp = ref(false)
-const lookupError = ref('')
-const lookupMessage = ref('')
+const directReference = ref('');
+const directAuthority = ref('');
+const isLookingUp = ref(false);
+const lookupError = ref('');
+const lookupMessage = ref('');
 
 const fetchQueue = async () => {
-  await refreshQueue()
-}
+  await refreshQueue();
+};
 
 const getQueueStatusText = (reference: string) => {
-  const status = getQueueStatus(reference)
-  if (status === 'pending') return 'Queued'
-  if (status === 'in_progress') {
-    const item = queueItems.value.find(q => q.reference === reference && q.status === 'in_progress')
-    return item?.progress ? progressText(item.progress) : 'Downloading...'
+  const status = getQueueStatus(reference);
+  if (status === 'pending') {
+    return 'Queued';
   }
-  if (status === 'failed') return 'Failed — retry'
-  return 'Download'
-}
+  if (status === 'in_progress') {
+    const item = queueItems.value.find((q) => q.reference === reference && q.status === 'in_progress');
+    return item?.progress ? progressText(item.progress) : 'Downloading...';
+  }
+  if (status === 'failed') {
+    return 'Failed — retry';
+  }
+  return 'Download';
+};
 
 const getQueueError = (reference: string) => {
-  const item = queueItems.value.find(q => q.reference === reference && q.status === 'failed')
-  return item?.error
-}
+  const item = queueItems.value.find((q) => q.reference === reference && q.status === 'failed');
+  return item?.error;
+};
 
 const lookupReference = async () => {
-  if (!directReference.value) return
-  const refValue = directReference.value.trim().toUpperCase()
+  if (!directReference.value) {
+    return;
+  }
+  const refValue = directReference.value.trim().toUpperCase();
 
   if (isDownloaded(refValue)) {
-    router.push(`/app/${encodeURIComponent(refValue)}`)
-    return
+    router.push(`/app/${encodeURIComponent(refValue)}`);
+    return;
   }
 
-  isLookingUp.value = true
-  lookupError.value = ''
-  lookupMessage.value = ''
+  isLookingUp.value = true;
+  lookupError.value = '';
+  lookupMessage.value = '';
 
   try {
-    await api.downloadApplication(refValue, directAuthority.value || DEFAULT_AUTHORITY_ID)
-    await fetchQueue()
-    lookupMessage.value = `${refValue} queued for download`
-    directReference.value = ''
+    await api.downloadApplication(refValue, directAuthority.value || DEFAULT_AUTHORITY_ID);
+    await fetchQueue();
+    lookupMessage.value = `${refValue} queued for download`;
+    directReference.value = '';
   } catch (e: any) {
-    console.error(e)
-    lookupError.value = e.message || 'Failed to fetch application'
+    console.error(e);
+    lookupError.value = e.message || 'Failed to fetch application';
   } finally {
-    isLookingUp.value = false
+    isLookingUp.value = false;
   }
-}
+};
 
 const searchPlanIt = async () => {
-  if (!searchForm.value.postcode) return
+  if (!searchForm.value.postcode) {
+    return;
+  }
 
-  const postcode = normalizePostcode(searchForm.value.postcode)
-  const radius = searchForm.value.radius
-  searchForm.value.postcode = postcode
-  saveLastSearch(postcode, radius)
+  const postcode = normalizePostcode(searchForm.value.postcode);
+  const radius = searchForm.value.radius;
+  searchForm.value.postcode = postcode;
+  saveLastSearch(postcode, radius);
 
-  isSearching.value = true
-  hasSearched.value = false
-  searchError.value = ''
-  newUids.value = new Set()
-  searchArea.value = null
+  isSearching.value = true;
+  hasSearched.value = false;
+  searchError.value = '';
+  newUids.value = new Set();
+  searchArea.value = null;
 
   try {
-    const filters = buildFilters()
+    const filters = buildFilters();
     const [data, center] = await Promise.all([
       api.searchPlanIt(postcode, radius, filters, buildSort()),
-      api.geocodePostcode(postcode).catch(() => null)
-    ])
-    searchResults.value = data.records || []
-    totalResults.value = data.total
-    searchArea.value = center && Number(radius) > 0 ? { ...center, radiusKm: Number(radius) } : null
-    hasSearched.value = true
+      api.geocodePostcode(postcode).catch(() => null),
+    ]);
+    searchResults.value = data.records || [];
+    totalResults.value = data.total;
+    searchArea.value = center && Number(radius) > 0 ? { ...center, radiusKm: Number(radius) } : null;
+    hasSearched.value = true;
   } catch (e: any) {
-    console.error(e)
-    searchError.value = e.message || 'Failed to search'
-    searchResults.value = []
-    totalResults.value = undefined
-    searchArea.value = null
+    console.error(e);
+    searchError.value = e.message || 'Failed to search';
+    searchResults.value = [];
+    totalResults.value = undefined;
+    searchArea.value = null;
   } finally {
-    isSearching.value = false
+    isSearching.value = false;
   }
-}
+};
 
 const saveCurrentSearch = async () => {
-  if (!searchForm.value.postcode) return
+  if (!searchForm.value.postcode) {
+    return;
+  }
 
-  isSaving.value = true
-  saveSearchMessage.value = ''
-  saveSearchError.value = ''
+  isSaving.value = true;
+  saveSearchMessage.value = '';
+  saveSearchError.value = '';
 
   try {
     const saved = await api.saveSavedSearch({
       postcode: searchForm.value.postcode,
       radius: searchForm.value.radius,
       filters: buildFilters(),
-      sort: buildSort()
-    })
-    savedSearches.value = [saved, ...savedSearches.value]
-    saveSearchMessage.value = 'Search saved'
+      sort: buildSort(),
+    });
+    savedSearches.value = [saved, ...savedSearches.value];
+    saveSearchMessage.value = 'Search saved';
   } catch (e: any) {
-    console.error(e)
-    saveSearchError.value = e.message || 'Failed to save search'
+    console.error(e);
+    saveSearchError.value = e.message || 'Failed to save search';
   } finally {
-    isSaving.value = false
+    isSaving.value = false;
   }
-}
+};
 
 const runSavedSearch = async (saved: SavedSearch) => {
-  runningSearchId.value = saved.id
-  searchError.value = ''
-  saveSearchError.value = ''
-  searchArea.value = null
+  runningSearchId.value = saved.id;
+  searchError.value = '';
+  saveSearchError.value = '';
+  searchArea.value = null;
 
   try {
-    applySearchToForm(saved)
-    saveLastSearch(saved.postcode, saved.radius)
+    applySearchToForm(saved);
+    saveLastSearch(saved.postcode, saved.radius);
     const [{ records, previousReferences, total }, center] = await Promise.all([
       api.runSavedSearch(saved.id),
-      api.geocodePostcode(saved.postcode).catch(() => null)
-    ])
-    searchResults.value = records
-    totalResults.value = total
-    searchArea.value = center && Number(saved.radius) > 0 ? { ...center, radiusKm: Number(saved.radius) } : null
-    hasSearched.value = true
-    const previous = new Set(previousReferences)
-    newUids.value = new Set(records.filter((r) => !previous.has(r.uid)).map((r) => r.uid))
-    await fetchSavedSearches()
+      api.geocodePostcode(saved.postcode).catch(() => null),
+    ]);
+    searchResults.value = records;
+    totalResults.value = total;
+    searchArea.value = center && Number(saved.radius) > 0 ? { ...center, radiusKm: Number(saved.radius) } : null;
+    hasSearched.value = true;
+    const previous = new Set(previousReferences);
+    newUids.value = new Set(records.filter((r) => !previous.has(r.uid)).map((r) => r.uid));
+    await fetchSavedSearches();
   } catch (e: any) {
-    console.error(e)
-    searchError.value = e.message || 'Failed to run saved search'
-    searchResults.value = []
-    totalResults.value = undefined
-    newUids.value = new Set()
-    searchArea.value = null
+    console.error(e);
+    searchError.value = e.message || 'Failed to run saved search';
+    searchResults.value = [];
+    totalResults.value = undefined;
+    newUids.value = new Set();
+    searchArea.value = null;
   } finally {
-    runningSearchId.value = null
+    runningSearchId.value = null;
   }
-}
+};
 
 const deleteSearch = async (id: string) => {
   try {
-    await api.deleteSavedSearch(id)
-    savedSearches.value = savedSearches.value.filter((s) => s.id !== id)
+    await api.deleteSavedSearch(id);
+    savedSearches.value = savedSearches.value.filter((s) => s.id !== id);
   } catch (e) {
-    console.error(e)
+    console.error(e);
   }
-}
+};
 
 const downloadApp = async (reference: string, authorityId?: string) => {
   try {
-    await api.downloadApplication(reference, authorityId)
-    delete downloadErrors.value[reference]
-    await fetchQueue()
+    await api.downloadApplication(reference, authorityId);
+    delete downloadErrors.value[reference];
+    await fetchQueue();
   } catch (e: any) {
-    console.error(e)
-    downloadErrors.value[reference] = e.message || 'Failed to queue download'
+    console.error(e);
+    downloadErrors.value[reference] = e.message || 'Failed to queue download';
   }
-}
+};
 
 onMounted(() => {
-  document.title = 'PlanBrowser | Search'
-  fetchApps()
-  fetchQueue()
-  fetchSavedSearches()
-})
+  document.title = 'PlanBrowser | Search';
+  fetchApps();
+  fetchQueue();
+  fetchSavedSearches();
+});
 </script>
 
 <style module>

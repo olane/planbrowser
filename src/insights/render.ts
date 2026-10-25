@@ -29,7 +29,9 @@ export async function openPdf(filePath: string): Promise<PdfDocument> {
 function toTextItems(items: RawTextItem[]): TextItem[] {
   const out: TextItem[] = [];
   for (const raw of items) {
-    if (typeof raw.str !== 'string') continue;
+    if (typeof raw.str !== 'string') {
+      continue;
+    }
     const t = Array.isArray(raw.transform) ? raw.transform.map(Number) : [];
     const height = Number(raw.height) || 0;
     // The glyph matrix's vertical scale is the font size in user space.
@@ -40,7 +42,7 @@ function toTextItems(items: RawTextItem[]): TextItem[] {
       y: t[5] || 0,
       width: Number(raw.width) || 0,
       height,
-      fontSize: fontSize || undefined
+      fontSize: fontSize || undefined,
     });
   }
   return out;
@@ -54,11 +56,15 @@ export function groupLines(items: TextItem[]): PageLine[] {
   let current: { str: string; size: number; y: number; right: number } | undefined;
   const flush = (): void => {
     const str = current?.str.replace(/\s+/g, ' ').trim();
-    if (current && str) lines.push({ str, size: Math.round(current.size * 10) / 10 });
+    if (current && str) {
+      lines.push({ str, size: Math.round(current.size * 10) / 10 });
+    }
     current = undefined;
   };
   for (const item of items) {
-    if (!item.str.trim()) continue;
+    if (!item.str.trim()) {
+      continue;
+    }
     const size = item.fontSize ?? item.height ?? 0;
     const unit = Math.max(1, Math.min(size, current?.size ?? size));
     const gap = current ? item.x - current.right : 0;
@@ -121,7 +127,7 @@ function resolvedOps(): Promise<ImageOps> {
         paintFormXObjectEnd: Number(ops.paintFormXObjectEnd),
         paintImageXObject: Number(ops.paintImageXObject),
         paintInlineImageXObject: Number(ops.paintInlineImageXObject),
-        paintImageMaskXObject: Number(ops.paintImageMaskXObject)
+        paintImageMaskXObject: Number(ops.paintImageMaskXObject),
       };
     });
   }
@@ -140,7 +146,11 @@ export async function scanPage(pdf: PdfDocument, page: number, captionMinArea: n
     const images = placements.filter((placement) => placement.pixelArea > 0);
     const largestImageArea = images.reduce((max, placement) => Math.max(max, placement.pixelArea), 0);
     let largest = placements[0];
-    for (const placement of placements) if (boxArea(placement.box) > boxArea(largest!.box)) largest = placement;
+    for (const placement of placements) {
+      if (boxArea(placement.box) > boxArea(largest!.box)) {
+        largest = placement;
+      }
+    }
 
     const viewport = pdfPage.getViewport({ scale: 1 });
 
@@ -152,7 +162,7 @@ export async function scanPage(pdf: PdfDocument, page: number, captionMinArea: n
     return {
       imageCount: images.length,
       largestImageArea,
-      caption
+      caption,
     };
   } catch {
     return EMPTY_SCAN;
@@ -164,7 +174,7 @@ export async function scanPage(pdf: PdfDocument, page: number, captionMinArea: n
 export async function renderPageToPng(pdf: PdfDocument, page: number, width: number): Promise<Buffer> {
   const buffer = await renderPageAsImage(pdf, page, {
     width,
-    canvasImport: () => import('@napi-rs/canvas')
+    canvasImport: () => import('@napi-rs/canvas'),
   });
   return Buffer.from(buffer);
 }
@@ -173,5 +183,7 @@ export async function renderPageToPng(pdf: PdfDocument, page: number, width: num
 // long-lived server process, so callers should close each one when done.
 export async function closePdf(pdf: PdfDocument): Promise<void> {
   const destroy = (pdf as unknown as { destroy?: () => Promise<void> }).destroy;
-  if (typeof destroy === 'function') await destroy.call(pdf);
+  if (typeof destroy === 'function') {
+    await destroy.call(pdf);
+  }
 }

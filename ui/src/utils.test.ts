@@ -1,5 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { timeAgo, statusLabel, progressText, statusBadgeClass, isKeyDocument, partNumber, partLabel, multipartBase, multipartUnit, groupDocuments, highlightSegments } from './utils';
+import {
+  timeAgo,
+  statusLabel,
+  progressText,
+  statusBadgeClass,
+  isKeyDocument,
+  partNumber,
+  partLabel,
+  multipartBase,
+  multipartUnit,
+  groupDocuments,
+  highlightSegments,
+} from './utils';
 
 const NOW = new Date('2026-01-15T12:00:00.000Z');
 
@@ -82,20 +94,34 @@ describe('statusBadgeClass', () => {
 
 describe('isKeyDocument', () => {
   it('matches on the document type', () => {
-    expect(isKeyDocument({ documentType: 'Design and Access Statement', description: 'DESIGN AND ACCESS STATEMENT PART 1' })).toBe(true);
+    expect(
+      isKeyDocument({ documentType: 'Design and Access Statement', description: 'DESIGN AND ACCESS STATEMENT PART 1' }),
+    ).toBe(true);
   });
 
   it('matches on the description/name when the type is generic', () => {
-    expect(isKeyDocument({ documentType: 'Application Information', description: 'DESIGN & ACCESS STATEMENT PART 2' })).toBe(true);
+    expect(
+      isKeyDocument({ documentType: 'Application Information', description: 'DESIGN & ACCESS STATEMENT PART 2' }),
+    ).toBe(true);
   });
 
   it('matches on the local filename', () => {
-    expect(isKeyDocument({ documentType: 'Drawings', description: '24032_01_...', localFilename: '18 May 2026 - Drawings - DESIGN AND ACCESS STATEMENT PART 4.pdf' })).toBe(true);
+    expect(
+      isKeyDocument({
+        documentType: 'Drawings',
+        description: '24032_01_...',
+        localFilename: '18 May 2026 - Drawings - DESIGN AND ACCESS STATEMENT PART 4.pdf',
+      }),
+    ).toBe(true);
   });
 
   it('treats & and &amp; as "and"', () => {
-    expect(isKeyDocument({ documentType: 'Application Information', description: 'DESIGN & ACCESS STATEMENT PART 3' })).toBe(true);
-    expect(isKeyDocument({ documentType: 'Application Information', description: 'DESIGN &amp; ACCESS STATEMENT PART 4' })).toBe(true);
+    expect(
+      isKeyDocument({ documentType: 'Application Information', description: 'DESIGN & ACCESS STATEMENT PART 3' }),
+    ).toBe(true);
+    expect(
+      isKeyDocument({ documentType: 'Application Information', description: 'DESIGN &amp; ACCESS STATEMENT PART 4' }),
+    ).toBe(true);
   });
 
   it('matches a design code', () => {
@@ -210,27 +236,13 @@ describe('groupDocuments', () => {
   });
 
   it('is case-insensitive when matching bases', () => {
-    const docs = [
-      doc('Design and Access Statement part 1'),
-      doc('DESIGN AND ACCESS STATEMENT PART 2'),
-    ];
+    const docs = [doc('Design and Access Statement part 1'), doc('DESIGN AND ACCESS STATEMENT PART 2')];
     const entries = groupDocuments(docs);
-    expect(entries).toHaveLength(1);
-    expect(entries[0].kind).toBe('group');
-    if (entries[0].kind === 'group') {
-      expect(entries[0].title).toBe('Design and Access Statement');
-      expect(entries[0].parts).toHaveLength(2);
-    }
+    expect(entries).toEqual([{ kind: 'group', title: 'Design and Access Statement', parts: [docs[0], docs[1]] }]);
   });
 
   it('groups in the position of the first member and preserves document order elsewhere', () => {
-    const docs = [
-      doc('A'),
-      doc('HERITAGE STATEMENT PART 2'),
-      doc('B'),
-      doc('HERITAGE STATEMENT PART 1'),
-      doc('C'),
-    ];
+    const docs = [doc('A'), doc('HERITAGE STATEMENT PART 2'), doc('B'), doc('HERITAGE STATEMENT PART 1'), doc('C')];
     const entries = groupDocuments(docs);
     expect(entries.map((e) => (e.kind === 'group' ? `group:${e.title}` : e.doc.description))).toEqual([
       'A',
@@ -238,12 +250,11 @@ describe('groupDocuments', () => {
       'B',
       'C',
     ]);
-    if (entries[1].kind === 'group') {
-      expect(entries[1].parts.map((p) => p.description)).toEqual([
-        'HERITAGE STATEMENT PART 1',
-        'HERITAGE STATEMENT PART 2',
-      ]);
-    }
+    expect(entries[1]).toEqual({
+      kind: 'group',
+      title: 'HERITAGE STATEMENT',
+      parts: [docs[3], docs[1]],
+    });
   });
 
   it('does not merge distinct-but-similar titles', () => {
@@ -252,10 +263,7 @@ describe('groupDocuments', () => {
   });
 
   it('groups sheets sharing a title under the base name', () => {
-    const docs = [
-      doc('BUILDING A ELEVATIONS - SHEET 1 OF 2'),
-      doc('BUILDING A ELEVATIONS - SHEET 2 OF 2'),
-    ];
+    const docs = [doc('BUILDING A ELEVATIONS - SHEET 1 OF 2'), doc('BUILDING A ELEVATIONS - SHEET 2 OF 2')];
     expect(groupDocuments(docs)).toEqual([
       { kind: 'group', title: 'BUILDING A ELEVATIONS', parts: [docs[0], docs[1]] },
     ]);
@@ -268,14 +276,13 @@ describe('groupDocuments', () => {
       doc('BUILDING D ELEVATIONS - SHEET 1 OF 10'),
     ];
     const entries = groupDocuments(docs);
-    expect(entries).toHaveLength(1);
-    if (entries[0].kind === 'group') {
-      expect(entries[0].parts.map((p) => p.description)).toEqual([
-        'BUILDING D ELEVATIONS - SHEET 1 OF 10',
-        'BUILDING D ELEVATIONS - SHEET 2 OF 10',
-        'BUILDING D ELEVATIONS - SHEET 10 OF 10',
-      ]);
-    }
+    expect(entries).toEqual([
+      {
+        kind: 'group',
+        title: 'BUILDING D ELEVATIONS',
+        parts: [docs[2], docs[1], docs[0]],
+      },
+    ]);
   });
 
   it('groups bare N of M documents sharing a base', () => {
@@ -294,12 +301,7 @@ describe('groupDocuments', () => {
   });
 
   it('groups documents that repeat the same name', () => {
-    const docs = [
-      doc('135 OXFORD ROAD'),
-      doc('107 OXFORD ROAD'),
-      doc('135 OXFORD ROAD'),
-      doc('135 OXFORD ROAD'),
-    ];
+    const docs = [doc('135 OXFORD ROAD'), doc('107 OXFORD ROAD'), doc('135 OXFORD ROAD'), doc('135 OXFORD ROAD')];
     expect(groupDocuments(docs)).toEqual([
       { kind: 'group', title: '135 OXFORD ROAD', parts: [docs[0], docs[2], docs[3]] },
       { kind: 'doc', doc: docs[1] },
@@ -312,13 +314,8 @@ describe('groupDocuments', () => {
   });
 
   it('groups a SUPERSEDED copy with its current document', () => {
-    const docs = [
-      doc('SUPERSEDED TREE SURVEY'),
-      doc('TREE SURVEY'),
-    ];
-    expect(groupDocuments(docs)).toEqual([
-      { kind: 'group', title: 'TREE SURVEY', parts: [docs[0], docs[1]] },
-    ]);
+    const docs = [doc('SUPERSEDED TREE SURVEY'), doc('TREE SURVEY')];
+    expect(groupDocuments(docs)).toEqual([{ kind: 'group', title: 'TREE SURVEY', parts: [docs[0], docs[1]] }]);
   });
 
   it('groups a SUPERSEDED sheet copy with its current sheets', () => {
@@ -328,9 +325,7 @@ describe('groupDocuments', () => {
       doc('BUILDING D ELEVATIONS - SHEET 2 OF 2'),
     ];
     const entries = groupDocuments(docs);
-    expect(entries).toEqual([
-      { kind: 'group', title: 'BUILDING D ELEVATIONS', parts: [docs[0], docs[1], docs[2]] },
-    ]);
+    expect(entries).toEqual([{ kind: 'group', title: 'BUILDING D ELEVATIONS', parts: [docs[0], docs[1], docs[2]] }]);
   });
 
   it('does not merge a superseded name with an unrelated one', () => {
@@ -352,7 +347,7 @@ describe('highlightSegments', () => {
     expect(highlightSegments('The Trees are here', 'trees')).toEqual([
       { text: 'The ', match: false },
       { text: 'Trees', match: true },
-      { text: ' are here', match: false }
+      { text: ' are here', match: false },
     ]);
   });
 
@@ -360,7 +355,7 @@ describe('highlightSegments', () => {
     expect(highlightSegments('a b a', 'a')).toEqual([
       { text: 'a', match: true },
       { text: ' b ', match: false },
-      { text: 'a', match: true }
+      { text: 'a', match: true },
     ]);
   });
 });

@@ -6,15 +6,11 @@ import path from 'path';
 // Resolved lazily so callers (and tests) can point it at a different directory
 // without restarting the process.
 export function getDownloadsDir(): string {
-  return process.env.DOWNLOADS_DIR
-    ? path.resolve(process.env.DOWNLOADS_DIR)
-    : path.join(process.cwd(), 'downloads');
+  return process.env.DOWNLOADS_DIR ? path.resolve(process.env.DOWNLOADS_DIR) : path.join(process.cwd(), 'downloads');
 }
 
 // Where the built web UI lives. In a packaged Electron app this is the bundled
 // `ui/dist` next to the app resources, not the current working directory.
 export function getUiDistDir(): string {
-  return process.env.UI_DIST_DIR
-    ? path.resolve(process.env.UI_DIST_DIR)
-    : path.join(process.cwd(), 'ui', 'dist');
+  return process.env.UI_DIST_DIR ? path.resolve(process.env.UI_DIST_DIR) : path.join(process.cwd(), 'ui', 'dist');
 }

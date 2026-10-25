@@ -78,8 +78,18 @@ describe('document flags', () => {
 
 describe('activity feed', () => {
   it('records new events at the front and persists them', () => {
-    const first = recordActivity({ reference: '24/0001/FUL', authorityId: 'cambridge', message: 'Application added', changes: [] });
-    const second = recordActivity({ reference: '24/0002/FUL', authorityId: 'cambridge', message: 'Application updated', changes: [] });
+    const first = recordActivity({
+      reference: '24/0001/FUL',
+      authorityId: 'cambridge',
+      message: 'Application added',
+      changes: [],
+    });
+    recordActivity({
+      reference: '24/0002/FUL',
+      authorityId: 'cambridge',
+      message: 'Application updated',
+      changes: [],
+    });
 
     expect(first.id).toBeDefined();
     expect(first.happenedAt).toBeDefined();

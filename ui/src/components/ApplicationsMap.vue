@@ -6,14 +6,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, useCssModule } from 'vue'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import type { ApplicationMeta, ApplicationLocation } from '../../../src/types.js'
-import { statusLabel, statusBadgeTone } from '../utils'
-import { createMap, escapeHtml, pinIcon, truncate } from '../map'
-import MapLegend from './MapLegend.vue'
-import { useMapColorMode } from '../useMapColorMode'
+import { ref, computed, onMounted, onBeforeUnmount, watch, useCssModule } from 'vue';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import type { ApplicationMeta, ApplicationLocation } from '../../../src/types.js';
+import { statusLabel, statusBadgeTone } from '../utils';
+import { createMap, escapeHtml, pinIcon, truncate } from '../map';
+import MapLegend from './MapLegend.vue';
+import { useMapColorMode } from '../useMapColorMode';
 import {
   APP_TYPE_COLORS,
   APP_TYPE_ORDER,
@@ -26,51 +26,55 @@ import {
   outcomeColor,
   presentBuckets,
   legendFor,
-  type LegendEntry
-} from '../mapColours'
-import ui from '../styles/primitives.module.css'
+  type LegendEntry,
+} from '../mapColours';
+import ui from '../styles/primitives.module.css';
 
-const props = defineProps<{ apps: ApplicationMeta[] }>()
-const emit = defineEmits<{ select: [reference: string] }>()
+const props = defineProps<{ apps: ApplicationMeta[] }>();
+const emit = defineEmits<{ select: [reference: string] }>();
 
-const styles = useCssModule()
+const styles = useCssModule();
 
-const mapEl = ref<HTMLDivElement | null>(null)
-let map: L.Map | null = null
-let markerLayer: L.LayerGroup | null = null
-let polygonLayer: L.LayerGroup | null = null
+const mapEl = ref<HTMLDivElement | null>(null);
+let map: L.Map | null = null;
+let markerLayer: L.LayerGroup | null = null;
+let polygonLayer: L.LayerGroup | null = null;
 
 // Convert stored [lon, lat] rings into Leaflet's [lat, lon] nested arrays.
 const locationPolygons = (loc: ApplicationLocation): L.LatLngExpression[][][] =>
-  (loc.polygons ?? []).map((poly) => poly.map((ring) => ring.map(([lon, lat]) => [lat, lon] as [number, number])))
+  (loc.polygons ?? []).map((poly) => poly.map((ring) => ring.map(([lon, lat]) => [lat, lon] as [number, number])));
 
-const locatedApps = () => props.apps.filter((a) => a.location)
+const locatedApps = () => props.apps.filter((a) => a.location);
 
-const { colorMode, setColorMode } = useMapColorMode('planbrowser.mapColorMode.apps', 'outcome')
+const { colorMode, setColorMode } = useMapColorMode('planbrowser.mapColorMode.apps', 'outcome');
 
 // Prefer the scraped "Application Type"; fall back to the reference suffix
 // (e.g. "…/FUL") when the portal didn't expose it.
 const appTypeValue = (app: ApplicationMeta) =>
-  app.furtherInformation?.['Application Type'] || appTypeFromReference(app.reference)
+  app.furtherInformation?.['Application Type'] || appTypeFromReference(app.reference);
 
 const markerFill = (app: ApplicationMeta) =>
-  colorMode.value === 'type' ? appTypeColor(appTypeValue(app)) : outcomeColor(statusLabel(app))
+  colorMode.value === 'type' ? appTypeColor(appTypeValue(app)) : outcomeColor(statusLabel(app));
 
 const legendEntries = computed<LegendEntry[]>(() => {
   if (colorMode.value === 'type') {
-    const buckets = presentBuckets(props.apps.map(appTypeValue), normaliseAppType, APP_TYPE_ORDER)
-    return legendFor(buckets, APP_TYPE_COLORS)
+    const buckets = presentBuckets(props.apps.map(appTypeValue), normaliseAppType, APP_TYPE_ORDER);
+    return legendFor(buckets, APP_TYPE_COLORS);
   }
-  const buckets = presentBuckets(props.apps.map((a) => statusLabel(a)), normaliseOutcome, OUTCOME_ORDER)
-  return legendFor(buckets, OUTCOME_COLORS)
-})
+  const buckets = presentBuckets(
+    props.apps.map((a) => statusLabel(a)),
+    normaliseOutcome,
+    OUTCOME_ORDER,
+  );
+  return legendFor(buckets, OUTCOME_COLORS);
+});
 
-const PIN_CLASS = 'application-pin'
+const PIN_CLASS = 'application-pin';
 
-const toneClass = { red: ui.toneRed, green: ui.toneGreen, blue: ui.toneBlue }
+const toneClass = { red: ui.toneRed, green: ui.toneGreen, blue: ui.toneBlue };
 
 const popupContent = (app: ApplicationMeta) => {
-  const loc = app.location!
+  const loc = app.location!;
   return `<div class="${styles.popup}">
     <div class="${styles.popupRef}">${escapeHtml(app.reference)}</div>
     <div class="${styles.popupAddress}">${escapeHtml(app.address || '')}</div>
@@ -80,91 +84,109 @@ const popupContent = (app: ApplicationMeta) => {
       <button class="open-link ${styles.popupLink}">View</button>
     </div>
     <div class="${styles.popupCoords}">${loc.center.lat.toFixed(5)}, ${loc.center.lon.toFixed(5)}</div>
-  </div>`
-}
+  </div>`;
+};
 
-let markersByRef = new Map<string, L.Marker>()
-let polygonsByRef = new Map<string, L.Polygon[]>()
+let markersByRef = new Map<string, L.Marker>();
+let polygonsByRef = new Map<string, L.Polygon[]>();
 
 const polygonStyle = (app: ApplicationMeta): L.PathOptions => {
-  const color = markerFill(app)
-  return { color, weight: 2, fillColor: color, fillOpacity: 0.2 }
-}
+  const color = markerFill(app);
+  return { color, weight: 2, fillColor: color, fillOpacity: 0.2 };
+};
 
 const setPolygonHighlight = (app: ApplicationMeta, highlighted: boolean) => {
   for (const polygon of polygonsByRef.get(app.reference) ?? []) {
-    polygon.setStyle(highlighted ? { ...polygonStyle(app), weight: 5, fillOpacity: 0.35 } : polygonStyle(app))
-    if (highlighted) polygon.bringToFront()
+    polygon.setStyle(highlighted ? { ...polygonStyle(app), weight: 5, fillOpacity: 0.35 } : polygonStyle(app));
+    if (highlighted) {
+      polygon.bringToFront();
+    }
   }
-}
+};
 
 const bindInteractions = (layer: L.Layer, app: ApplicationMeta) => {
-  layer.bindPopup(popupContent(app))
+  layer.bindPopup(popupContent(app));
   layer.on('popupopen', (e: L.PopupEvent) => {
-    const link = e.popup.getElement()?.querySelector('.open-link') as HTMLElement | null
-    if (link) link.onclick = () => emit('select', app.reference)
-    setPolygonHighlight(app, true)
-  })
-  layer.on('popupclose', () => setPolygonHighlight(app, false))
-}
+    const link = e.popup.getElement()?.querySelector('.open-link') as HTMLElement | null;
+    if (link) {
+      link.addEventListener('click', () => emit('select', app.reference));
+    }
+    setPolygonHighlight(app, true);
+  });
+  layer.on('popupclose', () => setPolygonHighlight(app, false));
+};
 
 const renderMarkers = () => {
-  if (!map || !markerLayer || !polygonLayer) return
-  markerLayer.clearLayers()
-  polygonLayer.clearLayers()
-  markersByRef = new Map()
-  polygonsByRef = new Map()
-  const apps = locatedApps()
-  if (apps.length === 0) return
-  const bounds = L.latLngBounds([])
+  if (!map || !markerLayer || !polygonLayer) {
+    return;
+  }
+  markerLayer.clearLayers();
+  polygonLayer.clearLayers();
+  markersByRef = new Map();
+  polygonsByRef = new Map();
+  const apps = locatedApps();
+  if (apps.length === 0) {
+    return;
+  }
+  const bounds = L.latLngBounds([]);
   for (const app of apps) {
-    const loc = app.location!
-    bounds.extend([loc.center.lat, loc.center.lon] as L.LatLngExpression)
+    const loc = app.location!;
+    bounds.extend([loc.center.lat, loc.center.lon] as L.LatLngExpression);
     for (const rings of locationPolygons(loc)) {
-      const polygon = L.polygon(rings, polygonStyle(app)).addTo(polygonLayer)
-      bindInteractions(polygon, app)
+      const polygon = L.polygon(rings, polygonStyle(app)).addTo(polygonLayer);
+      bindInteractions(polygon, app);
       for (const ring of rings) {
-        for (const latlng of ring) bounds.extend(latlng)
+        for (const latlng of ring) {
+          bounds.extend(latlng);
+        }
       }
-      const list = polygonsByRef.get(app.reference) ?? []
-      list.push(polygon)
-      polygonsByRef.set(app.reference, list)
+      const list = polygonsByRef.get(app.reference) ?? [];
+      list.push(polygon);
+      polygonsByRef.set(app.reference, list);
     }
     // Always keep the pin too: it carries the status/type colour coding.
-    const marker = L.marker([loc.center.lat, loc.center.lon], { icon: pinIcon(markerFill(app), PIN_CLASS) }).addTo(markerLayer)
-    markersByRef.set(app.reference, marker)
-    bindInteractions(marker, app)
+    const marker = L.marker([loc.center.lat, loc.center.lon], { icon: pinIcon(markerFill(app), PIN_CLASS) }).addTo(
+      markerLayer,
+    );
+    markersByRef.set(app.reference, marker);
+    bindInteractions(marker, app);
   }
-  map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 })
-}
+  map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+};
 
 onMounted(() => {
-  if (!mapEl.value) return
-  map = createMap(mapEl.value)
-  polygonLayer = L.layerGroup().addTo(map)
-  markerLayer = L.layerGroup().addTo(map)
-  renderMarkers()
-})
+  if (!mapEl.value) {
+    return;
+  }
+  map = createMap(mapEl.value);
+  polygonLayer = L.layerGroup().addTo(map);
+  markerLayer = L.layerGroup().addTo(map);
+  renderMarkers();
+});
 
-watch(() => props.apps, () => renderMarkers(), { deep: true })
+watch(
+  () => props.apps,
+  () => renderMarkers(),
+  { deep: true },
+);
 
 // Recolour in place so switching mode doesn't re-fit/reset the current view.
 watch(colorMode, () => {
   for (const app of locatedApps()) {
-    markersByRef.get(app.reference)?.setIcon(pinIcon(markerFill(app), PIN_CLASS))
-    const color = markerFill(app)
+    markersByRef.get(app.reference)?.setIcon(pinIcon(markerFill(app), PIN_CLASS));
+    const color = markerFill(app);
     for (const polygon of polygonsByRef.get(app.reference) ?? []) {
-      polygon.setStyle({ color, fillColor: color })
+      polygon.setStyle({ color, fillColor: color });
     }
   }
-})
+});
 
 onBeforeUnmount(() => {
-  map?.remove()
-  map = null
-  markerLayer = null
-  polygonLayer = null
-})
+  map?.remove();
+  map = null;
+  markerLayer = null;
+  polygonLayer = null;
+});
 </script>
 
 <style module>

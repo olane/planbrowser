@@ -3,7 +3,10 @@ import type { AnyNode } from 'domhandler';
 import proj4 from 'proj4';
 import type { ApplicationLocation, LocationPolygon } from './types.js';
 
-proj4.defs('EPSG:27700', '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.1502,0.247,0.8421,-20.4894 +units=m +no_defs');
+proj4.defs(
+  'EPSG:27700',
+  '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.1502,0.247,0.8421,-20.4894 +units=m +no_defs',
+);
 
 type Coordinate = [number, number];
 
@@ -46,7 +49,9 @@ function ringFrom($: cheerio.CheerioAPI, el: cheerio.Cheerio<AnyNode>): Coordina
   const points: Coordinate[] = [];
   el.find('gml\\:pos').each((_, pos) => {
     const pair = pairList($(pos).text(), declaredDimension($(pos)))[0];
-    if (pair) points.push(pair);
+    if (pair) {
+      points.push(pair);
+    }
   });
   return points;
 }
@@ -62,25 +67,35 @@ export function parseWfsGeometry(xml: string): WfsGeometry {
     const rings: LocationPolygon = [];
     $(poly)
       .find('gml\\:exterior, gml\\:interior')
-      .each((_, part) => {
+      .each((_i, part) => {
         const wrapper = $(part);
         const ringEl = wrapper.find('gml\\:LinearRing').first();
         const ring = ringFrom($, ringEl.length > 0 ? ringEl : wrapper);
-        if (ring.length >= 3) rings.push(ring);
+        if (ring.length >= 3) {
+          rings.push(ring);
+        }
       });
     if (rings.length === 0) {
       // Some servers emit a bare LinearRing without exterior/interior wrappers.
       const ring = ringFrom($, $(poly).find('gml\\:LinearRing').first());
-      if (ring.length >= 3) rings.push(ring);
+      if (ring.length >= 3) {
+        rings.push(ring);
+      }
     }
-    if (rings.length > 0) result.polygons.push(rings);
+    if (rings.length > 0) {
+      result.polygons.push(rings);
+    }
   });
 
   $('gml\\:Point').each((_, point) => {
     const pos = $(point).find('gml\\:pos').first();
-    if (pos.length === 0) return;
+    if (pos.length === 0) {
+      return;
+    }
     const pair = pairList(pos.text(), declaredDimension(pos))[0];
-    if (pair) result.points.push(pair);
+    if (pair) {
+      result.points.push(pair);
+    }
   });
 
   // Safety net for servers that emit bare gml:posList/gml:pos without a
@@ -88,11 +103,15 @@ export function parseWfsGeometry(xml: string): WfsGeometry {
   if (result.polygons.length === 0 && result.points.length === 0) {
     $('gml\\:posList').each((_, el) => {
       const ring = pairList($(el).text(), declaredDimension($(el)));
-      if (ring.length >= 3) result.polygons.push([ring]);
+      if (ring.length >= 3) {
+        result.polygons.push([ring]);
+      }
     });
     $('gml\\:pos').each((_, el) => {
       const pair = pairList($(el).text(), declaredDimension($(el)))[0];
-      if (pair) result.points.push(pair);
+      if (pair) {
+        result.points.push(pair);
+      }
     });
   }
 
@@ -121,7 +140,7 @@ export function coordsToLocation(coords: Coordinate[]): ApplicationLocation {
   const [maxLon, maxLat] = proj4('EPSG:27700', 'EPSG:4326', [maxX, maxY]);
   return {
     center: { lat: centerLat, lon: centerLon },
-    bbox: { minLon, minLat, maxLon, maxLat }
+    bbox: { minLon, minLat, maxLon, maxLat },
   };
 }
 
@@ -135,10 +154,14 @@ const projectCoordinate = ([x, y]: Coordinate): Coordinate => {
 export function geometryToLocation(geometry: WfsGeometry): ApplicationLocation | null {
   const flat: Coordinate[] = [];
   for (const poly of geometry.polygons) {
-    for (const ring of poly) flat.push(...ring);
+    for (const ring of poly) {
+      flat.push(...ring);
+    }
   }
   flat.push(...geometry.points);
-  if (flat.length === 0) return null;
+  if (flat.length === 0) {
+    return null;
+  }
 
   const loc = coordsToLocation(flat);
   if (geometry.polygons.length > 0) {
@@ -148,5 +171,8 @@ export function geometryToLocation(geometry: WfsGeometry): ApplicationLocation |
 }
 
 export function escapeXml(s: string): string {
-  return s.replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c] as string));
+  return s.replace(
+    /[<>&'"]/g,
+    (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[c] as string,
+  );
 }

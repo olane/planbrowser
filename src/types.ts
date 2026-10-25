@@ -70,7 +70,6 @@ export interface ApplicationMeta {
   location?: ApplicationLocation;
   starred?: boolean;
   archived?: boolean;
-
 }
 
 export interface ApplicationFlags {
@@ -140,7 +139,7 @@ export const SEARCH_FILTER_KEYS = [
   'decided_end',
   'different',
   'different_start',
-  'different_end'
+  'different_end',
 ] as const;
 
 type SearchFilterKey = (typeof SEARCH_FILTER_KEYS)[number];
@@ -159,7 +158,7 @@ export const SORT_FIELDS = [
   'address',
   'postcode',
   'app_type',
-  'app_state'
+  'app_state',
 ] as const;
 
 export type SortField = (typeof SORT_FIELDS)[number];
@@ -234,14 +233,7 @@ export interface SavedSearch {
 // for an application. Produced by a strategy (see src/insights/) and cached
 // on disk next to metadata.json as insights.json.
 
-export type InsightImageKind =
-  | 'render'
-  | 'plan'
-  | 'elevation'
-  | 'section'
-  | 'map'
-  | 'photo'
-  | 'other';
+export type InsightImageKind = 'render' | 'plan' | 'elevation' | 'section' | 'map' | 'photo' | 'other';
 
 export interface InsightImage {
   // Content hash of the stored thumbnail; also the asset's filename stem.

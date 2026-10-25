@@ -1,16 +1,19 @@
 <template>
   <div :class="$style.page">
-    <router-link :to="`/app/${encodeURIComponent(refParam)}`" :class="$style.backLink">&larr; Back to the application</router-link>
+    <router-link :to="`/app/${encodeURIComponent(refParam)}`" :class="$style.backLink"
+      >&larr; Back to the application</router-link
+    >
 
     <header :class="$style.header">
       <h1 :class="$style.title">Insights review</h1>
       <p v-if="app" :class="$style.meta">
-        {{ app.reference }} · <a :href="`/app/${encodeURIComponent(refParam)}`" :class="$style.metaLink">{{ app.address }}</a>
+        {{ app.reference }} ·
+        <a :href="`/app/${encodeURIComponent(refParam)}`" :class="$style.metaLink">{{ app.address }}</a>
       </p>
       <p :class="$style.intro">
-        Rate each page the heuristic interpreted — including the ones it <b>rejected</b> — so missed
-        pages can be flagged as false negatives. Click the active rating again to clear it. Ratings
-        save to the server; download them to fold into the eval ground truth.
+        Rate each page the heuristic interpreted — including the ones it <b>rejected</b> — so missed pages can be
+        flagged as false negatives. Click the active rating again to clear it. Ratings save to the server; download them
+        to fold into the eval ground truth.
       </p>
     </header>
 
@@ -36,9 +39,7 @@
           <button type="button" :class="$style.linkButton" @click="generate()">Regenerate</button>
           to list rejected pages.
         </span>
-        <label :class="$style.toggle">
-          <input type="checkbox" v-model="hideLabelled" /> Hide labelled
-        </label>
+        <label :class="$style.toggle"> <input type="checkbox" v-model="hideLabelled" /> Hide labelled </label>
         <span :class="$style.progress">{{ labelledCount }} labelled</span>
         <a :href="api.reviewsDownloadUrl()" download :class="$style.linkButton">Download reviews</a>
         <span v-if="saveState === 'saving'" :class="$style.saving">Saving…</span>
@@ -46,7 +47,9 @@
         <span v-else-if="saveState === 'error'" :class="$style.error">{{ saveError }}</span>
         <span v-if="insights.coverage" :class="$style.coverage">
           Scanned {{ insights.coverage.documentsAnalysed }} of {{ insights.coverage.documentsTotal }} documents
-          <button v-if="insights.depth !== 'deep'" type="button" :class="$style.linkButton" @click="generate(true)">Scan more</button>
+          <button v-if="insights.depth !== 'deep'" type="button" :class="$style.linkButton" @click="generate(true)">
+            Scan more
+          </button>
         </span>
       </div>
 
@@ -61,7 +64,12 @@
             :key="pageKey(page)"
             :class="[pageVerdict(page) === 'good' ? $style.good : pageVerdict(page) === 'bad' ? $style.bad : '']"
           >
-            <a :href="api.documentPageUrl(refParam, app?.authorityId, page.localFilename, page.page)" target="_blank" rel="noopener" :class="$style.thumbLink">
+            <a
+              :href="api.documentPageUrl(refParam, app?.authorityId, page.localFilename, page.page)"
+              target="_blank"
+              rel="noopener"
+              :class="$style.thumbLink"
+            >
               <img
                 :src="thumbUrl(page)"
                 :alt="`${page.localFilename} page ${page.page}`"
@@ -77,13 +85,28 @@
               <div :class="$style.doc">{{ shortDocumentName(page.localFilename) }} · page {{ page.page }}</div>
               <div :class="$style.reason">{{ page.reason }}</div>
               <div :class="$style.controls">
-                <button type="button" :class="pageVerdict(page) === 'good' ? $style.goodActive : $style.button" @click="rate(page, 'good')">Good</button>
-                <button type="button" :class="pageVerdict(page) === 'bad' ? $style.badActive : $style.button" @click="rate(page, 'bad')">Bad</button>
+                <button
+                  type="button"
+                  :class="pageVerdict(page) === 'good' ? $style.goodActive : $style.button"
+                  @click="rate(page, 'good')"
+                >
+                  Good
+                </button>
+                <button
+                  type="button"
+                  :class="pageVerdict(page) === 'bad' ? $style.badActive : $style.button"
+                  @click="rate(page, 'bad')"
+                >
+                  Bad
+                </button>
                 <select :class="$style.select" :value="pageKind(page)" @change="setKind(page, $event)">
                   <option v-for="kind in KIND_ORDER" :key="kind" :value="kind">{{ kindLabel(kind) }}</option>
                 </select>
                 <select
-                  :class="[$style.select, pageRank(page) === 'high' ? $style.rankHigh : pageRank(page) === 'low' ? $style.rankLow : '']"
+                  :class="[
+                    $style.select,
+                    pageRank(page) === 'high' ? $style.rankHigh : pageRank(page) === 'low' ? $style.rankLow : '',
+                  ]"
                   :value="pageRank(page) ?? ''"
                   title="Priority: should this page lead the gallery?"
                   @change="setRank(page, $event)"
@@ -102,204 +125,229 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import type { ApplicationMeta, ApplicationInsights, InsightImageKind, InsightRank, InsightLabel, InsightPage } from '../../../src/types.js'
-import { KIND_ORDER, kindLabel } from '../../../src/insights/kinds.js'
-import * as api from '../api'
-import { useInsights } from '../composables/useInsights'
-import { shortDocumentName } from '../utils'
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import type {
+  ApplicationMeta,
+  ApplicationInsights,
+  InsightImageKind,
+  InsightRank,
+  InsightLabel,
+  InsightPage,
+} from '../../../src/types.js';
+import { KIND_ORDER, kindLabel } from '../../../src/insights/kinds.js';
+import * as api from '../api';
+import { useInsights } from '../composables/useInsights';
+import { shortDocumentName } from '../utils';
 
-const route = useRoute()
-const refParam = computed(() => route.params.ref as string)
-const app = ref<ApplicationMeta | null>(null)
-const appError = ref('')
+const route = useRoute();
+const refParam = computed(() => route.params.ref as string);
+const app = ref<ApplicationMeta | null>(null);
+const appError = ref('');
 
 const { insights, status, error, load, generate, reset } = useInsights(
   () => refParam.value,
-  () => app.value?.authorityId
-)
+  () => app.value?.authorityId,
+);
 
-const pageKey = (page: { localFilename: string; page: number }) => `${page.localFilename}#${page.page}`
+const pageKey = (page: { localFilename: string; page: number }) => `${page.localFilename}#${page.page}`;
 
-type ReviewLabel = { verdict: 'good' | 'bad'; kind?: InsightImageKind; rank?: InsightRank }
-const labels = ref<Record<string, ReviewLabel>>({})
-const saveState = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
-const saveError = ref('')
-const hideLabelled = ref(false)
+type ReviewLabel = { verdict: 'good' | 'bad'; kind?: InsightImageKind; rank?: InsightRank };
+const labels = ref<Record<string, ReviewLabel>>({});
+const saveState = ref<'idle' | 'saving' | 'saved' | 'error'>('idle');
+const saveError = ref('');
+const hideLabelled = ref(false);
 
-const labelledCount = computed(() => Object.keys(labels.value).length)
-const pageVerdict = (page: InsightPage) => labels.value[pageKey(page)]?.verdict
-const pageKind = (page: InsightPage): InsightImageKind => labels.value[pageKey(page)]?.kind ?? page.kind
-const pageRank = (page: InsightPage): InsightRank | undefined => labels.value[pageKey(page)]?.rank
+const labelledCount = computed(() => Object.keys(labels.value).length);
+const pageVerdict = (page: InsightPage) => labels.value[pageKey(page)]?.verdict;
+const pageKind = (page: InsightPage): InsightImageKind => labels.value[pageKey(page)]?.kind ?? page.kind;
+const pageRank = (page: InsightPage): InsightRank | undefined => labels.value[pageKey(page)]?.rank;
 
 const keysOf = (images: ApplicationInsights['images'] | undefined): Set<string> =>
-  new Set((images ?? []).map((image) => `${image.localFilename}#${image.page}`))
-const highlightKeys = computed(() => keysOf(insights.value?.images))
-const foundKeys = computed(() => keysOf(insights.value?.found))
+  new Set((images ?? []).map((image) => `${image.localFilename}#${image.page}`));
+const highlightKeys = computed(() => keysOf(insights.value?.images));
+const foundKeys = computed(() => keysOf(insights.value?.found));
 
 // Found/highlight pages still have their kept thumbnails; only rejected pages
 // (whose assets were pruned) need the on-demand render endpoint.
 const foundByKey = computed(() => {
-  const map = new Map<string, ApplicationInsights['images'][number]>()
-  for (const image of insights.value?.found ?? []) map.set(`${image.localFilename}#${image.page}`, image)
-  return map
-})
+  const map = new Map<string, ApplicationInsights['images'][number]>();
+  for (const image of insights.value?.found ?? []) {
+    map.set(`${image.localFilename}#${image.page}`, image);
+  }
+  return map;
+});
 const thumbUrl = (page: InsightPage): string => {
-  const image = foundByKey.value.get(pageKey(page))
+  const image = foundByKey.value.get(pageKey(page));
   return image
     ? api.insightImageUrl(refParam.value, app.value?.authorityId, image.imageFile)
-    : api.reviewImageUrl(refParam.value, app.value?.authorityId, page.localFilename, page.page)
-}
+    : api.reviewImageUrl(refParam.value, app.value?.authorityId, page.localFilename, page.page);
+};
 
 const groups = computed(() => {
-  const pages = insights.value?.pages ?? []
-  const highlights: InsightPage[] = []
-  const found: InsightPage[] = []
-  const dropped: InsightPage[] = []
-  const rejected: InsightPage[] = []
+  const pages = insights.value?.pages ?? [];
+  const highlights: InsightPage[] = [];
+  const found: InsightPage[] = [];
+  const dropped: InsightPage[] = [];
+  const rejected: InsightPage[] = [];
   for (const page of pages) {
-    const key = pageKey(page)
-    if (highlightKeys.value.has(key)) highlights.push(page)
-    else if (foundKeys.value.has(key)) found.push(page)
+    const key = pageKey(page);
+    if (highlightKeys.value.has(key)) {
+      highlights.push(page);
+    } else if (foundKeys.value.has(key)) {
+      found.push(page);
+    }
     // A positive score that did not survive dedupe/caps is not a false negative.
-    else if (page.score > 0) dropped.push(page)
-    else rejected.push(page)
+    else if (page.score > 0) {
+      dropped.push(page);
+    } else {
+      rejected.push(page);
+    }
   }
   return [
     { key: 'highlights', title: 'Highlights', hint: '', pages: highlights },
     { key: 'found', title: 'Found, not in highlights', hint: 'dropped by the selection caps', pages: found },
     { key: 'dropped', title: 'Dropped (duplicate or cap)', hint: 'not a false negative', pages: dropped },
-    { key: 'rejected', title: 'Rejected', hint: 'candidates for false negatives', pages: rejected }
-  ]
-})
+    { key: 'rejected', title: 'Rejected', hint: 'candidates for false negatives', pages: rejected },
+  ];
+});
 
 // With "hide labelled" on, groups with nothing left to review disappear.
 const visibleGroups = computed(() =>
   groups.value
     .map((group) => ({ ...group, pages: group.pages.filter((page) => !hideLabelled.value || !pageVerdict(page)) }))
-    .filter((group) => group.pages.length > 0)
-)
+    .filter((group) => group.pages.length > 0),
+);
 
 const loadLabels = async () => {
   try {
-    const incoming = await api.fetchInsightLabels(refParam.value, app.value?.authorityId)
-    const map: Record<string, ReviewLabel> = {}
+    const incoming = await api.fetchInsightLabels(refParam.value, app.value?.authorityId);
+    const map: Record<string, ReviewLabel> = {};
     for (const label of incoming) {
       map[`${label.file}#${label.page}`] = {
         verdict: label.verdict,
         ...(label.kind ? { kind: label.kind } : {}),
-        ...(label.rank ? { rank: label.rank } : {})
-      }
+        ...(label.rank ? { rank: label.rank } : {}),
+      };
     }
-    labels.value = map
+    labels.value = map;
   } catch {
     // Labelling unavailable (packaged build): leave controls inert.
   }
-}
+};
 
 const persist = async (page: InsightPage) => {
-  const entry = labels.value[pageKey(page)]
-  if (!entry) return
+  const entry = labels.value[pageKey(page)];
+  if (!entry) {
+    return;
+  }
   const label: InsightLabel = {
     file: page.localFilename,
     page: page.page,
     verdict: entry.verdict,
     ...(entry.verdict === 'good' && entry.kind ? { kind: entry.kind } : {}),
-    ...(entry.verdict === 'good' && entry.rank ? { rank: entry.rank } : {})
-  }
-  saveState.value = 'saving'
+    ...(entry.verdict === 'good' && entry.rank ? { rank: entry.rank } : {}),
+  };
+  saveState.value = 'saving';
   try {
-    await api.saveInsightLabels(refParam.value, [label], app.value?.authorityId)
-    saveState.value = 'saved'
-    saveError.value = ''
+    await api.saveInsightLabels(refParam.value, [label], app.value?.authorityId);
+    saveState.value = 'saved';
+    saveError.value = '';
   } catch (e: any) {
-    saveState.value = 'error'
-    saveError.value = e.message || 'Failed to save label'
+    saveState.value = 'error';
+    saveError.value = e.message || 'Failed to save label';
   }
-}
+};
 
 const clear = async (page: InsightPage) => {
-  saveState.value = 'saving'
+  saveState.value = 'saving';
   try {
-    await api.removeInsightLabels(refParam.value, [{ file: page.localFilename, page: page.page }], app.value?.authorityId)
-    saveState.value = 'saved'
-    saveError.value = ''
+    await api.removeInsightLabels(
+      refParam.value,
+      [{ file: page.localFilename, page: page.page }],
+      app.value?.authorityId,
+    );
+    saveState.value = 'saved';
+    saveError.value = '';
   } catch (e: any) {
-    saveState.value = 'error'
-    saveError.value = e.message || 'Failed to remove label'
+    saveState.value = 'error';
+    saveError.value = e.message || 'Failed to remove label';
   }
-}
+};
 
 const rate = (page: InsightPage, verdict: 'good' | 'bad') => {
-  const key = pageKey(page)
+  const key = pageKey(page);
   // Clicking the active rating clears it, so a page can be returned to unlabelled.
   if (labels.value[key]?.verdict === verdict) {
-    delete labels.value[key]
-    void clear(page)
-    return
+    delete labels.value[key];
+    void clear(page);
+    return;
   }
-  const current = labels.value[key]
+  const current = labels.value[key];
   labels.value[key] =
     verdict === 'good'
       ? { verdict, kind: current?.kind ?? page.kind, ...(current?.rank ? { rank: current.rank } : {}) }
-      : { verdict }
-  void persist(page)
-}
+      : { verdict };
+  void persist(page);
+};
 
 const setKind = (page: InsightPage, event: Event) => {
-  const kind = (event.target as HTMLSelectElement).value as InsightImageKind
-  const current = labels.value[pageKey(page)]
+  const kind = (event.target as HTMLSelectElement).value as InsightImageKind;
+  const current = labels.value[pageKey(page)];
   labels.value[pageKey(page)] = {
     verdict: current?.verdict ?? 'good',
     kind,
-    ...(current?.rank ? { rank: current.rank } : {})
-  }
-  void persist(page)
-}
+    ...(current?.rank ? { rank: current.rank } : {}),
+  };
+  void persist(page);
+};
 
 const setRank = (page: InsightPage, event: Event) => {
-  const value = (event.target as HTMLSelectElement).value
-  const key = pageKey(page)
-  const current = labels.value[key]
-  if (!value && !current) return
+  const value = (event.target as HTMLSelectElement).value;
+  const key = pageKey(page);
+  const current = labels.value[key];
+  if (!value && !current) {
+    return;
+  }
   if (!value) {
     // "No opinion": keep the verdict and kind, drop only the rank.
     labels.value[key] = {
       verdict: current!.verdict,
-      ...(current!.verdict === 'good' ? { kind: current!.kind ?? page.kind } : {})
-    }
+      ...(current!.verdict === 'good' ? { kind: current!.kind ?? page.kind } : {}),
+    };
   } else {
-    labels.value[key] = { verdict: 'good', kind: current?.kind ?? page.kind, rank: value as InsightRank }
+    labels.value[key] = { verdict: 'good', kind: current?.kind ?? page.kind, rank: value as InsightRank };
   }
-  void persist(page)
-}
+  void persist(page);
+};
 
 const loadApp = async () => {
   try {
-    app.value = await api.fetchApplication(refParam.value)
-    appError.value = ''
+    app.value = await api.fetchApplication(refParam.value);
+    appError.value = '';
   } catch (e: any) {
-    appError.value = e.message || 'Failed to load application'
+    appError.value = e.message || 'Failed to load application';
   }
-}
+};
 
 watch(refParam, async () => {
-  if (!refParam.value) return
-  reset()
-  app.value = null
-  labels.value = {}
-  await loadApp()
-  void load()
-  void loadLabels()
-})
+  if (!refParam.value) {
+    return;
+  }
+  reset();
+  app.value = null;
+  labels.value = {};
+  await loadApp();
+  void load();
+  void loadLabels();
+});
 
 onMounted(async () => {
-  document.title = 'PlanBrowser | Review'
-  await loadApp()
-  void load()
-  void loadLabels()
-})
+  document.title = 'PlanBrowser | Review';
+  await loadApp();
+  void load();
+  void loadLabels();
+});
 </script>
 
 <style module>

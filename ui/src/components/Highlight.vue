@@ -6,15 +6,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { highlightSegments } from '../utils'
+import { computed } from 'vue';
+import { highlightSegments } from '../utils';
 
 const props = defineProps<{
-  text: string
-  query: string
-}>()
+  text: string;
+  query: string;
+}>();
 
-const segments = computed(() => highlightSegments(props.text, props.query))
+const segments = computed(() => highlightSegments(props.text, props.query));
 </script>
 
 <style module>

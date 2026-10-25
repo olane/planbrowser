@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { resolveAuthority, isKnownAuthority, getAuthority, authorityName, DEFAULT_AUTHORITY_ID } from './authorities.js';
+import {
+  resolveAuthority,
+  isKnownAuthority,
+  getAuthority,
+  authorityName,
+  DEFAULT_AUTHORITY_ID,
+} from './authorities.js';
 
 describe('resolveAuthority', () => {
   it('falls back to the default authority for empty input', () => {

@@ -44,19 +44,12 @@ const KIND_MATCHERS: { kind: InsightImageKind; patterns: RegExp[] }[] = [
       /photoreal/,
       /axonometric/,
       /\b3d (?:view|visual|image)/,
-      /aerial (?:view|image|visual)/
-    ]
+      /aerial (?:view|image|visual)/,
+    ],
   },
   {
     kind: 'photo',
-    patterns: [
-      /photograph/,
-      /\bphotos?\b/,
-      /photosheet/,
-      /\bavrs?\b/,
-      /viewpoint/,
-      /verified view/
-    ]
+    patterns: [/photograph/, /\bphotos?\b/, /photosheet/, /\bavrs?\b/, /viewpoint/, /verified view/],
   },
   {
     kind: 'map',
@@ -69,17 +62,17 @@ const KIND_MATCHERS: { kind: InsightImageKind; patterns: RegExp[] }[] = [
       /constraints? (?:plan|map)/,
       /designations? (?:plan|map)/,
       /\bkey diagram\b/,
-      /\bos (?:map|extract)\b/
-    ]
+      /\bos (?:map|extract)\b/,
+    ],
   },
   {
     kind: 'elevation',
-    patterns: [/\belevations?\b/]
+    patterns: [/\belevations?\b/],
   },
   {
     kind: 'section',
     // Not "section 106" / "section 73" (legal agreements, variations).
-    patterns: [/\bsections?\b(?! ?\d)/]
+    patterns: [/\bsections?\b(?! ?\d)/],
   },
   {
     kind: 'plan',
@@ -101,9 +94,9 @@ const KIND_MATCHERS: { kind: InsightImageKind; patterns: RegExp[] }[] = [
       /development zone/,
       /access and movement/,
       /maximum heights/,
-      /green and blue/
-    ]
-  }
+      /green and blue/,
+    ],
+  },
 ];
 
 // Captions that disambiguate a render from a photo, read from the text next to
@@ -120,11 +113,17 @@ const PHOTO_HINTS =
 
 export function visualKindFromText(text: string): 'render' | 'photo' | undefined {
   const hay = normalise(text);
-  if (!hay) return undefined;
+  if (!hay) {
+    return undefined;
+  }
   // An explicit render word wins even when the caption also says "viewpoint":
   // a photomontage is a proposed render, not a record photograph.
-  if (RENDER_HINTS.test(hay)) return 'render';
-  if (PHOTO_HINTS.test(hay)) return 'photo';
+  if (RENDER_HINTS.test(hay)) {
+    return 'render';
+  }
+  if (PHOTO_HINTS.test(hay)) {
+    return 'photo';
+  }
   return undefined;
 }
 
@@ -139,7 +138,9 @@ export function kindFromText(text: string): InsightImageKind | undefined {
 // their own titles.
 export function kindsFromText(text: string): InsightImageKind[] {
   const hay = normalise(text);
-  if (!hay) return [];
+  if (!hay) {
+    return [];
+  }
   return KIND_MATCHERS.filter(({ patterns }) => patterns.some((re) => re.test(hay))).map(({ kind }) => kind);
 }
 
@@ -225,7 +226,7 @@ export function profileDocument(doc: NamedDocument): DocumentProfile {
     admin: ADMIN_RE.test(normalise([doc.description, doc.localFilename].filter(Boolean).join(' '))),
     namesPhoto: PHOTO_NAME_RE.test(hay),
     namesRender: RENDER_NAME_RE.test(hay),
-    visualName: VISUAL_NAME_RE.test(hay)
+    visualName: VISUAL_NAME_RE.test(hay),
   };
   return { ...profile, prior: priorFromProfile(profile) };
 }
@@ -237,36 +238,58 @@ function priorFromProfile(p: Omit<DocumentProfile, 'prior'>): DocumentPrior {
   const kind = p.kinds[0];
 
   let score = 0;
-  if (kind) score += KIND_PRIOR_WEIGHT[kind];
+  if (kind) {
+    score += KIND_PRIOR_WEIGHT[kind];
+  }
 
-  if (/drawing/.test(p.type)) score += 4;
-  else if (/photograph/.test(p.type)) score += 3;
-  else if (/design and access/.test(p.type)) score += 1.5;
-  else if (/survey|assessment|statement/.test(p.type)) score += 0.5;
-  else if (/application information/.test(p.type)) score += 0.5;
-  else if (/comment|correspondence|notification|attachment summary|officer/.test(p.type)) score -= 3;
+  if (/drawing/.test(p.type)) {
+    score += 4;
+  } else if (/photograph/.test(p.type)) {
+    score += 3;
+  } else if (/design and access/.test(p.type)) {
+    score += 1.5;
+  } else if (/survey|assessment|statement/.test(p.type)) {
+    score += 0.5;
+  } else if (/application information/.test(p.type)) {
+    score += 0.5;
+  } else if (/comment|correspondence|notification|attachment summary|officer/.test(p.type)) {
+    score -= 3;
+  }
 
-  if (p.namesRender) score += 2;
+  if (p.namesRender) {
+    score += 2;
+  }
 
   // A visual-sounding name with no kind (an "Image Board", "Exhibition Panels")
   // still deserves a page scan; without this the `prior.score > 0` filter would
   // drop it before the pre-scan that was written for exactly these files.
-  if (!kind && p.visualName) score += 1;
+  if (!kind && p.visualName) {
+    score += 1;
+  }
 
   // Prioritise the Design & Access Statement regardless of how the portal typed
-  // it (it is sometimes filed under Drawings).
-  if (p.designAndAccess) score += 5;
+  // it, as it is sometimes filed under Drawings.
+  if (p.designAndAccess) {
+    score += 5;
+  }
 
   // Appendix/figure volumes are supporting reference, not the scheme's own
   // design visuals. Without a visual kind they mostly contribute diagrams and
   // maps, so do not let them crowd out real drawings.
-  if (!kind && p.referenceVolume) score -= 2;
+  if (!kind && p.referenceVolume) {
+    score -= 2;
+  }
 
-  if (p.admin) score -= 6;
-  if (p.superseded) score -= 8;
+  if (p.admin) {
+    score -= 6;
+  }
+  if (p.superseded) {
+    score -= 8;
+  }
 
   const prior: DocumentPrior = { score };
-  if (kind) prior.kind = kind;
+  if (kind) {
+    prior.kind = kind;
+  }
   return prior;
 }
-

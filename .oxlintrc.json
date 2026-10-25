@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "node", "promise", "vitest", "vue"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "curly": "error",
+    "eslint/no-unused-vars": "error",
+    "eslint/no-useless-escape": "error",
+    "eslint/no-shadow": "error",
+    "eslint/no-unneeded-ternary": "error",
+    "eslint/preserve-caught-error": "error",
+    "promise/always-return": "error",
+    "unicorn/no-empty-file": "error",
+    "unicorn/prefer-add-event-listener": "error",
+    "vitest/no-commented-out-tests": "error",
+    "vitest/no-conditional-expect": "error"
+  },
+  "ignorePatterns": ["dist", "release", "downloads", "ui/dist"]
+}

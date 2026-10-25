@@ -11,7 +11,9 @@ export interface ScannedPage {
 export const LARGE_IMAGE_AREA = 1000 * 700;
 
 export function pageImageScore(page: ScannedPage): number {
-  if (page.largestImageArea < LARGE_IMAGE_AREA) return 0;
+  if (page.largestImageArea < LARGE_IMAGE_AREA) {
+    return 0;
+  }
   const countScore = Math.min(page.imageCount, 3) * 10;
   const areaScore = Math.min(page.largestImageArea / 1_000_000, 4) * 10;
   return countScore + areaScore;
@@ -31,12 +33,14 @@ export function selectDocumentPages(
   pageCount: number,
   scanned: ScannedPage[],
   cap: number,
-  titleScores: number[] = []
+  titleScores: number[] = [],
 ): number[] {
   const pages = Math.max(pageCount, 1);
   if (frontPages) {
     const all = Array.from({ length: pages }, (_, index) => index + 1);
-    if (pages <= cap) return all;
+    if (pages <= cap) {
+      return all;
+    }
     return all
       .map((page) => ({ page, score: titleScores[page - 1] ?? 0 }))
       .sort((a, b) => b.score - a.score || a.page - b.page)

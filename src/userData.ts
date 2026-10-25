@@ -56,7 +56,9 @@ function refreshCaches(): void {
 
 function readState(): StateFile {
   refreshCaches();
-  if (stateCache) return stateCache;
+  if (stateCache) {
+    return stateCache;
+  }
   try {
     if (fs.existsSync(statePath())) {
       const parsed = JSON.parse(fs.readFileSync(statePath(), 'utf-8'));
@@ -83,7 +85,11 @@ export function getFlags(reference: string, authorityId?: string): ApplicationFl
   return state.apps[appKey(reference, authorityId)] ?? { starred: false, archived: false };
 }
 
-export function setFlags(reference: string, authorityId: string | undefined, flags: Partial<ApplicationFlags>): ApplicationFlags {
+export function setFlags(
+  reference: string,
+  authorityId: string | undefined,
+  flags: Partial<ApplicationFlags>,
+): ApplicationFlags {
   const state = readState();
   const key = appKey(reference, authorityId);
   const existing = state.apps[key] ?? { starred: false, archived: false };
@@ -111,7 +117,9 @@ function docKey(reference: string, authorityId: string | undefined, filename: st
 
 function readDocState(): DocStateFile {
   refreshCaches();
-  if (docStateCache) return docStateCache;
+  if (docStateCache) {
+    return docStateCache;
+  }
   try {
     if (fs.existsSync(docStatePath())) {
       const parsed = JSON.parse(fs.readFileSync(docStatePath(), 'utf-8'));
@@ -138,7 +146,12 @@ export function getDocFlags(reference: string, authorityId: string | undefined, 
   return state.docs[docKey(reference, authorityId, filename)] ?? { starred: false, note: '' };
 }
 
-export function setDocFlags(reference: string, authorityId: string | undefined, filename: string, flags: Partial<DocumentFlags>): DocumentFlags {
+export function setDocFlags(
+  reference: string,
+  authorityId: string | undefined,
+  filename: string,
+  flags: Partial<DocumentFlags>,
+): DocumentFlags {
   const state = readDocState();
   const key = docKey(reference, authorityId, filename);
   const existing = state.docs[key] ?? { starred: false, note: '' };
@@ -160,7 +173,9 @@ export function setDocFlags(reference: string, authorityId: string | undefined, 
 
 export function readActivity(): ActivityEvent[] {
   refreshCaches();
-  if (activityCache) return activityCache;
+  if (activityCache) {
+    return activityCache;
+  }
   try {
     if (fs.existsSync(activityPath())) {
       const parsed = JSON.parse(fs.readFileSync(activityPath(), 'utf-8'));
@@ -181,7 +196,7 @@ export function recordActivity(event: Omit<ActivityEvent, 'id' | 'happenedAt'>):
   const full: ActivityEvent = {
     ...event,
     id: Math.random().toString(36).substring(2, 10),
-    happenedAt: new Date().toISOString()
+    happenedAt: new Date().toISOString(),
   };
   events.unshift(full);
   ensureDir();

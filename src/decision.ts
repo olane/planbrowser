@@ -8,11 +8,11 @@ const RESOLVED_STATUS =
 
 const EMPTY_DECISION = /^(\s|-|n\/?a|not available|no data)*$/i;
 
-export function isAwaitingDecision(
-  app: Pick<ApplicationMeta, 'status' | 'furtherInformation'>
-): boolean {
+export function isAwaitingDecision(app: Pick<ApplicationMeta, 'status' | 'furtherInformation'>): boolean {
   const status = (app.status || '').trim();
-  if (RESOLVED_STATUS.test(status)) return false;
+  if (RESOLVED_STATUS.test(status)) {
+    return false;
+  }
   const decision = (app.furtherInformation?.['Decision'] || '').trim();
   return EMPTY_DECISION.test(decision);
 }
@@ -31,13 +31,15 @@ export interface SyncScope {
 // the Archived page instead).
 export function selectSyncApps(apps: ApplicationMeta[], scope: SyncScope): ApplicationMeta[] {
   const active = apps.filter((a) => !a.archived);
-  if (scope.all) return active;
+  if (scope.all) {
+    return active;
+  }
   const starred = !!scope.starred;
   const awaitingDecision = !!scope.awaitingDecision;
   // An empty scope selects nothing, so a buggy/empty request can never
   // accidentally enqueue the whole library.
-  if (!starred && !awaitingDecision) return [];
-  return active.filter(
-    (a) => (!starred || !!a.starred) && (!awaitingDecision || isAwaitingDecision(a))
-  );
+  if (!starred && !awaitingDecision) {
+    return [];
+  }
+  return active.filter((a) => (!starred || !!a.starred) && (!awaitingDecision || isAwaitingDecision(a)));
 }

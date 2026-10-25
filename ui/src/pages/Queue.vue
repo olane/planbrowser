@@ -6,14 +6,16 @@
         <button v-if="queueItems.length > 0" @click="clearCompletedQueue" :class="$style.clear">Clear completed</button>
       </div>
 
-      <div v-if="queueItems.length === 0" :class="$style.muted">
-        No active or pending downloads.
-      </div>
+      <div v-if="queueItems.length === 0" :class="$style.muted">No active or pending downloads.</div>
 
       <div v-else :class="$style.list">
         <div v-for="item in queueItems" :key="item.id" :class="$style.item">
           <div :class="$style.info">
-            <router-link v-if="item.status === 'completed' || item.status === 'in_progress' || item.status === 'pending'" :to="`/app/${encodeURIComponent(item.reference)}`" :class="$style.refLink">
+            <router-link
+              v-if="item.status === 'completed' || item.status === 'in_progress' || item.status === 'pending'"
+              :to="`/app/${encodeURIComponent(item.reference)}`"
+              :class="$style.refLink"
+            >
               {{ item.reference }}
             </router-link>
             <div v-else :class="$style.ref">{{ item.reference }}</div>
@@ -29,15 +31,35 @@
             <span v-else-if="item.status === 'completed'" :class="[ui.toneGreen, $style.badge]">Completed</span>
             <span v-else-if="item.status === 'failed'" :class="[ui.toneRed, $style.badge]">Failed</span>
             <span v-else-if="item.status === 'cancelled'" :class="[ui.toneGray, $style.badge]">Cancelled</span>
-            <div v-if="item.status === 'in_progress' && item.progress" :class="$style.progress">{{ progressText(item.progress) }}</div>
+            <div v-if="item.status === 'in_progress' && item.progress" :class="$style.progress">
+              {{ progressText(item.progress) }}
+            </div>
             <div v-if="item.error" :class="$style.error" :title="item.error">{{ item.error }}</div>
-            <button v-if="item.status === 'failed'" type="button" :disabled="busyId === item.id" :class="[ui.btn, ui.btnOutline, $style.action]" @click="retryItem(item.id)">
+            <button
+              v-if="item.status === 'failed'"
+              type="button"
+              :disabled="busyId === item.id"
+              :class="[ui.btn, ui.btnOutline, $style.action]"
+              @click="retryItem(item.id)"
+            >
               {{ busyId === item.id ? 'Retrying...' : 'Retry' }}
             </button>
-            <button v-else-if="item.status === 'cancelled'" type="button" :disabled="busyId === item.id" :class="[ui.btn, ui.btnOutline, $style.action]" @click="requeueItem(item.id)">
+            <button
+              v-else-if="item.status === 'cancelled'"
+              type="button"
+              :disabled="busyId === item.id"
+              :class="[ui.btn, ui.btnOutline, $style.action]"
+              @click="requeueItem(item.id)"
+            >
               {{ busyId === item.id ? 'Re-queueing...' : 'Re-queue' }}
             </button>
-            <button v-else-if="item.status === 'pending' || item.status === 'in_progress'" type="button" :disabled="busyId === item.id" :class="[ui.btn, ui.btnOutline, $style.action]" @click="cancelItem(item.id)">
+            <button
+              v-else-if="item.status === 'pending' || item.status === 'in_progress'"
+              type="button"
+              :disabled="busyId === item.id"
+              :class="[ui.btn, ui.btnOutline, $style.action]"
+              @click="cancelItem(item.id)"
+            >
               {{ busyId === item.id ? 'Cancelling...' : 'Cancel' }}
             </button>
           </div>
@@ -48,44 +70,44 @@
 </template>
 
 <script setup lang="ts">
-import { authorityName } from '../../../src/authorities.js'
-import { onMounted, ref } from 'vue'
-import { timeAgo, progressText } from '../utils'
-import * as api from '../api'
-import { queueItems, refreshQueue } from '../queueStore'
-import ui from '../styles/primitives.module.css'
+import { authorityName } from '../../../src/authorities.js';
+import { onMounted, ref } from 'vue';
+import { timeAgo, progressText } from '../utils';
+import * as api from '../api';
+import { queueItems, refreshQueue } from '../queueStore';
+import ui from '../styles/primitives.module.css';
 
-const busyId = ref('')
+const busyId = ref('');
 
 const clearCompletedQueue = async () => {
   try {
-    await api.clearQueue()
-    await refreshQueue()
+    await api.clearQueue();
+    await refreshQueue();
   } catch (e) {
-    console.error(e)
+    console.error(e);
   }
-}
+};
 
 const runAction = async (id: string, action: (id: string) => Promise<void>) => {
-  busyId.value = id
+  busyId.value = id;
   try {
-    await action(id)
-    await refreshQueue()
+    await action(id);
+    await refreshQueue();
   } catch (e) {
-    console.error(e)
+    console.error(e);
   } finally {
-    busyId.value = ''
+    busyId.value = '';
   }
-}
+};
 
-const retryItem = (id: string) => runAction(id, api.retryQueueItem)
-const cancelItem = (id: string) => runAction(id, api.cancelQueueItem)
-const requeueItem = (id: string) => runAction(id, api.requeueQueueItem)
+const retryItem = (id: string) => runAction(id, api.retryQueueItem);
+const cancelItem = (id: string) => runAction(id, api.cancelQueueItem);
+const requeueItem = (id: string) => runAction(id, api.requeueQueueItem);
 
 onMounted(() => {
-  document.title = 'PlanBrowser | Queue'
-  refreshQueue()
-})
+  document.title = 'PlanBrowser | Queue';
+  refreshQueue();
+});
 </script>
 
 <style module>

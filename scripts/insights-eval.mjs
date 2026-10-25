@@ -24,7 +24,18 @@ const filters = args.filter((a) => !a.startsWith('--'));
 const { samples: truth } = loadTruth();
 const references = filters.length ? filters : Object.keys(truth);
 let failed = false;
-const totals = { good: 0, bad: 0, hGood: 0, hBad: 0, labelledGood: 0, missedGood: 0, highTotal: 0, highHighlights: 0, lowTotal: 0, lowHighlights: 0 };
+const totals = {
+  good: 0,
+  bad: 0,
+  hGood: 0,
+  hBad: 0,
+  labelledGood: 0,
+  missedGood: 0,
+  highTotal: 0,
+  highHighlights: 0,
+  lowTotal: 0,
+  lowHighlights: 0,
+};
 
 for (const reference of references) {
   const spec = truth[reference];
@@ -48,18 +59,20 @@ for (const reference of references) {
     continue;
   }
   const s = scoreSample(insights, spec);
-  if (!s.ok) failed = true;
+  if (!s.ok) {
+    failed = true;
+  }
   const secs = ((Date.now() - started) / 1000).toFixed(0);
   const l = s.labels;
   console.log(
     `${s.ok ? '✓' : '✗'} ${reference}: expected ${s.expectHits}/${s.expectTotal} found, ` +
-      `${s.highlightHits}/${s.expectTotal} in highlights · ${s.highlights} highlights / ${s.found} found · ${secs}s${deep ? ' [deep]' : ''}`
+      `${s.highlightHits}/${s.expectTotal} in highlights · ${s.highlights} highlights / ${s.found} found · ${secs}s${deep ? ' [deep]' : ''}`,
   );
   if (l.total) {
     console.log(
       `    labels (${l.total}): precision highlights ${pct(l.highlightTally.precision)}, found ${pct(l.foundTally.precision)} · ` +
         `recall highlights ${pct(l.recallHighlights)}, found ${pct(l.recallFound)} · kind accuracy ${pct(l.foundTally.kindAccuracy)} · ` +
-        `${l.foundTally.unlabelled} found unlabelled`
+        `${l.foundTally.unlabelled} found unlabelled`,
     );
     totals.good += l.foundTally.good;
     totals.bad += l.foundTally.bad;
@@ -75,34 +88,50 @@ for (const reference of references) {
   if (l.rank && (l.rank.highTotal || l.rank.lowTotal)) {
     console.log(
       `    rank: high in highlights ${l.rank.highlightsHigh}/${l.rank.highTotal} · ` +
-        `low in highlights ${l.rank.highlightsLow}/${l.rank.lowTotal}`
+        `low in highlights ${l.rank.highlightsLow}/${l.rank.lowTotal}`,
     );
   }
-  for (const e of s.misses) console.log(`    MISS  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''}${e.note ? ` — ${e.note}` : ''}`);
-  for (const e of s.notHighlighted) console.log(`    NOT IN HIGHLIGHTS  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''}`);
-  for (const e of s.leaks) console.log(`    LEAK  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''} — ${e.reason ?? 'should not appear'}`);
-  if (s.emptyFail) console.log(`    LEAK  expected no images, found ${s.found}`);
-  for (const i of l.badHighlights) console.log(`    BAD HIGHLIGHT  ${i.kind} ${i.localFilename} p${i.page} — ${i.reason ?? ''}`);
-  for (const m of l.missedGood) console.log(`    MISSED GOOD  ${m.kind ?? 'any'} ${m.file} p${m.page}`);
+  for (const e of s.misses) {
+    console.log(`    MISS  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''}${e.note ? ` — ${e.note}` : ''}`);
+  }
+  for (const e of s.notHighlighted) {
+    console.log(`    NOT IN HIGHLIGHTS  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''}`);
+  }
+  for (const e of s.leaks) {
+    console.log(
+      `    LEAK  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''} — ${e.reason ?? 'should not appear'}`,
+    );
+  }
+  if (s.emptyFail) {
+    console.log(`    LEAK  expected no images, found ${s.found}`);
+  }
+  for (const i of l.badHighlights) {
+    console.log(`    BAD HIGHLIGHT  ${i.kind} ${i.localFilename} p${i.page} — ${i.reason ?? ''}`);
+  }
+  for (const m of l.missedGood) {
+    console.log(`    MISSED GOOD  ${m.kind ?? 'any'} ${m.file} p${m.page}`);
+  }
 }
 
 if (totals.good + totals.bad) {
   console.log(
     `\nAll labelled samples: precision highlights ${pct(totals.hGood / (totals.hGood + totals.hBad || 1))}, ` +
-      `found ${pct(totals.good / (totals.good + totals.bad))} · recall found ${pct((totals.labelledGood - totals.missedGood) / (totals.labelledGood || 1))}`
+      `found ${pct(totals.good / (totals.good + totals.bad))} · recall found ${pct((totals.labelledGood - totals.missedGood) / (totals.labelledGood || 1))}`,
   );
 }
 if (totals.highTotal || totals.lowTotal) {
   console.log(
     `Rank: high in highlights ${pct(totals.highHighlights / (totals.highTotal || 1))} (${totals.highHighlights}/${totals.highTotal}) · ` +
-      `low in highlights ${pct(totals.lowHighlights / (totals.lowTotal || 1))} (${totals.lowHighlights}/${totals.lowTotal})`
+      `low in highlights ${pct(totals.lowHighlights / (totals.lowTotal || 1))} (${totals.lowHighlights}/${totals.lowTotal})`,
   );
 }
 
 const unlabelled = loadManifest()
   .map((s) => s.reference)
   .filter((ref) => !truth[ref]);
-if (unlabelled.length) console.log(`\nNo ground truth yet: ${unlabelled.join(', ')} (label them in the contact sheet)`);
+if (unlabelled.length) {
+  console.log(`\nNo ground truth yet: ${unlabelled.join(', ')} (label them in the contact sheet)`);
+}
 
 console.log(failed ? '\nFAILED' : '\nOK');
 process.exit(failed ? 1 : 0);

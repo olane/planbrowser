@@ -24,28 +24,37 @@ const KINDS = ['render', 'map', 'elevation', 'plan', 'section', 'photo', 'other'
 
 function findApplications() {
   const apps = [];
-  if (!fs.existsSync(root)) return apps;
+  if (!fs.existsSync(root)) {
+    return apps;
+  }
   for (const authority of fs.readdirSync(root)) {
     const authorityDir = path.join(root, authority);
-    if (!fs.statSync(authorityDir).isDirectory()) continue;
+    if (!fs.statSync(authorityDir).isDirectory()) {
+      continue;
+    }
     for (const entry of fs.readdirSync(authorityDir)) {
       const dir = path.join(authorityDir, entry);
       const metaPath = path.join(dir, 'metadata.json');
-      if (!fs.existsSync(metaPath)) continue;
+      if (!fs.existsSync(metaPath)) {
+        continue;
+      }
       let meta;
       try {
         meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
       } catch {
         continue;
       }
-      if (filters.length && !filters.includes(meta.reference)) continue;
+      if (filters.length && !filters.includes(meta.reference)) {
+        continue;
+      }
       apps.push({ meta, dir });
     }
   }
   return apps;
 }
 
-const escape = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const escape = (s) =>
+  String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 const { samples: truth } = loadTruth();
 const apps = findApplications();
@@ -68,8 +77,10 @@ for (const { meta, dir } of apps) {
       trace: (entry) => {
         traces.push(entry);
         const src = path.join(dir, 'insights', entry.imageFile);
-        if (fs.existsSync(src)) fs.copyFileSync(src, path.join(appOut, entry.imageFile));
-      }
+        if (fs.existsSync(src)) {
+          fs.copyFileSync(src, path.join(appOut, entry.imageFile));
+        }
+      },
     });
   } catch (err) {
     console.log(`  ERROR: ${err.message}`);
@@ -84,17 +95,23 @@ for (const { meta, dir } of apps) {
   const spec = truth[meta.reference] ?? {};
   const score = scoreSample(insights, spec);
   const byKind = {};
-  for (const img of insights.images) byKind[img.kind] = (byKind[img.kind] ?? 0) + 1;
+  for (const img of insights.images) {
+    byKind[img.kind] = (byKind[img.kind] ?? 0) + 1;
+  }
   console.log(
     `  ${insights.images.length} highlights / ${insights.found?.length ?? 0} found, ${traces.length} pages interpreted in ` +
-      `${(ms / 1000).toFixed(0)}s [${insights.depth ?? 'quick'}] ${JSON.stringify(byKind)}`
+      `${(ms / 1000).toFixed(0)}s [${insights.depth ?? 'quick'}] ${JSON.stringify(byKind)}`,
   );
   if (score.labels.total) {
     console.log(
-      `  labels: precision highlights ${pct(score.labels.highlightTally.precision)}, found ${pct(score.labels.foundTally.precision)}`
+      `  labels: precision highlights ${pct(score.labels.highlightTally.precision)}, found ${pct(score.labels.foundTally.precision)}`,
     );
   }
-  for (const img of insights.images) console.log(`    [${img.kind}] ${img.label} — ${img.localFilename} p${img.page} (${img.score}) ${img.reason ?? ''}`);
+  for (const img of insights.images) {
+    console.log(
+      `    [${img.kind}] ${img.label} — ${img.localFilename} p${img.page} (${img.score}) ${img.reason ?? ''}`,
+    );
+  }
 
   const labels = new Map((spec.labels ?? []).map((l) => [pageKey(l.file, l.page), l]));
   const highlightKeys = new Set(insights.images.map((i) => pageKey(i.localFilename, i.page)));
@@ -103,7 +120,9 @@ for (const { meta, dir } of apps) {
   const tiles = { highlights: [], found: [], rejected: [] };
   for (const t of traces) {
     const key = pageKey(t.localFilename, t.page);
-    if (seen.has(key)) continue;
+    if (seen.has(key)) {
+      continue;
+    }
     seen.add(key);
     const image = foundByKey.get(key);
     const group = highlightKeys.has(key) ? 'highlights' : image ? 'found' : 'rejected';
@@ -113,7 +132,8 @@ for (const { meta, dir } of apps) {
     const labelRank = label?.rank ?? '';
     const src = `${path.basename(appOut)}/${t.imageFile}`;
     const caption = escape(`${image?.label ?? ''} — ${t.localFilename} p${t.page}`);
-    tiles[group].push(`<figure class="tile ${label?.verdict ?? ''}" data-ref="${escape(meta.reference)}" data-file="${escape(t.localFilename)}" data-page="${t.page}">
+    tiles[group]
+      .push(`<figure class="tile ${label?.verdict ?? ''}" data-ref="${escape(meta.reference)}" data-file="${escape(t.localFilename)}" data-page="${t.page}">
   <img loading="lazy" src="${escape(src)}" alt="${caption}">
   <figcaption><b>${escape(kind)}</b> ${caption}<br><span class="reason">${escape(t.reason)} · score ${t.score}</span>
   <div class="controls">

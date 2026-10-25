@@ -10,7 +10,7 @@ import {
   readReviewStore,
   removeReviewLabels,
   sanitizeLabels,
-  sanitizePageRefs
+  sanitizePageRefs,
 } from './labels.js';
 import { closePdf, openPdf, renderPageToPng } from './render.js';
 import { THUMB_WIDTH } from './generate.js';
@@ -28,7 +28,9 @@ reviewRouter.get('/api/insights/reviews', (req, res) => {
   const samples: Record<string, InsightLabel[]> = {};
   for (const [reference, spec] of Object.entries(readReviewStore().samples ?? {})) {
     const labels = spec.labels ?? [];
-    if (labels.length) samples[reference] = labels;
+    if (labels.length) {
+      samples[reference] = labels;
+    }
   }
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', 'attachment; filename="insights-reviews.json"');
@@ -49,10 +51,7 @@ reviewRouter.get('/api/applications/:ref/insights/labels', (req, res) => {
 });
 
 reviewRouter.post('/api/applications/:ref/insights/labels', (req, res) => {
-  const found = resolveApplicationMeta(
-    req.params.ref,
-    resolveAuthorityId(req.body?.authority ?? req.query.authority)
-  );
+  const found = resolveApplicationMeta(req.params.ref, resolveAuthorityId(req.body?.authority ?? req.query.authority));
   if (!found) {
     res.status(404).json({ error: 'Application not found' });
     return;
@@ -68,7 +67,9 @@ reviewRouter.post('/api/applications/:ref/insights/labels', (req, res) => {
   const labels = parsed.filter((label) => known.has(label.file));
   const remove = removals.filter((ref) => known.has(ref.file));
   try {
-    if (remove.length) removeReviewLabels(found.meta.reference, remove);
+    if (remove.length) {
+      removeReviewLabels(found.meta.reference, remove);
+    }
     const remaining = labels.length
       ? mergeReviewLabels(found.meta.reference, labels)
       : readReviewLabels(found.meta.reference);

@@ -34,9 +34,11 @@ export interface TitleCandidate {
 const TITLE_KEYWORD =
   /(site plan|location plan|block plan|floor plan|roof plan|basement plan|elevation|section|layout|master ?plan|general arrangement|render|visual|photomontage|parameter plan|(?:ground|first|second|third|lower|upper) floor)/i;
 // Legend/key/scale chrome shares drawing words but is not the drawing title.
-const CHROME = /legend|key ?plan|\bscale\b|revision|\bnotes?\b|north (?:point|arrow)|title block|drawing (?:schedule|register|list)/i;
+const CHROME =
+  /legend|key ?plan|\bscale\b|revision|\bnotes?\b|north (?:point|arrow)|title block|drawing (?:schedule|register|list)/i;
 // Notes and cross-references ("refer to elevations", "to be read with site plan").
-const NOTE = /\b(?:refer|see|read (?:with|in conjunction)|to be|do not|shown on|for (?:information|details)|contractor|must|shall|should|all dimensions|indicative only)\b/i;
+const NOTE =
+  /\b(?:refer|see|read (?:with|in conjunction)|to be|do not|shown on|for (?:information|details)|contractor|must|shall|should|all dimensions|indicative only)\b/i;
 const QUALIFIER = /\b(?:proposed|existing)\b/i;
 // A page listing many drawing titles is a drawing register, not a drawing.
 const REGISTER_TITLES = 6;
@@ -45,10 +47,16 @@ export function titleCandidates(lines: PageLine[]): TitleCandidate[] {
   const out: TitleCandidate[] = [];
   for (const line of lines) {
     const text = line.str.trim();
-    if (text.length < 4 || text.length > 90) continue;
-    if (!TITLE_KEYWORD.test(text) || CHROME.test(text) || NOTE.test(text)) continue;
+    if (text.length < 4 || text.length > 90) {
+      continue;
+    }
+    if (!TITLE_KEYWORD.test(text) || CHROME.test(text) || NOTE.test(text)) {
+      continue;
+    }
     const kind = kindFromText(text);
-    if (!kind) continue;
+    if (!kind) {
+      continue;
+    }
     out.push({ text, kind, strong: QUALIFIER.test(text), size: line.size });
   }
   // Strong titles first, then the larger font, then page order.
@@ -58,7 +66,7 @@ export function titleCandidates(lines: PageLine[]): TitleCandidate[] {
       (a, b) =>
         Number(b.candidate.strong) - Number(a.candidate.strong) ||
         b.candidate.size - a.candidate.size ||
-        a.index - b.index
+        a.index - b.index,
     )
     .map(({ candidate }) => candidate);
 }
@@ -72,6 +80,8 @@ export function isDrawingRegister(candidates: TitleCandidate[]): boolean {
 // title, 0 = none (or a drawing register listing every title).
 export function pageTitleScore(lines: PageLine[]): number {
   const candidates = titleCandidates(lines);
-  if (candidates.length === 0 || isDrawingRegister(candidates)) return 0;
+  if (candidates.length === 0 || isDrawingRegister(candidates)) {
+    return 0;
+  }
   return candidates[0]?.strong ? 2 : 1;
 }

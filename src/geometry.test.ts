@@ -62,12 +62,28 @@ describe('parseWfsGeometry', () => {
   it('honours srsDimension=3 by dropping the z value', () => {
     const xml = '<gml:LinearRing><gml:posList srsDimension="3">1 2 3 4 5 6 7 8 9</gml:posList></gml:LinearRing>';
     const geom = parseWfsGeometry(xml);
-    expect(geom.polygons).toEqual([[[[1, 2], [4, 5], [7, 8]]]]);
+    expect(geom.polygons).toEqual([
+      [
+        [
+          [1, 2],
+          [4, 5],
+          [7, 8],
+        ],
+      ],
+    ]);
   });
 
   it('ignores a trailing unpaired coordinate', () => {
     const xml = '<gml:LinearRing><gml:posList>1 2 3 4 5 6 7</gml:posList></gml:LinearRing>';
-    expect(parseWfsGeometry(xml).polygons).toEqual([[[[1, 2], [3, 4], [5, 6]]]]);
+    expect(parseWfsGeometry(xml).polygons).toEqual([
+      [
+        [
+          [1, 2],
+          [3, 4],
+          [5, 6],
+        ],
+      ],
+    ]);
   });
 });
 
@@ -117,7 +133,10 @@ describe('coordsToLocation', () => {
   it('computes a bounding box spanning all points', () => {
     const west = coordsToLocation([[400000, 100000]]).center.lon;
     const east = coordsToLocation([[500000, 100000]]).center.lon;
-    const loc = coordsToLocation([[400000, 100000], [500000, 100000]]);
+    const loc = coordsToLocation([
+      [400000, 100000],
+      [500000, 100000],
+    ]);
     expect(loc.bbox.minLon).toBeCloseTo(west);
     expect(loc.bbox.maxLon).toBeCloseTo(east);
     expect(loc.bbox.minLon).toBeLessThan(loc.bbox.maxLon);

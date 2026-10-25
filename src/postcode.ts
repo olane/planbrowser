@@ -17,7 +17,9 @@ export function extractPostcode(text: string): string | null {
   const trimmed = text.trim();
   const atEnd = new RegExp(`${FULL_POSTCODE.source}\\s*$`).exec(trimmed);
   const raw = atEnd?.[0] ?? FULL_POSTCODE.exec(trimmed)?.[0];
-  if (!raw) return null;
+  if (!raw) {
+    return null;
+  }
   const normalized = normalizePostcode(raw);
   // normalizePostcode leaves non-postcode-shaped input as-is (just cased), so
   // only trust it when it grew the space that marks a genuine full postcode.

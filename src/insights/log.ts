@@ -4,5 +4,7 @@
 const enabled = !process.env.VITEST;
 
 export function insightsLog(message: string): void {
-  if (enabled) console.log(`[insights] ${message}`);
+  if (enabled) {
+    console.log(`[insights] ${message}`);
+  }
 }

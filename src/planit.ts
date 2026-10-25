@@ -12,7 +12,7 @@ export async function searchPlanIt(postcode: string, radius: string, filters: Se
     pcode: normalizePostcode(postcode),
     krad: radius,
     pg_sz: '50',
-    sort: sortParam
+    sort: sortParam,
   });
   for (const [key, value] of Object.entries(filters)) {
     if (value) {
@@ -21,8 +21,8 @@ export async function searchPlanIt(postcode: string, radius: string, filters: Se
   }
   const res = await fetch(`https://www.planit.org.uk/api/applics/json?${params.toString()}`, {
     headers: {
-      'User-Agent': 'planbrowser/1.0 (https://github.com/olane/planbrowser)'
-    }
+      'User-Agent': 'planbrowser/1.0 (https://github.com/olane/planbrowser)',
+    },
   });
   if (!res.ok) {
     throw new Error(`PlanIt API returned ${res.status} ${res.statusText}`);

@@ -17,7 +17,7 @@ export const KIND_LABELS: Record<InsightImageKind, string> = {
   plan: 'Plan',
   section: 'Section',
   photo: 'Photo',
-  other: 'Other'
+  other: 'Other',
 };
 
 export const KIND_GROUP_LABELS: Record<InsightImageKind, string> = {
@@ -27,7 +27,7 @@ export const KIND_GROUP_LABELS: Record<InsightImageKind, string> = {
   plan: 'Plans',
   section: 'Sections',
   photo: 'Photos',
-  other: 'Other'
+  other: 'Other',
 };
 
 export function kindLabel(kind: string): string {
@@ -43,7 +43,7 @@ export const KIND_BASE: Record<InsightImageKind, number> = {
   plan: 78,
   section: 62,
   photo: 55,
-  other: 25
+  other: 25,
 };
 
 // Weak weight of a kind named in a *document* name, used only to rank which
@@ -55,7 +55,7 @@ export const KIND_PRIOR_WEIGHT: Record<InsightImageKind, number> = {
   plan: 3.5,
   section: 3,
   photo: 2,
-  other: 0
+  other: 0,
 };
 
 // Curated gallery caps per kind (the highlights, before `found`).
@@ -66,5 +66,5 @@ export const DEFAULT_KIND_CAPS: Record<InsightImageKind, number> = {
   plan: 8,
   section: 4,
   photo: 6,
-  other: 3
+  other: 3,
 };

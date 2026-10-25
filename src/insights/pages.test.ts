@@ -24,7 +24,7 @@ describe('selectDocumentPages', () => {
       page({ page: 2, textLength: 2000 }),
       page({ page: 3, textLength: 900, imageCount: 1, largestImageArea: 1_800_000 }),
       page({ page: 4, textLength: 1000, imageCount: 3, largestImageArea: 2_000_000 }),
-      page({ page: 5, textLength: 800 })
+      page({ page: 5, textLength: 800 }),
     ];
     expect(selectDocumentPages(false, 5, scanned, 2)).toEqual([3, 4]);
   });

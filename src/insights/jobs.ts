@@ -31,7 +31,9 @@ const inFlight = new Map<string, Running>();
 const lastError = new Map<string, string>();
 
 export function startInsights(reference: string, authorityId?: string, opts: GenerateOptions = {}): void {
-  if (inFlight.has(reference)) return;
+  if (inFlight.has(reference)) {
+    return;
+  }
   lastError.delete(reference);
   const running: Running = {};
   inFlight.set(reference, running);
@@ -45,7 +47,7 @@ export function startInsights(reference: string, authorityId?: string, opts: Gen
     // never mistaken for a finished result.
     onSnapshot: (insights) => {
       running.snapshot = insights;
-    }
+    },
   })
     .catch((err: unknown) => {
       lastError.set(reference, err instanceof Error ? err.message : String(err));
@@ -59,7 +61,9 @@ export function startInsights(reference: string, authorityId?: string, opts: Gen
 // having to regenerate manually. A missing cache is left for the user to start.
 export function getInsightsState(reference: string, authorityId?: string): InsightsState | null {
   const resolved = resolveApplicationMeta(reference, authorityId);
-  if (!resolved) return null;
+  if (!resolved) {
+    return null;
+  }
   const { meta, dir } = resolved;
   const source = sourceSignature(dir, documentList(meta));
   const cached = readInsights(dir);
@@ -78,10 +82,14 @@ export function getInsightsState(reference: string, authorityId?: string): Insig
     return { status: 'running', ...(insights ? { insights } : {}), ...(progress ? { progress } : {}) };
   }
 
-  if (cached && isCurrent(cached, source)) return { status: 'ready', insights: cached };
+  if (cached && isCurrent(cached, source)) {
+    return { status: 'ready', insights: cached };
+  }
 
   const previousError = lastError.get(reference);
-  if (previousError) return { status: 'error', error: previousError };
+  if (previousError) {
+    return { status: 'error', error: previousError };
+  }
 
   if (cached) {
     // Preserve the depth of the cached result on an automatic refresh.

@@ -2,7 +2,15 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { analysePagePng, type PagePixelStats } from './pixels.js';
-import { closePdf, extractPageLines, openPdf, renderPageToPng, scanPage, type PageScan, type PdfDocument } from './render.js';
+import {
+  closePdf,
+  extractPageLines,
+  openPdf,
+  renderPageToPng,
+  scanPage,
+  type PageScan,
+  type PdfDocument,
+} from './render.js';
 import { assetPath, atomicWrite, insightsDir, writeAsset } from './cache.js';
 import type { PageLine } from './title.js';
 
@@ -78,7 +86,7 @@ export class FeatureStore {
 
   constructor(
     private readonly appDir: string,
-    private readonly policy: CaptionPolicy
+    private readonly policy: CaptionPolicy,
   ) {
     this.file = readFeatureFile(appDir);
   }
@@ -109,8 +117,12 @@ export class FeatureStore {
   // Persist if something changed and a few seconds have passed (or always, when
   // `force`). Rewriting the whole file after every page would be quadratic.
   save(force = true): void {
-    if (!this.dirty) return;
-    if (!force && Date.now() - this.lastSave < 5000) return;
+    if (!this.dirty) {
+      return;
+    }
+    if (!force && Date.now() - this.lastSave < 5000) {
+      return;
+    }
     atomicWrite(featuresFile(this.appDir), JSON.stringify(this.file));
     // Superseded by features.json (page text used to be cached on its own).
     fs.rmSync(path.join(insightsDir(this.appDir), 'page-text.json'), { force: true });
@@ -129,11 +141,13 @@ export class DocumentHandle {
     private readonly appDir: string,
     private readonly filePath: string,
     private readonly entry: DocumentFeatures,
-    private readonly policy: CaptionPolicy
+    private readonly policy: CaptionPolicy,
   ) {}
 
   private async open(): Promise<PdfDocument | undefined> {
-    if (this.pdf || this.failed) return this.pdf;
+    if (this.pdf || this.failed) {
+      return this.pdf;
+    }
     try {
       this.pdf = await openPdf(this.filePath);
       this.store.work.opened++;
@@ -144,9 +158,13 @@ export class DocumentHandle {
   }
 
   async lines(): Promise<PageLine[][]> {
-    if (this.entry.pages) return this.entry.pages;
+    if (this.entry.pages) {
+      return this.entry.pages;
+    }
     const pdf = await this.open();
-    if (!pdf) return [];
+    if (!pdf) {
+      return [];
+    }
     let pages: PageLine[][];
     try {
       pages = await extractPageLines(pdf);
@@ -161,7 +179,9 @@ export class DocumentHandle {
 
   async scan(page: number): Promise<PageScan> {
     const cached = this.entry.scans[String(page)];
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
     const pdf = await this.open();
     const scan = pdf
       ? await scanPage(pdf, page, this.policy.captionMinArea)
@@ -177,9 +197,13 @@ export class DocumentHandle {
   async render(page: number, width: number): Promise<PageRender | null> {
     const key = `${page}@${width}`;
     const cached = this.entry.renders[key];
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
     const fresh = await this.renderFresh(page, width);
-    if (!fresh) return null;
+    if (!fresh) {
+      return null;
+    }
     this.entry.renders[key] = fresh;
     this.store.markDirty();
     return fresh;
@@ -190,10 +214,16 @@ export class DocumentHandle {
   // change if the re-render is not byte-identical.
   async ensureAsset(page: number, width: number): Promise<string | null> {
     const render = await this.render(page, width);
-    if (!render) return null;
-    if (fs.existsSync(assetPath(this.appDir, render.imageFile))) return render.imageFile;
+    if (!render) {
+      return null;
+    }
+    if (fs.existsSync(assetPath(this.appDir, render.imageFile))) {
+      return render.imageFile;
+    }
     const fresh = await this.renderFresh(page, width);
-    if (!fresh) return null;
+    if (!fresh) {
+      return null;
+    }
     this.entry.renders[`${page}@${width}`] = { ...render, imageFile: fresh.imageFile };
     this.store.markDirty();
     return fresh.imageFile;
@@ -201,7 +231,9 @@ export class DocumentHandle {
 
   private async renderFresh(page: number, width: number): Promise<PageRender | null> {
     const pdf = await this.open();
-    if (!pdf) return null;
+    if (!pdf) {
+      return null;
+    }
     try {
       const png = await renderPageToPng(pdf, page, width);
       const pixels = await analysePagePng(png);
@@ -215,7 +247,9 @@ export class DocumentHandle {
   }
 
   async close(): Promise<void> {
-    if (this.pdf) await closePdf(this.pdf).catch(() => {});
+    if (this.pdf) {
+      await closePdf(this.pdf).catch(() => {});
+    }
     this.pdf = undefined;
   }
 }

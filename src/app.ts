@@ -47,7 +47,6 @@ function sanitizeSort(input: unknown): SortSpec {
   return { field: field as SortSpec['field'], order: order === 'asc' ? 'asc' : 'desc' };
 }
 
-
 export function createApp(): express.Express {
   const app = express();
   app.use(cors());
@@ -151,8 +150,12 @@ export function createApp(): express.Express {
         }
       }
       const flags: Partial<ApplicationFlags> = {};
-      if (typeof body.starred === 'boolean') flags.starred = body.starred;
-      if (typeof body.archived === 'boolean') flags.archived = body.archived;
+      if (typeof body.starred === 'boolean') {
+        flags.starred = body.starred;
+      }
+      if (typeof body.archived === 'boolean') {
+        flags.archived = body.archived;
+      }
       const updated = setFlags(ref, authorityId, flags);
       res.json({ success: true, flags: updated });
     } catch (err: any) {
@@ -179,8 +182,12 @@ export function createApp(): express.Express {
         }
       }
       const flags: Partial<DocumentFlags> = {};
-      if (typeof body.starred === 'boolean') flags.starred = body.starred;
-      if (typeof body.note === 'string') flags.note = body.note;
+      if (typeof body.starred === 'boolean') {
+        flags.starred = body.starred;
+      }
+      if (typeof body.note === 'string') {
+        flags.note = body.note;
+      }
       const updated = setDocFlags(reference, authorityId, filename, flags);
       res.json({ success: true, flags: updated });
     } catch (err: any) {
@@ -192,13 +199,13 @@ export function createApp(): express.Express {
     try {
       const events = readActivity();
       const appsById = new Map(
-        getApplications().map((a) => [`${a.authorityId || DEFAULT_AUTHORITY_ID}/${a.reference}`, a])
+        getApplications().map((a) => [`${a.authorityId || DEFAULT_AUTHORITY_ID}/${a.reference}`, a]),
       );
       res.json(
         events.map((e) => ({
           ...e,
-          application: appsById.get(`${e.authorityId || DEFAULT_AUTHORITY_ID}/${e.reference}`) ?? null
-        }))
+          application: appsById.get(`${e.authorityId || DEFAULT_AUTHORITY_ID}/${e.reference}`) ?? null,
+        })),
       );
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -244,7 +251,12 @@ export function createApp(): express.Express {
         return res.status(400).json({ error: 'Postcode is required' });
       }
       const radius = typeof body.radius === 'string' && body.radius ? body.radius : '2';
-      const saved = saveSearch({ postcode, radius, filters: sanitizeFilters(body.filters), sort: sanitizeSort(body.sort) });
+      const saved = saveSearch({
+        postcode,
+        radius,
+        filters: sanitizeFilters(body.filters),
+        sort: sanitizeSort(body.sort),
+      });
       res.json(saved);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -288,13 +300,13 @@ export function createApp(): express.Express {
       if (rawAuthority) {
         try {
           authorityId = resolveAuthority(rawAuthority).id;
-        } catch (e) {
+        } catch {
           // Unknown authority filter: fall back to searching all authorities
         }
       }
-      const app = getApplication(ref, authorityId);
-      if (app) {
-        res.json(app);
+      const record = getApplication(ref, authorityId);
+      if (record) {
+        res.json(record);
       } else {
         res.status(404).json({ error: 'Application not found' });
       }
@@ -321,7 +333,9 @@ export function createApp(): express.Express {
   if (fs.existsSync(getUiDistDir())) {
     app.use(express.static(getUiDistDir()));
     app.use((req, res, next) => {
-      if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
+      if (req.method !== 'GET' || req.path.startsWith('/api')) {
+        return next();
+      }
       // Use a root-relative sendFile: an absolute path through sendFile is
       // treated as a dotfile and rejected when the app lives under a hidden
       // directory (e.g. ~/.paseo/worktrees/...), which would 404 every route.

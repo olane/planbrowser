@@ -1,6 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import type { ApplicationInsights, Comment, DocumentMeta, InsightImage, InsightPage, InsightsProgress } from '../types.js';
+import type {
+  ApplicationInsights,
+  Comment,
+  DocumentMeta,
+  InsightImage,
+  InsightPage,
+  InsightsProgress,
+} from '../types.js';
 import { resolveApplicationMeta } from '../storage.js';
 import { profileDocument, type DocumentProfile } from './keywords.js';
 import { classifyPage } from './classify.js';
@@ -55,7 +62,7 @@ const QUICK_BUDGET: Budget = {
   dasPages: 14,
   photoPageQuota: 8,
   prescanPagesPerDoc: 40,
-  prescanPagesTotal: 240
+  prescanPagesTotal: 240,
 };
 
 // Deep scan: user-triggered, scans more documents and pages.
@@ -67,7 +74,7 @@ const DEEP_BUDGET: Budget = {
   dasPages: 20,
   photoPageQuota: 16,
   prescanPagesPerDoc: 80,
-  prescanPagesTotal: 1500
+  prescanPagesTotal: 1500,
 };
 
 // One interpreted page, for tooling (contact sheet, eval): accepted and
@@ -94,7 +101,9 @@ const SNAPSHOT_INTERVAL_MS = 2000;
 export function documentList(meta: { documents?: DocumentMeta[] }): DocumentMeta[] {
   const seen = new Set<string>();
   return (meta.documents ?? []).filter((d) => {
-    if (!d.localFilename || seen.has(d.localFilename)) return false;
+    if (!d.localFilename || seen.has(d.localFilename)) {
+      return false;
+    }
     seen.add(d.localFilename);
     return true;
   });
@@ -114,7 +123,9 @@ export function sourceSignature(dir: string, docs: DocumentMeta[]): ApplicationI
 }
 
 function sameSource(a: ApplicationInsights['source'], b: ApplicationInsights['source']): boolean {
-  if (a.length !== b.length) return false;
+  if (a.length !== b.length) {
+    return false;
+  }
   const key = (s: { filename: string; mtimeMs: number; size: number }) => `${s.filename}:${s.mtimeMs}:${s.size}`;
   const set = new Set(a.map(key));
   return b.every((s) => set.has(key(s)));
@@ -152,7 +163,7 @@ interface DocumentRole {
 function documentRole(profile: DocumentProfile): DocumentRole {
   return {
     frontPages: Boolean(profile.prior.kind) || (profile.drawing && !profile.visualName),
-    isPhotoDoc: profile.prior.kind === 'photo'
+    isPhotoDoc: profile.prior.kind === 'photo',
   };
 }
 
@@ -167,7 +178,7 @@ export function rankDocuments(docs: DocumentMeta[]): { doc: DocumentMeta; profil
     .sort(
       (a, b) =>
         Number(b.profile.designAndAccess) - Number(a.profile.designAndAccess) ||
-        b.profile.prior.score - a.profile.prior.score
+        b.profile.prior.score - a.profile.prior.score,
     );
 }
 
@@ -178,7 +189,7 @@ async function scanDocumentPages(
   handle: DocumentHandle,
   textLengths: number[],
   maxPages: number,
-  takeBudget: () => boolean
+  takeBudget: () => boolean,
 ): Promise<{ scanned: ScannedPage[]; scans: Map<number, PageScan> }> {
   const limit = Math.min(Math.max(textLengths.length, 1), maxPages);
   const scanned: ScannedPage[] = [];
@@ -223,7 +234,9 @@ interface Analysis {
 }
 
 function takePrescanBudget(counters: RunCounters, budget: Budget): boolean {
-  if (counters.prescanPages >= budget.prescanPagesTotal) return false;
+  if (counters.prescanPages >= budget.prescanPagesTotal) {
+    return false;
+  }
   counters.prescanPages++;
   return true;
 }
@@ -236,11 +249,15 @@ async function analyseDocument(doc: DocumentMeta, profile: DocumentProfile, run:
   const { counters, budget, store } = run;
 
   const handle = store.document(doc.localFilename);
-  if (!handle) return;
+  if (!handle) {
+    return;
+  }
 
   try {
     const lines = await handle.lines();
-    if (handle.failed) return;
+    if (handle.failed) {
+      return;
+    }
     counters.documentsAnalysed++;
 
     // Known drawing/photo documents put their visual on their titled pages;
@@ -252,12 +269,14 @@ async function analyseDocument(doc: DocumentMeta, profile: DocumentProfile, run:
           handle,
           lines.map((page) => page.reduce((sum, line) => sum + line.str.length + 1, 0)),
           budget.prescanPagesPerDoc,
-          () => takePrescanBudget(counters, budget)
+          () => takePrescanBudget(counters, budget),
         );
     const pageCap = frontPages ? budget.pagesPerDoc : profile.designAndAccess ? budget.dasPages : budget.visualDocPages;
     const titleScores = frontPages ? lines.map(pageTitleScore) : [];
     const pages = selectDocumentPages(frontPages, lines.length, scanned, pageCap, titleScores);
-    if (pages.length === 0) return;
+    if (pages.length === 0) {
+      return;
+    }
 
     const renderedPages: number[] = [];
     let docImages = 0;
@@ -273,19 +292,23 @@ async function analyseDocument(doc: DocumentMeta, profile: DocumentProfile, run:
       // Budget on render *attempts*, not just accepted pages, so a document
       // full of non-visual pages cannot push us far past maxPages.
       counters.pagesRendered++;
-      if (isPhotoDoc) counters.photoPagesRendered++;
+      if (isPhotoDoc) {
+        counters.photoPagesRendered++;
+      }
       renderedPages.push(page);
       run.report();
 
       const render = await handle.render(page, THUMB_WIDTH);
-      if (!render) continue;
+      if (!render) {
+        continue;
+      }
       const scan = scans.get(page);
       const hasLargeImage = (scan?.largestImageArea ?? 0) >= LARGE_IMAGE_AREA;
       const classification = classifyPage(profile, lines[page - 1] ?? [], render.pixels, {
         hasLargeImage,
         // The caption beside an embedded figure distinguishes a render from a
         // photo when the document name does not.
-        caption: hasLargeImage ? scan?.caption : ''
+        caption: hasLargeImage ? scan?.caption : '',
       });
       const entry: InsightPage = {
         localFilename: doc.localFilename,
@@ -293,12 +316,14 @@ async function analyseDocument(doc: DocumentMeta, profile: DocumentProfile, run:
         kind: classification.kind,
         score: Math.round(classification.score),
         reason: classification.reason,
-        imageFile: render.imageFile
+        imageFile: render.imageFile,
       };
       run.interpreted.push(entry);
       run.trace?.(entry);
       run.snapshot();
-      if (classification.score <= 0) continue;
+      if (classification.score <= 0) {
+        continue;
+      }
 
       docImages++;
       run.candidates.push({
@@ -312,11 +337,11 @@ async function analyseDocument(doc: DocumentMeta, profile: DocumentProfile, run:
         height: render.pixels.height,
         score: Math.round(classification.score),
         phash: render.pixels.phash,
-        reason: classification.reason
+        reason: classification.reason,
       });
     }
     insightsLog(
-      `${run.reference}: ${doc.description || doc.localFilename} — pages [${renderedPages.join(', ')}] → ${docImages} image(s)`
+      `${run.reference}: ${doc.description || doc.localFilename} — pages [${renderedPages.join(', ')}] → ${docImages} image(s)`,
     );
   } finally {
     await handle.close();
@@ -327,10 +352,12 @@ async function analyseDocument(doc: DocumentMeta, profile: DocumentProfile, run:
 export async function generateInsights(
   reference: string,
   authorityId?: string,
-  opts: GenerateOptions = {}
+  opts: GenerateOptions = {},
 ): Promise<ApplicationInsights | null> {
   const resolved = resolveApplicationMeta(reference, authorityId);
-  if (!resolved) return null;
+  if (!resolved) {
+    return null;
+  }
   const { meta, dir } = resolved;
 
   const docs = documentList(meta);
@@ -340,7 +367,9 @@ export async function generateInsights(
 
   if (!opts.force) {
     const cached = readInsights(dir);
-    if (cached && isCurrent(cached, source) && (cached.depth ?? 'quick') === depth) return cached;
+    if (cached && isCurrent(cached, source) && (cached.depth ?? 'quick') === depth) {
+      return cached;
+    }
   }
 
   const store = new FeatureStore(dir, { captionMinArea: LARGE_IMAGE_AREA });
@@ -354,7 +383,7 @@ export async function generateInsights(
     documentsAnalysed: 0,
     prescanPages: 0,
     // Documents beyond maxDocs were never considered, so the run is partial.
-    capped: rankedAll.length > budget.maxDocs
+    capped: rankedAll.length > budget.maxDocs,
   };
   // The candidates and interpreted pages gathered as the run proceeds. Held
   // here (rather than on `run`) so the snapshot closure below can read them.
@@ -367,7 +396,7 @@ export async function generateInsights(
   const liveProgress = (): InsightsProgress => ({
     documentsAnalysed: counters.documentsAnalysed,
     documentsTotal: docs.length,
-    pagesRendered: counters.pagesRendered
+    pagesRendered: counters.pagesRendered,
   });
 
   // Build an ApplicationInsights from the candidates gathered so far. Used for
@@ -389,16 +418,16 @@ export async function generateInsights(
       images: KIND_ORDER.map((kind) => ({
         kind,
         selected: selection.images.filter((image) => image.kind === kind).length,
-        available: selection.available[kind]
+        available: selection.available[kind],
       })).filter((entry) => entry.available > 0),
       // True only when a budget actually cut candidates off; "available" is then
       // a lower bound and some documents were never scanned.
       partial: counters.capped,
       documentsAnalysed: counters.documentsAnalysed,
-      documentsTotal: docs.length
+      documentsTotal: docs.length,
     },
     progress: liveProgress(),
-    complete
+    complete,
   });
 
   // A partial snapshot must not reference thumbnails that are not on disk yet: a
@@ -409,16 +438,20 @@ export async function generateInsights(
     const onDisk = (image: InsightImage) => fs.existsSync(assetPath(dir, image.imageFile));
     return buildInsights(
       { ...selection, images: selection.images.filter(onDisk), deduped: selection.deduped.filter(onDisk) },
-      false
+      false,
     );
   };
 
   let lastSnapshotAt = 0;
   const report = (): void => opts.onProgress?.(liveProgress());
   const publishSnapshot = (): void => {
-    if (!opts.onSnapshot) return;
+    if (!opts.onSnapshot) {
+      return;
+    }
     const now = Date.now();
-    if (now - lastSnapshotAt < SNAPSHOT_INTERVAL_MS) return;
+    if (now - lastSnapshotAt < SNAPSHOT_INTERVAL_MS) {
+      return;
+    }
     lastSnapshotAt = now;
     opts.onSnapshot(snapshot());
   };
@@ -432,7 +465,7 @@ export async function generateInsights(
     interpreted,
     trace: opts.trace,
     report,
-    snapshot: publishSnapshot
+    snapshot: publishSnapshot,
   };
   const startedAt = Date.now();
 
@@ -443,7 +476,9 @@ export async function generateInsights(
       counters.capped = true;
       break;
     }
-    if (!isPdf(doc.localFilename)) continue;
+    if (!isPdf(doc.localFilename)) {
+      continue;
+    }
     const { frontPages, isPhotoDoc } = documentRole(profile);
     // Visual-impact photo appendices add little once the photo budget is spent,
     // and would otherwise crowd out plans and renders.
@@ -455,7 +490,9 @@ export async function generateInsights(
     // drawing number), carry their visual on their front/titled pages. Other
     // documents are pre-scanned for embedded figures, but only if their name
     // looks visual at all (transport/geo reports would be scanned for nothing).
-    if (!frontPages && !profile.visualName) continue;
+    if (!frontPages && !profile.visualName) {
+      continue;
+    }
 
     await analyseDocument(doc, profile, run);
   }
@@ -467,7 +504,9 @@ export async function generateInsights(
   // Every found image needs its thumbnail on disk. A cached page whose asset
   // was pruned earlier (it was not in the gallery then) is re-rendered here.
   for (const image of found) {
-    if (fs.existsSync(assetPath(dir, image.imageFile))) continue;
+    if (fs.existsSync(assetPath(dir, image.imageFile))) {
+      continue;
+    }
     const handle = store.document(image.localFilename);
     const imageFile = await handle?.ensureAsset(image.page, THUMB_WIDTH);
     await handle?.close();
@@ -487,7 +526,7 @@ export async function generateInsights(
   insightsLog(
     `${reference}: done — ${images.length} highlights (${found.length} found) from ${counters.documentsAnalysed} documents in ` +
       `${((Date.now() - startedAt) / 1000).toFixed(0)}s (rendered ${work.rendered}, scanned ${work.scanned}, ` +
-      `opened ${work.opened} PDFs; the rest from cache)`
+      `opened ${work.opened} PDFs; the rest from cache)`,
   );
   return insights;
 }

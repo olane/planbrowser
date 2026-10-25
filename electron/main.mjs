@@ -21,15 +21,15 @@ if (process.env.PLANBROWSER_SCRAPER_MODE === '1') {
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: true
-      }
+        sandbox: true,
+      },
     });
     // Present a normal Chrome UA — some planning portals behave differently
     // (or return no results) when they see an "Electron/..." user agent.
     win.webContents.setUserAgent(
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     );
-    win.loadURL('about:blank');
+    return win.loadURL('about:blank');
   });
 } else {
   // Ensure a stable app name regardless of how Electron is launched (dev vs
@@ -41,8 +41,7 @@ if (process.env.PLANBROWSER_SCRAPER_MODE === '1') {
   // (works both unpacked and inside app.asar). These must be set *before* the
   // backend's config module is imported, hence the dynamic import below.
   process.env.UI_DIST_DIR = path.join(__dirname, '..', 'ui', 'dist');
-  process.env.DOWNLOADS_DIR =
-    process.env.DOWNLOADS_DIR ?? path.join(app.getPath('userData'), 'downloads');
+  process.env.DOWNLOADS_DIR = process.env.DOWNLOADS_DIR ?? path.join(app.getPath('userData'), 'downloads');
 
   // Signal to the backend scraper that it's running inside Electron, so it
   // drives this app's own Chromium instead of launching a separate browser.
@@ -57,7 +56,9 @@ if (process.env.PLANBROWSER_SCRAPER_MODE === '1') {
   } else {
     app.on('second-instance', () => {
       if (mainWindow) {
-        if (mainWindow.isMinimized()) mainWindow.restore();
+        if (mainWindow.isMinimized()) {
+          mainWindow.restore();
+        }
         mainWindow.focus();
       }
     });
@@ -67,8 +68,11 @@ if (process.env.PLANBROWSER_SCRAPER_MODE === '1') {
       createWindow(port);
 
       app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) createWindow(port);
+        if (BrowserWindow.getAllWindows().length === 0) {
+          createWindow(port);
+        }
       });
+      return undefined;
     });
   }
 
@@ -91,8 +95,8 @@ if (process.env.PLANBROWSER_SCRAPER_MODE === '1') {
         preload: path.join(__dirname, 'preload.cjs'),
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: true
-      }
+        sandbox: true,
+      },
     });
 
     mainWindow.once('ready-to-show', () => mainWindow.show());
@@ -108,10 +112,14 @@ if (process.env.PLANBROWSER_SCRAPER_MODE === '1') {
   }
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
   });
 
   app.on('before-quit', () => {
-    if (server) server.close();
+    if (server) {
+      server.close();
+    }
   });
 }
