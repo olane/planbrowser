@@ -13,6 +13,7 @@
     "promise/always-return": "error",
     "unicorn/no-empty-file": "error",
     "unicorn/prefer-add-event-listener": "error",
+    "vitest/no-commented-out-tests": "error",
     "vitest/no-conditional-expect": "error"
   },
   "ignorePatterns": ["dist", "release", "downloads", "ui/dist"]

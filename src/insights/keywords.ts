@@ -247,7 +247,7 @@ function priorFromProfile(p: Omit<DocumentProfile, 'prior'>): DocumentPrior {
   if (!kind && p.visualName) score += 1;
 
   // Prioritise the Design & Access Statement regardless of how the portal typed
-  // it (it is sometimes filed under Drawings).
+  // it, as it is sometimes filed under Drawings.
   if (p.designAndAccess) score += 5;
 
   // Appendix/figure volumes are supporting reference, not the scheme's own
