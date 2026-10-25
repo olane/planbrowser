@@ -313,11 +313,41 @@ interface InsightsCoverage {
 }
 
 // Live counters reported while a generation is in flight, so the UI can show
-// how far along a scan is instead of an indeterminate spinner.
+// how far along a scan is instead of an indeterminate spinner. `documentsTotal`
+// is the number of documents this run actually plans to consider (ranked and
+// eligible), not the application's whole document list.
 export interface InsightsProgress {
+  phase: 'scanning' | 'finalising';
+  // Documents opened and analysed so far (coverage uses this too).
   documentsAnalysed: number;
+  // Documents finished with, whether analysed or skipped because a budget ran
+  // out. This is what drives the progress bar, so it always reaches the total.
+  documentsProcessed: number;
   documentsTotal: number;
   pagesRendered: number;
+  // Set while a document is being analysed, for a more informative label.
+  currentDocument?: string;
+  // How far through the current document's chosen pages we are.
+  currentPage?: number;
+  currentDocumentPages?: number;
+}
+
+export type InsightsQueueStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+
+// One queued insights scan. Scans are serialised (generation is CPU-heavy) and
+// deduplicated by reference, so this is also the observable state of the work.
+export interface InsightsQueueItem {
+  id: string;
+  reference: string;
+  authorityId?: string;
+  depth: 'quick' | 'deep';
+  status: InsightsQueueStatus;
+  error?: string;
+  enqueuedAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  cancelledAt?: string;
+  progress?: InsightsProgress;
 }
 
 export interface ApplicationInsights {

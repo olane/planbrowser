@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import { generateInsights, isCurrent, rankDocuments, STRATEGY } from './generate.js';
 import { getInsightsState, startInsights } from './jobs.js';
-import type { ApplicationInsights, ApplicationMeta, DocumentMeta } from '../types.js';
+import type { ApplicationInsights, ApplicationMeta, DocumentMeta, InsightsProgress } from '../types.js';
 
 const REFERENCE = '24/00001/FUL';
 let root: string;
@@ -64,6 +64,21 @@ describe('generateInsights caching', () => {
 
     const deep = await generateInsights(REFERENCE, undefined, { force: true, deep: true });
     expect(deep?.depth).toBe('deep');
+  });
+
+  it('reports progress against the documents it plans to scan', async () => {
+    const progress: InsightsProgress[] = [];
+    await generateInsights(REFERENCE, undefined, {
+      force: true,
+      onProgress: (entry) => progress.push(entry)
+    });
+
+    // The only document is a .txt file, so the scan plan is empty even though
+    // the application's coverage still reports that document separately.
+    expect(progress.length).toBeGreaterThan(0);
+    expect(progress.every((entry) => entry.documentsTotal === 0)).toBe(true);
+    expect(progress.at(-1)?.documentsProcessed).toBe(0);
+    expect(progress.at(-1)?.phase).toBe('finalising');
   });
 });
 

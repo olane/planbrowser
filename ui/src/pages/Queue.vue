@@ -66,18 +66,64 @@
         </div>
       </div>
     </section>
+
+    <section>
+      <div :class="$style.header">
+        <h2 :class="$style.title">Insights Queue</h2>
+        <button v-if="insightsQueueItems.length > 0" @click="clearInsightsQueueAction" :class="$style.clear">Clear finished</button>
+      </div>
+
+      <div v-if="insightsQueueItems.length === 0" :class="$style.muted">
+        No insights scans active or pending.
+      </div>
+
+      <div v-else :class="$style.list">
+        <div v-for="item in insightsQueueItems" :key="item.id" :class="$style.item">
+          <div :class="$style.info">
+            <router-link v-if="item.status !== 'cancelled'" :to="`/app/${encodeURIComponent(item.reference)}`" :class="$style.refLink">
+              {{ item.reference }}
+            </router-link>
+            <div v-else :class="$style.ref">{{ item.reference }}</div>
+            <div :class="$style.meta">
+              <span v-if="authorityName(item.authorityId)">{{ authorityName(item.authorityId) }} • </span>
+              {{ item.depth === 'deep' ? 'Deep scan' : 'Quick scan' }} • Enqueued: {{ timeAgo(item.enqueuedAt) }}
+              <span v-if="item.completedAt"> • Finished: {{ timeAgo(item.completedAt) }}</span>
+            </div>
+          </div>
+          <div :class="$style.statusCol">
+            <span v-if="item.status === 'pending'" :class="[ui.toneYellow, $style.badge]">Pending</span>
+            <span v-else-if="item.status === 'in_progress'" :class="[ui.toneBlue, $style.badge]">Scanning...</span>
+            <span v-else-if="item.status === 'completed'" :class="[ui.toneGreen, $style.badge]">Completed</span>
+            <span v-else-if="item.status === 'failed'" :class="[ui.toneRed, $style.badge]">Failed</span>
+            <span v-else-if="item.status === 'cancelled'" :class="[ui.toneGray, $style.badge]">Cancelled</span>
+            <div v-if="item.status === 'in_progress' && item.progress" :class="$style.progress">{{ insightsProgressText(item.progress) }}</div>
+            <div v-if="item.error" :class="$style.error" :title="item.error">{{ item.error }}</div>
+            <button v-if="item.status === 'failed'" type="button" :disabled="insightsBusyId === item.id" :class="[ui.btn, ui.btnOutline, $style.action]" @click="retryInsightsItem(item.id)">
+              {{ insightsBusyId === item.id ? 'Retrying...' : 'Retry' }}
+            </button>
+            <button v-else-if="item.status === 'cancelled'" type="button" :disabled="insightsBusyId === item.id" :class="[ui.btn, ui.btnOutline, $style.action]" @click="requeueInsightsItem(item.id)">
+              {{ insightsBusyId === item.id ? 'Re-queueing...' : 'Re-queue' }}
+            </button>
+            <button v-else-if="item.status === 'pending' || item.status === 'in_progress'" type="button" :disabled="insightsBusyId === item.id" :class="[ui.btn, ui.btnOutline, $style.action]" @click="cancelInsightsItem(item.id)">
+              {{ insightsBusyId === item.id ? 'Cancelling...' : 'Cancel' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { authorityName } from '../../../src/authorities.js';
-import { onMounted, ref } from 'vue';
-import { timeAgo, progressText } from '../utils';
-import * as api from '../api';
-import { queueItems, refreshQueue } from '../queueStore';
-import ui from '../styles/primitives.module.css';
+import { authorityName } from '../../../src/authorities.js'
+import { onMounted, ref } from 'vue'
+import { timeAgo, progressText, insightsProgressText } from '../utils'
+import * as api from '../api'
+import { queueItems, insightsQueueItems, refreshQueue } from '../queueStore'
+import ui from '../styles/primitives.module.css'
 
-const busyId = ref('');
+const busyId = ref('')
+const insightsBusyId = ref('')
 
 const clearCompletedQueue = async () => {
   try {
@@ -87,6 +133,15 @@ const clearCompletedQueue = async () => {
     console.error(e);
   }
 };
+
+const clearInsightsQueueAction = async () => {
+  try {
+    await api.clearInsightsQueue()
+    await refreshQueue()
+  } catch (e) {
+    console.error(e)
+  }
+}
 
 const runAction = async (id: string, action: (id: string) => Promise<void>) => {
   busyId.value = id;
@@ -103,6 +158,22 @@ const runAction = async (id: string, action: (id: string) => Promise<void>) => {
 const retryItem = (id: string) => runAction(id, api.retryQueueItem);
 const cancelItem = (id: string) => runAction(id, api.cancelQueueItem);
 const requeueItem = (id: string) => runAction(id, api.requeueQueueItem);
+
+const runInsightsAction = async (id: string, action: (id: string) => Promise<void>) => {
+  insightsBusyId.value = id
+  try {
+    await action(id)
+    await refreshQueue()
+  } catch (e) {
+    console.error(e)
+  } finally {
+    insightsBusyId.value = ''
+  }
+}
+
+const retryInsightsItem = (id: string) => runInsightsAction(id, api.retryInsightsQueueItem)
+const cancelInsightsItem = (id: string) => runInsightsAction(id, api.cancelInsightsQueueItem)
+const requeueInsightsItem = (id: string) => runInsightsAction(id, api.requeueInsightsQueueItem)
 
 onMounted(() => {
   document.title = 'PlanBrowser | Queue';

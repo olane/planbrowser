@@ -558,10 +558,17 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick, useCssModule } from 'vue';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { timeAgo, progressText, isKeyDocument, shortDocumentName } from '../utils';
+import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick, useCssModule } from 'vue'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+import {
+  timeAgo,
+  progressText,
+  insightsProgressText,
+  insightsProgressPercent as insightsPercent,
+  isKeyDocument,
+  shortDocumentName,
+} from '../utils'
 import type {
   ApplicationMeta,
   ApplicationInsights,
@@ -571,16 +578,16 @@ import type {
   DocumentSearchHit,
   DocumentSnippet,
   InsightImageKind,
-} from '../../../src/types.js';
-import { KIND_ORDER, KIND_GROUP_LABELS, kindLabel } from '../../../src/insights/kinds.js';
-import { createMap } from '../map';
-import * as api from '../api';
-import { useInsights } from '../composables/useInsights';
-import DocumentList from '../components/DocumentList.vue';
-import Highlight from '../components/Highlight.vue';
-import { useRoute } from 'vue-router';
-import { queueItems } from '../queueStore';
-import ui from '../styles/primitives.module.css';
+} from '../../../src/types.js'
+import { KIND_ORDER, KIND_GROUP_LABELS, kindLabel } from '../../../src/insights/kinds.js'
+import { createMap } from '../map'
+import * as api from '../api'
+import { useInsights } from '../composables/useInsights'
+import DocumentList from '../components/DocumentList.vue'
+import Highlight from '../components/Highlight.vue'
+import { useRoute } from 'vue-router'
+import { queueItems } from '../queueStore'
+import ui from '../styles/primitives.module.css'
 
 const route = useRoute();
 const styles = useCssModule();
@@ -656,19 +663,13 @@ const tabClass = (tab: string) => (activeTab.value === tab ? styles.tabActive : 
 
 // Live progress text and bar while a scan runs, from the streamed counters.
 const insightsProgressLabel = computed(() => {
-  const p = insightsProgress.value;
-  if (!p || p.documentsTotal === 0) {
-    return '';
-  }
-  return `Scanning ${Math.min(p.documentsAnalysed, p.documentsTotal)} of ${p.documentsTotal} documents`;
-});
+  const p = insightsProgress.value
+  return p ? insightsProgressText(p) : ''
+})
 const insightsProgressPercent = computed<number | null>(() => {
-  const p = insightsProgress.value;
-  if (!p || p.documentsTotal === 0) {
-    return null;
-  }
-  return Math.min(100, Math.round((p.documentsAnalysed / p.documentsTotal) * 100));
-});
+  const p = insightsProgress.value
+  return p ? insightsPercent(p) : null
+})
 
 // The image list currently on show: the curated highlights, or every distinct
 // candidate found before the selection caps.

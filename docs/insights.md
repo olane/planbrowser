@@ -154,7 +154,8 @@ boundaries:
   page-facts store over it). Plain data out.
 - **Interpretation** — `keywords.ts` (document profile), `title.ts`, `classify.ts`, `pages.ts`,
   `select.ts`: pure functions over page facts, unit-tested with synthetic inputs.
-- **Orchestration** — `generate.ts` (the pipeline) and `jobs.ts` (background runs and API state).
+- **Orchestration** — `generate.ts` (the pipeline), `queue.ts` (serial background runs, progress and
+  cancellation) and `jobs.ts` (API state on top of the queue).
 
 A second strategy (e.g. a vision pass over the top-K thumbnails) would slot in as another
 interpretation step over the same cached facts; add an interface when there are two
@@ -165,7 +166,9 @@ implementations, not before.
 - No generic plugin/registry framework, no dynamic loading, no abstract base classes.
 - No per-feature interface: features stay plain pure functions in a listed array; only the
   **set and weights** live in one config object so tuning is localized.
-- No queue/worker abstraction beyond reusing what already exists (`src/queue.ts`).
+- No generic worker framework. Downloads and insights each have a small purpose-built queue
+  (`src/queue.ts`, `src/insights/queue.ts`); the insights queue is the seam for future automatic
+  scanning of downloaded applications.
 - No schema gymnastics: `ApplicationInsights` grows additively; the UI reads generic fields
   (`kind`, `score`, `label`), so a new strategy never needs UI changes.
 - Keep the API contract strategy-agnostic; expose `strategy` only as debug metadata.
@@ -215,8 +218,11 @@ Added to `src/app.ts` (or a small router under `src/insights/`, mirroring
 `src/search/routes.ts`):
 
 - `GET  /api/applications/:ref/insights` — cached insights, or `{ status: 'none' }`.
-- `POST /api/applications/:ref/insights` — generate. Route through a small dedicated queue
-  (or the existing `downloadQueue`) so rasterising many pages does not block other requests.
+- `POST /api/applications/:ref/insights` — queue a generation on the serial insights queue.
+  Returns immediately; the GET above reports progress and the result.
+- `GET  /api/insights/queue` — queued/in-flight/finished scans with their live progress.
+- `POST /api/insights/queue/clear` — drop finished items.
+- `POST /api/insights/queue/:id/{retry,cancel,requeue}` — manage a scan.
 - `GET  /api/applications/:ref/insights/images/:file` — serve a thumbnail (scoped to the
   `insights/` directory, so the whole `downloads/` tree is not exposed beyond the existing
   `/api/documents` static route).
@@ -324,7 +330,8 @@ and the v12/v14 reviews — is in the git log.)
   precision, recall, kind accuracy and a rank metric for both the highlights and `found`. The eval
   lists bad highlights and missed good pages; `npm run insights:labels -- labels.json` merges a
   contact-sheet download into `samples.expected.json`.
-- **Structure.** `jobs.ts` holds background runs and API state; `generate.ts` is the pipeline;
+- **Structure.** `queue.ts` serialises background runs and tracks their progress; `jobs.ts`
+  derives API state from the queue plus the cache; `generate.ts` is the pipeline;
   budgets are two objects. A synthetic-PDF fixture (`__fixtures__/pdf.ts`) drives end-to-end
   tests (`pipeline.test.ts`) including cold-vs-warm equivalence.
 
@@ -384,7 +391,8 @@ src/insights/
   summary.ts         # headline, points, metrics, comment tally
   cache.ts           # insights.json + content-addressed assets
   generate.ts        # the pipeline
-  jobs.ts            # background generation + API state
+  queue.ts           # serial scan queue, progress, cancellation, partial snapshots
+  jobs.ts            # API state derived from the queue + cache
   routes.ts          # insights endpoints
   routes.review.ts   # review endpoints (labels store + rejected-page render + download)
   labels.ts          # labels: read/merge/validate for the truth file and review store
@@ -420,12 +428,18 @@ the DAS, 8 photo pages, 240 pre-scanned pages; deep 120 / 120, 6 / 12 / 20, 16 p
 pre-scanned. Thumbnails are 1400 px wide.
 
 Notes / known rough edges:
-- A cold generation is CPU-heavy (~1 min for a 94-document application); it runs in the
-  background and the UI polls, but there is no cross-process queue. Warm re-runs are near-instant.
+- A cold generation is CPU-heavy (~1 min for a 94-document application). Scans run through a
+  serial in-process queue (`queue.ts`) shared by manual scans and automatic refreshes, so the UI
+  can show pending work and two scans never compete for CPU. There is no cross-process queue.
+  Warm re-runs are near-instant.
 - **Live progress and streaming partials.** While a run is in flight the `GET` reports live
-  counters (`progress`: documents analysed/total, pages rendered) and, when there is no complete
-  result to fall back on, a partial snapshot the pipeline publishes (throttled to ~2 s) via
-  `onSnapshot`. The UI shows a determinate progress bar and fills the gallery as images are found.
+  counters and, when there is no complete result to fall back on, a partial snapshot the pipeline
+  publishes (throttled to ~2 s) via `onSnapshot`. `documentsTotal` is the documents the run
+  actually plans to scan (ranked and eligible, after the document cap), not the application's
+  whole document list; `documentsProcessed` drives the bar and reaches the total even when a page
+  or photo budget cuts a document short. `phase` distinguishes scanning from the final thumbnail
+  pass; `currentDocument` and `currentPage`/`currentDocumentPages` label the work in flight. The
+  UI shows a determinate progress bar and fills the gallery as images are found.
   Partial snapshots are held in memory only and marked `complete: false`; the on-disk cache always
   holds the last *complete* result, so a refresh keeps the previous result on screen while a first
   generation streams in, and an interrupted run is refreshed rather than served (`isCurrent`
@@ -660,8 +674,9 @@ Note the portal host matters if you are probing by hand: it is
 3. **Current state (2026-10):** heuristic strategy **v14**; `INSIGHTS_VERSION` 2;
    `FEATURES_VERSION` 1. Page facts are cached, so re-interpretation is cheap. The pipeline
    persists curated `images` (with a `reason` each) plus the full `found` set and `coverage`, and
-   supports a user-triggered `deep` scan. A run reports live progress and streams partial results
-   to the UI (in-memory, `complete: false`) while the on-disk cache holds only complete results.
+   supports a user-triggered `deep` scan. Scans are serialised by `queue.ts` (shared with automatic
+   refreshes) and report live progress plus partial results to the UI (in-memory, `complete:
+   false`) while the on-disk cache holds only complete results.
    Page titles beat document names; the DAS is prioritised;
    appendix figure books are excluded; render-vs-photo is read from the image caption. The UI is a
    **last, beta "Insights" tab** (no auto-open); the `/review` labelling tool collects verdicts

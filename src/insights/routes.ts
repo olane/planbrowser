@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { resolveAuthority } from '../authorities.js';
 import { resolveApplicationMeta } from '../storage.js';
 import { getInsightsState, startInsights } from './jobs.js';
+import { insightsQueue } from './queue.js';
 import { insightsDir, isValidAssetFile } from './cache.js';
 
 export const insightsRouter = Router();
@@ -53,6 +54,42 @@ insightsRouter.post('/api/applications/:ref/insights', (req, res) => {
   }
   startInsights(req.params.ref, authorityId, { force: true, deep: req.body?.deep === true });
   res.json({ status: 'running' });
+});
+
+insightsRouter.get('/api/insights/queue', (req, res) => {
+  res.json(insightsQueue.getQueue());
+});
+
+insightsRouter.post('/api/insights/queue/clear', (req, res) => {
+  insightsQueue.clearFinished();
+  res.json({ success: true });
+});
+
+insightsRouter.post('/api/insights/queue/:id/retry', (req, res) => {
+  const item = insightsQueue.retry(req.params.id);
+  if (!item) {
+    res.status(404).json({ error: 'Failed insights item not found' });
+    return;
+  }
+  res.json({ success: true, item });
+});
+
+insightsRouter.post('/api/insights/queue/:id/cancel', (req, res) => {
+  const item = insightsQueue.cancel(req.params.id);
+  if (!item) {
+    res.status(404).json({ error: 'Cancellable insights item not found' });
+    return;
+  }
+  res.json({ success: true, item });
+});
+
+insightsRouter.post('/api/insights/queue/:id/requeue', (req, res) => {
+  const item = insightsQueue.requeue(req.params.id);
+  if (!item) {
+    res.status(404).json({ error: 'Cancelled insights item not found' });
+    return;
+  }
+  res.json({ success: true, item });
 });
 
 // Serve a generated thumbnail. Only content-addressed asset names are accepted,
