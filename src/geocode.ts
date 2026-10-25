@@ -1,9 +1,8 @@
 import type { ApplicationLocation } from './types.js';
-import { extractPostcode } from './postcode.js';
+import { extractPostcode, normalizePostcode } from './postcode.js';
 
-// Free, keyless UK postcode lookup used as a fallback when an authority's map
-// server yields no site geometry. A postcode only resolves to a centroid, so
-// this is intentionally approximate and never preferred over scraped geometry.
+// Free, keyless UK postcode lookup. A postcode only resolves to a centroid, so
+// results are intentionally approximate and never preferred over scraped geometry.
 const POSTCODES_IO_URL = 'https://api.postcodes.io/postcodes';
 
 interface PostcodeCoordinates {
@@ -26,24 +25,35 @@ async function requestPostcode(postcode: string, fetchFn: typeof fetch = fetch):
   }
 }
 
+export interface PostcodePoint {
+  lat: number;
+  lon: number;
+}
+
+export async function geocodePostcode(postcode: string, fetchFn: typeof fetch = fetch): Promise<PostcodePoint | null> {
+  const coords = await requestPostcode(normalizePostcode(postcode), fetchFn);
+  if (!coords) return null;
+  return { lat: coords.latitude, lon: coords.longitude };
+}
+
 // Resolve a scraped application address to a location by geocoding the postcode
 // embedded in it. Returns null when the address has no recognisable postcode or
 // the lookup fails, so callers can treat it as a pure best-effort fallback.
 export async function locationFromAddress(address: string, fetchFn: typeof fetch = fetch): Promise<ApplicationLocation | null> {
   const postcode = extractPostcode(address);
   if (!postcode) return null;
-  const coords = await requestPostcode(postcode, fetchFn);
+  const coords = await geocodePostcode(postcode, fetchFn);
   if (!coords) return null;
   return {
-    center: { lat: coords.latitude, lon: coords.longitude },
+    center: coords,
     // A postcode lookup has no site geometry, so collapse the bbox to the
     // resolved point. Downstream consumers pad tiny bboxes before rendering, so
     // they treat this as a point marker rather than a fabricated area.
     bbox: {
-      minLon: coords.longitude,
-      maxLon: coords.longitude,
-      minLat: coords.latitude,
-      maxLat: coords.latitude
+      minLon: coords.lon,
+      maxLon: coords.lon,
+      minLat: coords.lat,
+      maxLat: coords.lat
     },
     source: 'postcode'
   };

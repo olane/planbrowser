@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import { searchPlanIt } from './planit.js';
+import { geocodePostcode } from './geocode.js';
 import { getApplications, getApplication } from './storage.js';
 import { downloadQueue } from './queue.js';
 import { resolveAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
@@ -63,6 +64,19 @@ export function createApp(): express.Express {
       const sort = sanitizeSort({ field: req.query.sort, order: req.query.order });
       const data = await searchPlanIt(postcode, radius, filters, sort);
       res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/geocode', async (req, res) => {
+    try {
+      const postcode = typeof req.query.postcode === 'string' ? req.query.postcode : '';
+      if (!postcode.trim()) {
+        return res.status(400).json({ error: 'Postcode is required' });
+      }
+      const location = await geocodePostcode(postcode);
+      res.json({ location });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
