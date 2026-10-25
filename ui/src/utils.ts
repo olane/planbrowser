@@ -1,4 +1,4 @@
-import type { InsightsProgress } from '../../src/types.js'
+import type { InsightsProgress } from '../../src/types.js';
 
 export function timeAgo(dateStr: string | undefined): string {
   if (!dateStr) {
@@ -72,26 +72,34 @@ export function progressText(progress: { message: string; current?: number; tota
 // A scan processes a planned subset of the application's documents, so the
 // counters are reported against that plan rather than the whole document list.
 export function insightsProgressText(progress: InsightsProgress): string {
-  if (progress.phase === 'finalising') return 'Finishing up'
-  if (progress.documentsTotal === 0) return 'No documents to scan'
-  const current = progress.currentDocument ? progress.documentsProcessed + 1 : progress.documentsProcessed
-  const index = Math.min(current, progress.documentsTotal)
+  if (progress.phase === 'finalising') {
+    return 'Finishing up';
+  }
+  if (progress.documentsTotal === 0) {
+    return 'No documents to scan';
+  }
+  const current = progress.currentDocument ? progress.documentsProcessed + 1 : progress.documentsProcessed;
+  const index = Math.min(current, progress.documentsTotal);
   const page =
     progress.currentDocumentPages && progress.currentDocumentPages > 1
       ? ` — page ${progress.currentPage ?? 0} of ${progress.currentDocumentPages}`
-      : ''
-  return `Scanning ${index} of ${progress.documentsTotal} planned documents${page}`
+      : '';
+  return `Scanning ${index} of ${progress.documentsTotal} planned documents${page}`;
 }
 
 export function insightsProgressPercent(progress: InsightsProgress): number {
-  if (progress.phase === 'finalising') return 100
-  if (progress.documentsTotal === 0) return 100
+  if (progress.phase === 'finalising') {
+    return 100;
+  }
+  if (progress.documentsTotal === 0) {
+    return 100;
+  }
   // `currentPage` is the page being rendered, so only the pages before it have
   // actually finished.
-  const finishedPage = Math.max(0, (progress.currentPage ?? 1) - 1)
-  const page = progress.currentDocumentPages ? finishedPage / progress.currentDocumentPages : 0
-  const completed = progress.documentsProcessed + page
-  return Math.min(100, Math.round((completed / progress.documentsTotal) * 100))
+  const finishedPage = Math.max(0, (progress.currentPage ?? 1) - 1);
+  const page = progress.currentDocumentPages ? finishedPage / progress.currentDocumentPages : 0;
+  const completed = progress.documentsProcessed + page;
+  return Math.min(100, Math.round((completed / progress.documentsTotal) * 100));
 }
 
 type StatusTone = 'red' | 'green' | 'blue';

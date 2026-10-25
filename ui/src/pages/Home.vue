@@ -141,16 +141,15 @@ const scopeOptions: { key: ScopeKey; label: string; scope: SyncScope; titlePart:
 ];
 const scopeMeta = (key: ScopeKey) => scopeOptions.find((o) => o.key === key)!;
 
-const isScopeKey = (v: string | null): v is ScopeKey =>
-  v === 'all' || v === 'starred' || v === 'awaitingDecision'
-import { refreshQueue, activeDownloadCount, getQueueStatus } from '../queueStore'
-import { useApplications } from '../composables/useApplications'
-import { useApplicationsMap } from '../composables/useApplicationsMap'
-import * as api from '../api'
-import { useRouter } from 'vue-router'
-import ApplicationsMapPanel from '../components/ApplicationsMapPanel.vue'
-import ApplicationCard from '../components/ApplicationCard.vue'
-import ui from '../styles/primitives.module.css'
+const isScopeKey = (v: string | null): v is ScopeKey => v === 'all' || v === 'starred' || v === 'awaitingDecision';
+import { refreshQueue, activeDownloadCount, getQueueStatus } from '../queueStore';
+import { useApplications } from '../composables/useApplications';
+import { useApplicationsMap } from '../composables/useApplicationsMap';
+import * as api from '../api';
+import { useRouter } from 'vue-router';
+import ApplicationsMapPanel from '../components/ApplicationsMapPanel.vue';
+import ApplicationCard from '../components/ApplicationCard.vue';
+import ui from '../styles/primitives.module.css';
 
 const router = useRouter();
 
@@ -169,11 +168,11 @@ const syncError = ref('');
 
 const awaitingDecisionCount = computed(
   () => downloadedApps.value.filter((a) => !a.archived && isAwaitingDecision(a)).length,
-)
-const starredCount = computed(() => downloadedApps.value.filter((a) => !a.archived && a.starred).length)
-const everythingCount = computed(() => downloadedApps.value.filter((a) => !a.archived).length)
-const hasSyncCandidates = computed(() => everythingCount.value > 0 || activeDownloadCount.value > 0)
-const queueBusy = computed(() => activeDownloadCount.value > 0 && !queueing.value)
+);
+const starredCount = computed(() => downloadedApps.value.filter((a) => !a.archived && a.starred).length);
+const everythingCount = computed(() => downloadedApps.value.filter((a) => !a.archived).length);
+const hasSyncCandidates = computed(() => everythingCount.value > 0 || activeDownloadCount.value > 0);
+const queueBusy = computed(() => activeDownloadCount.value > 0 && !queueing.value);
 
 const syncOptions = scopeOptions.map(({ key, label }) => ({ key, label }));
 const scopeCount = (key: ScopeKey) =>

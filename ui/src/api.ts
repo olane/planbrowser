@@ -172,13 +172,17 @@ export async function requeueQueueItem(id: string): Promise<void> {
 
 export async function fetchInsightsQueue(): Promise<InsightsQueueItem[]> {
   const res = await fetch('/api/insights/queue');
-  if (!res.ok) throw new Error('Failed to fetch insights queue');
+  if (!res.ok) {
+    throw new Error('Failed to fetch insights queue');
+  }
   return res.json();
 }
 
 export async function clearInsightsQueue(): Promise<void> {
   const res = await fetch('/api/insights/queue/clear', { method: 'POST' });
-  if (!res.ok) throw new Error('Failed to clear insights queue');
+  if (!res.ok) {
+    throw new Error('Failed to clear insights queue');
+  }
 }
 
 export async function retryInsightsQueueItem(id: string): Promise<void> {

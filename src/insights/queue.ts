@@ -4,7 +4,7 @@ import { generateInsights, type GenerateOptions } from './generate.js';
 type GenerateFn = (
   reference: string,
   authorityId?: string,
-  opts?: GenerateOptions
+  opts?: GenerateOptions,
 ) => Promise<ApplicationInsights | null>;
 
 interface InsightsQueueOptions {
@@ -52,7 +52,9 @@ export class InsightsQueue {
 
   enqueue(reference: string, authorityId?: string, options: EnqueueOptions = {}): InsightsQueueItem {
     let item = this.items.find((entry) => entry.reference === reference);
-    if (options.force) this.suppressed.delete(reference);
+    if (options.force) {
+      this.suppressed.delete(reference);
+    }
 
     if (item && item.status === 'in_progress') {
       // A run is already underway. A manual request joins it, and any upgrade
@@ -62,7 +64,7 @@ export class InsightsQueue {
         const followUp = this.followUps.get(reference);
         this.followUps.set(reference, {
           deep: item.depth === 'deep' || Boolean(options.deep) || Boolean(followUp?.deep),
-          force: Boolean(options.force) || Boolean(followUp?.force)
+          force: Boolean(options.force) || Boolean(followUp?.force),
         });
       }
       this.failures.delete(reference);
@@ -70,10 +72,14 @@ export class InsightsQueue {
     }
 
     if (item && item.status === 'pending') {
-      if (options.deep) item.depth = 'deep';
+      if (options.deep) {
+        item.depth = 'deep';
+      }
     } else if (item) {
       this.resetToPending(item);
-      if (options.deep !== undefined) item.depth = options.deep ? 'deep' : 'quick';
+      if (options.deep !== undefined) {
+        item.depth = options.deep ? 'deep' : 'quick';
+      }
     } else {
       item = {
         id: Math.random().toString(36).substring(2, 9),
@@ -81,13 +87,17 @@ export class InsightsQueue {
         ...(authorityId ? { authorityId } : {}),
         depth: options.deep ? 'deep' : 'quick',
         status: 'pending',
-        enqueuedAt: new Date().toISOString()
+        enqueuedAt: new Date().toISOString(),
       };
       this.items.push(item);
     }
 
-    if (authorityId) item.authorityId = authorityId;
-    if (options.force) this.forced.add(reference);
+    if (authorityId) {
+      item.authorityId = authorityId;
+    }
+    if (options.force) {
+      this.forced.add(reference);
+    }
     this.failures.delete(reference);
     this.snapshots.delete(reference);
     this.kick();
@@ -100,11 +110,13 @@ export class InsightsQueue {
       pending: 1,
       completed: 2,
       failed: 2,
-      cancelled: 2
+      cancelled: 2,
     };
     return [...this.items].sort((a, b) => {
       const byStatus = statusOrder[a.status] - statusOrder[b.status];
-      if (byStatus !== 0) return byStatus;
+      if (byStatus !== 0) {
+        return byStatus;
+      }
       return a.enqueuedAt.localeCompare(b.enqueuedAt);
     });
   }
@@ -112,7 +124,7 @@ export class InsightsQueue {
   // The item currently queued or running for a reference, if any.
   getActive(reference: string): InsightsQueueItem | undefined {
     return this.items.find(
-      (item) => item.reference === reference && (item.status === 'pending' || item.status === 'in_progress')
+      (item) => item.reference === reference && (item.status === 'pending' || item.status === 'in_progress'),
     );
   }
 
@@ -132,7 +144,9 @@ export class InsightsQueue {
 
   retry(id: string): InsightsQueueItem | undefined {
     const item = this.items.find((entry) => entry.id === id);
-    if (!item || item.status !== 'failed') return undefined;
+    if (!item || item.status !== 'failed') {
+      return undefined;
+    }
     this.resetToPending(item);
     this.forced.add(item.reference);
     this.suppressed.delete(item.reference);
@@ -147,7 +161,9 @@ export class InsightsQueue {
   // partial result is discarded and the previous complete cache is untouched.
   cancel(id: string): InsightsQueueItem | undefined {
     const item = this.items.find((entry) => entry.id === id);
-    if (!item || (item.status !== 'pending' && item.status !== 'in_progress')) return undefined;
+    if (!item || (item.status !== 'pending' && item.status !== 'in_progress')) {
+      return undefined;
+    }
 
     const wasInProgress = item.status === 'in_progress';
     item.status = 'cancelled';
@@ -170,7 +186,9 @@ export class InsightsQueue {
 
   requeue(id: string): InsightsQueueItem | undefined {
     const item = this.items.find((entry) => entry.id === id);
-    if (!item || item.status !== 'cancelled') return undefined;
+    if (!item || item.status !== 'cancelled') {
+      return undefined;
+    }
     this.resetToPending(item);
     this.forced.add(item.reference);
     this.suppressed.delete(item.reference);
@@ -182,7 +200,7 @@ export class InsightsQueue {
 
   clearFinished(): void {
     this.items = this.items.filter(
-      (item) => item.status !== 'completed' && item.status !== 'failed' && item.status !== 'cancelled'
+      (item) => item.status !== 'completed' && item.status !== 'failed' && item.status !== 'cancelled',
     );
   }
 
@@ -197,18 +215,24 @@ export class InsightsQueue {
   }
 
   private kick(): void {
-    if (this.autoStart) setImmediate(() => this.process());
+    if (this.autoStart) {
+      setImmediate(() => this.process());
+    }
   }
 
   private async process(): Promise<void> {
-    if (this.isProcessing) return;
+    if (this.isProcessing) {
+      return;
+    }
     this.isProcessing = true;
 
     try {
       while (true) {
         // Match the order the UI shows: earliest enqueued pending item first.
         const item = this.getQueue().find((entry) => entry.status === 'pending');
-        if (!item) break;
+        if (!item) {
+          break;
+        }
 
         const runId = ++this.currentRunId;
         const abort = new AbortController();
@@ -225,13 +249,19 @@ export class InsightsQueue {
             deep: item.depth === 'deep',
             signal: abort.signal,
             onProgress: (progress) => {
-              if (this.currentRunId === runId && item.status === 'in_progress') item.progress = progress;
+              if (this.currentRunId === runId && item.status === 'in_progress') {
+                item.progress = progress;
+              }
             },
             onSnapshot: (snapshot) => {
-              if (this.currentRunId !== runId) return;
+              if (this.currentRunId !== runId) {
+                return;
+              }
               this.snapshots.set(ref, snapshot);
-              if (snapshot.progress) item.progress = snapshot.progress;
-            }
+              if (snapshot.progress) {
+                item.progress = snapshot.progress;
+              }
+            },
           });
           if (this.currentRunId === runId && item.status === 'in_progress') {
             item.status = 'completed';
@@ -265,7 +295,9 @@ export class InsightsQueue {
               this.followUps.delete(ref);
               this.resetToPending(item);
               item.depth = followUp.deep ? 'deep' : 'quick';
-              if (followUp.force) this.forced.add(ref);
+              if (followUp.force) {
+                this.forced.add(ref);
+              }
               this.failures.delete(ref);
             }
           }

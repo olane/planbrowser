@@ -7,13 +7,15 @@ const progress = (processed: number, total: number): InsightsProgress => ({
   documentsAnalysed: processed,
   documentsProcessed: processed,
   documentsTotal: total,
-  pagesRendered: processed
+  pagesRendered: processed,
 });
 
 async function waitFor(predicate: () => boolean, timeoutMs = 1000): Promise<void> {
   const started = Date.now();
   while (!predicate()) {
-    if (Date.now() - started > timeoutMs) throw new Error('Timed out waiting for the queue');
+    if (Date.now() - started > timeoutMs) {
+      throw new Error('Timed out waiting for the queue');
+    }
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
 }
@@ -49,7 +51,7 @@ describe('InsightsQueue', () => {
         await new Promise((resolve) => setTimeout(resolve, 5));
         active--;
         return null;
-      }
+      },
     });
 
     queue.enqueue('24/0001/FUL');
@@ -64,9 +66,11 @@ describe('InsightsQueue', () => {
     let fail = true;
     const queue = new InsightsQueue({
       generate: async () => {
-        if (fail) throw new Error('boom');
+        if (fail) {
+          throw new Error('boom');
+        }
         return null;
-      }
+      },
     });
 
     const item = queue.enqueue('24/0001/FUL');
@@ -90,9 +94,11 @@ describe('InsightsQueue', () => {
     const queue = new InsightsQueue({
       generate: async (_reference, _authority, options) => {
         runs.push({ deep: options?.deep, force: options?.force });
-        if (runs.length === 1) await gate;
+        if (runs.length === 1) {
+          await gate;
+        }
         return null;
-      }
+      },
     });
 
     const item = queue.enqueue('24/0001/FUL', undefined, { force: true });
@@ -124,7 +130,7 @@ describe('InsightsQueue', () => {
             error.name = 'AbortError';
             reject(error);
           });
-        })
+        }),
     });
 
     const item = queue.enqueue('24/0001/FUL');
@@ -155,7 +161,7 @@ describe('InsightsQueue', () => {
       '24/0002/FUL',
       '24/0001/FUL',
       '24/0003/FUL',
-      '24/0004/FUL'
+      '24/0004/FUL',
     ]);
   });
 
@@ -177,7 +183,7 @@ describe('InsightsQueue', () => {
     const queue = new InsightsQueue({
       generate: async () => {
         throw new Error('boom');
-      }
+      },
     });
     const item = queue.enqueue('24/0001/FUL');
     await waitFor(() => item.status === 'failed');

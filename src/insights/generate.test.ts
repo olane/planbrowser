@@ -70,7 +70,7 @@ describe('generateInsights caching', () => {
     const progress: InsightsProgress[] = [];
     await generateInsights(REFERENCE, undefined, {
       force: true,
-      onProgress: (entry) => progress.push(entry)
+      onProgress: (entry) => progress.push(entry),
     });
 
     // The only document is a .txt file, so the scan plan is empty even though

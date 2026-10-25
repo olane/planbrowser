@@ -98,7 +98,9 @@ export interface GenerateOptions {
 }
 
 function abortIfCancelled(signal: AbortSignal | undefined): void {
-  if (!signal?.aborted) return;
+  if (!signal?.aborted) {
+    return;
+  }
   const error = new Error('Insights generation cancelled');
   error.name = 'AbortError';
   throw error;
@@ -198,10 +200,12 @@ export function rankDocuments(docs: DocumentMeta[]): { doc: DocumentMeta; profil
 // set), so it starts at a meaningful total and reaches it when the run ends.
 function planDocuments(
   ranked: { doc: DocumentMeta; profile: DocumentProfile }[],
-  budget: Budget
+  budget: Budget,
 ): { doc: DocumentMeta; profile: DocumentProfile }[] {
   return ranked.slice(0, budget.maxDocs).filter(({ doc, profile }) => {
-    if (!isPdf(doc.localFilename)) return false;
+    if (!isPdf(doc.localFilename)) {
+      return false;
+    }
     const { frontPages } = documentRole(profile);
     return frontPages || Boolean(profile.visualName);
   });
@@ -441,9 +445,7 @@ export async function generateInsights(
     documentsTotal: planned.length,
     pagesRendered: counters.pagesRendered,
     ...(currentDocument ? { currentDocument } : {}),
-    ...(currentPage !== undefined && currentDocumentPages !== undefined
-      ? { currentPage, currentDocumentPages }
-      : {}),
+    ...(currentPage !== undefined && currentDocumentPages !== undefined ? { currentPage, currentDocumentPages } : {}),
   });
 
   // Build an ApplicationInsights from the candidates gathered so far. Used for
