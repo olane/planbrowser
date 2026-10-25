@@ -29,7 +29,7 @@ if (process.env.PLANBROWSER_SCRAPER_MODE === '1') {
     win.webContents.setUserAgent(
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     );
-    win.loadURL('about:blank');
+    return win.loadURL('about:blank');
   });
 } else {
   // Ensure a stable app name regardless of how Electron is launched (dev vs
@@ -68,6 +68,7 @@ if (process.env.PLANBROWSER_SCRAPER_MODE === '1') {
       app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow(port);
       });
+      return undefined;
     });
   }
 
