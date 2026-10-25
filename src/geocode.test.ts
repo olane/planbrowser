@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { locationFromAddress } from './geocode.js';
+import { geocodePostcode, locationFromAddress } from './geocode.js';
 
 type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -15,6 +15,19 @@ function stubFetch(handler: (url: string) => Response | Promise<Response>): Fetc
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
+
+describe('geocodePostcode', () => {
+  it('resolves a postcode to a point after normalising it', async () => {
+    const fetch = stubFetch(() => jsonResponse({ result: { latitude: 52.2037, longitude: 0.1178 } }));
+    await expect(geocodePostcode('cb21rh', fetch)).resolves.toEqual({ lat: 52.2037, lon: 0.1178 });
+    expect(fetch.calls[0]).toContain('CB2%201RH');
+  });
+
+  it('returns null when the lookup fails', async () => {
+    const fetch = stubFetch(() => jsonResponse({ status: 404, error: 'Postcode not found' }, 404));
+    await expect(geocodePostcode('CB2 1RH', fetch)).resolves.toBeNull();
+  });
+});
 
 describe('locationFromAddress', () => {
   it('resolves a postcode from the address to a point location', async () => {

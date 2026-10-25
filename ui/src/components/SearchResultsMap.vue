@@ -27,7 +27,10 @@ import {
   type LegendEntry
 } from '../mapColours'
 
-const props = defineProps<{ results: PlanItRecord[] }>()
+const props = defineProps<{
+  results: PlanItRecord[]
+  area?: { lat: number; lon: number; radiusKm: number } | null
+}>()
 const emit = defineEmits<{ select: [uid: string] }>()
 
 const styles = useCssModule()
@@ -35,6 +38,7 @@ const styles = useCssModule()
 const mapEl = ref<HTMLDivElement | null>(null)
 let map: L.Map | null = null
 let markerLayer: L.LayerGroup | null = null
+let areaLayer: L.Circle | null = null
 
 const { colorMode, setColorMode } = useMapColorMode('planbrowser.mapColorMode.search', 'type')
 
@@ -68,12 +72,29 @@ const points = computed(() => {
 let markersByUid = new Map<string, L.Marker>()
 let activeUid: string | null = null
 
-const renderMarkers = () => {
+const renderMapLayers = () => {
   if (!map || !markerLayer) return
   markerLayer.clearLayers()
   markersByUid = new Map()
-  if (points.value.length === 0) return
-  const bounds = L.latLngBounds(points.value.map(p => [p.lat, p.lon] as L.LatLngExpression))
+  if (areaLayer) {
+    map.removeLayer(areaLayer)
+    areaLayer = null
+  }
+
+  const bounds = L.latLngBounds([])
+
+  if (props.area && props.area.radiusKm > 0) {
+    areaLayer = L.circle([props.area.lat, props.area.lon], {
+      radius: props.area.radiusKm * 1000,
+      color: '#2563eb',
+      weight: 1.5,
+      fillColor: '#3b82f6',
+      fillOpacity: 0.08,
+      interactive: false
+    }).addTo(map)
+    bounds.extend(areaLayer.getBounds())
+  }
+
   for (const p of points.value) {
     const popupContent = `<div class="${styles.popup}">
       <div class="${styles.popupUid}">${escapeHtml(p.rec.uid)}</div>
@@ -88,8 +109,12 @@ const renderMarkers = () => {
       const link = e.popup.getElement()?.querySelector('.jump-link') as HTMLElement | null
       if (link) link.onclick = () => emit('select', p.rec.uid)
     })
+    bounds.extend([p.lat, p.lon] as L.LatLngExpression)
   }
-  map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 })
+
+  if (bounds.isValid()) {
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 })
+  }
 }
 
 const focus = (uid: string) => {
@@ -113,10 +138,11 @@ onMounted(() => {
   if (!mapEl.value) return
   map = createMap(mapEl.value)
   markerLayer = L.layerGroup().addTo(map)
-  renderMarkers()
+  renderMapLayers()
 })
 
-watch(() => props.results, () => renderMarkers())
+watch(() => props.results, () => renderMapLayers())
+watch(() => props.area, () => renderMapLayers())
 
 // Recolour in place so switching mode doesn't re-fit/reset the current view.
 watch(colorMode, () => {
@@ -130,6 +156,7 @@ onBeforeUnmount(() => {
   map?.remove()
   map = null
   markerLayer = null
+  areaLayer = null
 })
 </script>
 

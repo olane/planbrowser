@@ -52,6 +52,14 @@ export async function searchPlanIt(postcode: string, radius: string, filters: Se
   return res.json();
 }
 
+export async function geocodePostcode(postcode: string): Promise<{ lat: number; lon: number } | null> {
+  const params = new URLSearchParams({ postcode });
+  const res = await fetch(`/api/geocode?${params.toString()}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.location ?? null;
+}
+
 export async function downloadApplication(reference: string, authority?: string): Promise<void> {
   const res = await fetch('/api/download', {
     method: 'POST',
