@@ -98,7 +98,9 @@ const polygonStyle = (app: ApplicationMeta): L.PathOptions => {
 const setPolygonHighlight = (app: ApplicationMeta, highlighted: boolean) => {
   for (const polygon of polygonsByRef.get(app.reference) ?? []) {
     polygon.setStyle(highlighted ? { ...polygonStyle(app), weight: 5, fillOpacity: 0.35 } : polygonStyle(app));
-    if (highlighted) polygon.bringToFront();
+    if (highlighted) {
+      polygon.bringToFront();
+    }
   }
 };
 
@@ -106,20 +108,26 @@ const bindInteractions = (layer: L.Layer, app: ApplicationMeta) => {
   layer.bindPopup(popupContent(app));
   layer.on('popupopen', (e: L.PopupEvent) => {
     const link = e.popup.getElement()?.querySelector('.open-link') as HTMLElement | null;
-    if (link) link.addEventListener('click', () => emit('select', app.reference));
+    if (link) {
+      link.addEventListener('click', () => emit('select', app.reference));
+    }
     setPolygonHighlight(app, true);
   });
   layer.on('popupclose', () => setPolygonHighlight(app, false));
 };
 
 const renderMarkers = () => {
-  if (!map || !markerLayer || !polygonLayer) return;
+  if (!map || !markerLayer || !polygonLayer) {
+    return;
+  }
   markerLayer.clearLayers();
   polygonLayer.clearLayers();
   markersByRef = new Map();
   polygonsByRef = new Map();
   const apps = locatedApps();
-  if (apps.length === 0) return;
+  if (apps.length === 0) {
+    return;
+  }
   const bounds = L.latLngBounds([]);
   for (const app of apps) {
     const loc = app.location!;
@@ -128,7 +136,9 @@ const renderMarkers = () => {
       const polygon = L.polygon(rings, polygonStyle(app)).addTo(polygonLayer);
       bindInteractions(polygon, app);
       for (const ring of rings) {
-        for (const latlng of ring) bounds.extend(latlng);
+        for (const latlng of ring) {
+          bounds.extend(latlng);
+        }
       }
       const list = polygonsByRef.get(app.reference) ?? [];
       list.push(polygon);
@@ -145,7 +155,9 @@ const renderMarkers = () => {
 };
 
 onMounted(() => {
-  if (!mapEl.value) return;
+  if (!mapEl.value) {
+    return;
+  }
   map = createMap(mapEl.value);
   polygonLayer = L.layerGroup().addTo(map);
   markerLayer = L.layerGroup().addTo(map);

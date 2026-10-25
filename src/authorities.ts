@@ -470,24 +470,32 @@ export function resolveAuthority(idOrName: string | undefined | null): Authority
     return getAuthority(DEFAULT_AUTHORITY_ID);
   }
   const found = findAuthority(idOrName.trim().toLowerCase());
-  if (found) return found;
+  if (found) {
+    return found;
+  }
   throw new Error(
     `Unknown planning authority "${idOrName}". Supported authorities: ${AUTHORITIES.map((a) => a.id).join(', ')}`,
   );
 }
 
 export function isKnownAuthority(idOrName: string | undefined | null): boolean {
-  if (!idOrName || idOrName.trim() === '') return false;
+  if (!idOrName || idOrName.trim() === '') {
+    return false;
+  }
   return findAuthority(idOrName.trim().toLowerCase()) !== undefined;
 }
 
 export function getAuthority(id: string): AuthorityConfig {
   const found = AUTHORITIES.find((a) => a.id === id);
-  if (!found) throw new Error(`Unknown authority id "${id}"`);
+  if (!found) {
+    throw new Error(`Unknown authority id "${id}"`);
+  }
   return found;
 }
 
 export function authorityName(authorityId?: string): string | undefined {
-  if (!authorityId) return undefined;
+  if (!authorityId) {
+    return undefined;
+  }
   return AUTHORITIES.find((a) => a.id === authorityId)?.name;
 }

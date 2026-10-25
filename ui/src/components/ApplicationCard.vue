@@ -129,16 +129,28 @@ const badgeToneClass = computed(
 );
 
 const syncButtonTitle = computed(() => {
-  if (isQueued.value) return 'Queued for sync';
-  if (isSyncing.value) return 'Syncing…';
-  if (isFailed.value) return 'Sync failed — click to retry';
+  if (isQueued.value) {
+    return 'Queued for sync';
+  }
+  if (isSyncing.value) {
+    return 'Syncing…';
+  }
+  if (isFailed.value) {
+    return 'Sync failed — click to retry';
+  }
   return 'Sync this application';
 });
 
 const syncButtonColor = computed(() => {
-  if (isFailed.value) return styles.syncFailed;
-  if (isQueued.value) return styles.syncQueued;
-  if (isSyncing.value) return styles.syncSyncing;
+  if (isFailed.value) {
+    return styles.syncFailed;
+  }
+  if (isQueued.value) {
+    return styles.syncQueued;
+  }
+  if (isSyncing.value) {
+    return styles.syncSyncing;
+  }
   return styles.syncIdle;
 });
 
@@ -159,7 +171,9 @@ async function toggleStar() {
 async function toggleArchive() {
   if (!props.app.archived) {
     const ok = window.confirm(`Archive "${props.app.reference}"? It will be hidden from the main list.`);
-    if (!ok) return;
+    if (!ok) {
+      return;
+    }
   }
   saving.value = true;
   try {
@@ -173,7 +187,9 @@ async function toggleArchive() {
 }
 
 async function syncApp() {
-  if (isQueued.value || isSyncing.value) return;
+  if (isQueued.value || isSyncing.value) {
+    return;
+  }
   syncingLocal.value = true;
   try {
     await api.downloadApplication(props.app.reference, props.app.authorityId);

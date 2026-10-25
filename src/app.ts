@@ -150,8 +150,12 @@ export function createApp(): express.Express {
         }
       }
       const flags: Partial<ApplicationFlags> = {};
-      if (typeof body.starred === 'boolean') flags.starred = body.starred;
-      if (typeof body.archived === 'boolean') flags.archived = body.archived;
+      if (typeof body.starred === 'boolean') {
+        flags.starred = body.starred;
+      }
+      if (typeof body.archived === 'boolean') {
+        flags.archived = body.archived;
+      }
       const updated = setFlags(ref, authorityId, flags);
       res.json({ success: true, flags: updated });
     } catch (err: any) {
@@ -178,8 +182,12 @@ export function createApp(): express.Express {
         }
       }
       const flags: Partial<DocumentFlags> = {};
-      if (typeof body.starred === 'boolean') flags.starred = body.starred;
-      if (typeof body.note === 'string') flags.note = body.note;
+      if (typeof body.starred === 'boolean') {
+        flags.starred = body.starred;
+      }
+      if (typeof body.note === 'string') {
+        flags.note = body.note;
+      }
       const updated = setDocFlags(reference, authorityId, filename, flags);
       res.json({ success: true, flags: updated });
     } catch (err: any) {
@@ -325,7 +333,9 @@ export function createApp(): express.Express {
   if (fs.existsSync(getUiDistDir())) {
     app.use(express.static(getUiDistDir()));
     app.use((req, res, next) => {
-      if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
+      if (req.method !== 'GET' || req.path.startsWith('/api')) {
+        return next();
+      }
       // Use a root-relative sendFile: an absolute path through sendFile is
       // treated as a dotfile and rejected when the app lives under a hidden
       // directory (e.g. ~/.paseo/worktrees/...), which would 404 every route.

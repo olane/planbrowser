@@ -81,7 +81,9 @@ let markersByUid = new Map<string, L.Marker>();
 let activeUid: string | null = null;
 
 const renderMapLayers = () => {
-  if (!map || !markerLayer) return;
+  if (!map || !markerLayer) {
+    return;
+  }
   markerLayer.clearLayers();
   markersByUid = new Map();
   if (areaLayer) {
@@ -117,7 +119,9 @@ const renderMapLayers = () => {
     marker.bindPopup(popupContent);
     marker.on('popupopen', (e) => {
       const link = e.popup.getElement()?.querySelector('.jump-link') as HTMLElement | null;
-      if (link) link.addEventListener('click', () => emit('select', p.rec.uid));
+      if (link) {
+        link.addEventListener('click', () => emit('select', p.rec.uid));
+      }
     });
     bounds.extend([p.lat, p.lon] as L.LatLngExpression);
   }
@@ -128,10 +132,14 @@ const renderMapLayers = () => {
 };
 
 const focus = (uid: string) => {
-  if (!map) return;
+  if (!map) {
+    return;
+  }
   const marker = markersByUid.get(uid);
   const point = points.value.find((p) => p.rec.uid === uid);
-  if (!marker || !point) return;
+  if (!marker || !point) {
+    return;
+  }
   if (activeUid && activeUid !== uid) {
     const prev = points.value.find((p) => p.rec.uid === activeUid);
     markersByUid.get(activeUid)?.setIcon(pinIcon(prev ? markerFill(prev.rec) : appTypeColor(), PIN_CLASS));
@@ -145,7 +153,9 @@ const focus = (uid: string) => {
 defineExpose({ focus });
 
 onMounted(() => {
-  if (!mapEl.value) return;
+  if (!mapEl.value) {
+    return;
+  }
   map = createMap(mapEl.value);
   markerLayer = L.layerGroup().addTo(map);
   renderMapLayers();
@@ -163,7 +173,9 @@ watch(
 // Recolour in place so switching mode doesn't re-fit/reset the current view.
 watch(colorMode, () => {
   for (const p of points.value) {
-    if (p.rec.uid === activeUid) continue;
+    if (p.rec.uid === activeUid) {
+      continue;
+    }
     markersByUid.get(p.rec.uid)?.setIcon(pinIcon(markerFill(p.rec), PIN_CLASS));
   }
 });

@@ -41,7 +41,9 @@ export function documentPageUrl(
 
 export async function fetchApplications(): Promise<ApplicationMeta[]> {
   const res = await fetch('/api/applications');
-  if (!res.ok) throw new Error('Failed to fetch applications');
+  if (!res.ok) {
+    throw new Error('Failed to fetch applications');
+  }
   return res.json();
 }
 
@@ -81,7 +83,9 @@ export async function searchPlanIt(
 export async function geocodePostcode(postcode: string): Promise<{ lat: number; lon: number } | null> {
   const params = new URLSearchParams({ postcode });
   const res = await fetch(`/api/geocode?${params.toString()}`);
-  if (!res.ok) return null;
+  if (!res.ok) {
+    return null;
+  }
   const data = await res.json();
   return data.location ?? null;
 }
@@ -102,7 +106,9 @@ export async function fetchComments(reference: string, authorityId?: string): Pr
   const res = await fetch(
     `/api/documents/${docUrlPrefix(authorityId)}${encodeURIComponent(safeReference(reference))}/comments.json`,
   );
-  if (!res.ok) throw new Error('Failed to load comments');
+  if (!res.ok) {
+    throw new Error('Failed to load comments');
+  }
   return res.json();
 }
 
@@ -112,7 +118,9 @@ export async function searchDocuments(
   authorityId?: string,
 ): Promise<DocumentSearchHit[]> {
   const params = new URLSearchParams({ q: query });
-  if (authorityId) params.set('authority', authorityId);
+  if (authorityId) {
+    params.set('authority', authorityId);
+  }
   const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/documents/search?${params.toString()}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -124,13 +132,17 @@ export async function searchDocuments(
 
 export async function fetchQueue(): Promise<QueueItem[]> {
   const res = await fetch('/api/queue');
-  if (!res.ok) throw new Error('Failed to fetch queue');
+  if (!res.ok) {
+    throw new Error('Failed to fetch queue');
+  }
   return res.json();
 }
 
 export async function clearQueue(): Promise<void> {
   const res = await fetch('/api/queue/clear', { method: 'POST' });
-  if (!res.ok) throw new Error('Failed to clear queue');
+  if (!res.ok) {
+    throw new Error('Failed to clear queue');
+  }
 }
 
 export async function retryQueueItem(id: string): Promise<void> {
@@ -177,7 +189,9 @@ export async function setApplicationFlags(
 
 export async function fetchFeed(): Promise<ActivityEvent[]> {
   const res = await fetch('/api/feed');
-  if (!res.ok) throw new Error('Failed to fetch activity feed');
+  if (!res.ok) {
+    throw new Error('Failed to fetch activity feed');
+  }
   return res.json();
 }
 
@@ -215,7 +229,9 @@ export async function setDocumentFlags(
 
 export async function fetchSavedSearches(): Promise<SavedSearch[]> {
   const res = await fetch('/api/saved-searches');
-  if (!res.ok) throw new Error('Failed to fetch saved searches');
+  if (!res.ok) {
+    throw new Error('Failed to fetch saved searches');
+  }
   return res.json();
 }
 
@@ -239,7 +255,9 @@ export async function saveSavedSearch(input: {
 
 export async function deleteSavedSearch(id: string): Promise<void> {
   const res = await fetch(`/api/saved-searches/${encodeURIComponent(id)}`, { method: 'DELETE' });
-  if (!res.ok) throw new Error('Failed to delete saved search');
+  if (!res.ok) {
+    throw new Error('Failed to delete saved search');
+  }
 }
 
 export async function runSavedSearch(
@@ -264,7 +282,9 @@ interface InsightsResponse {
 
 export async function fetchInsights(reference: string, authorityId?: string): Promise<InsightsResponse> {
   const params = new URLSearchParams();
-  if (authorityId) params.set('authority', authorityId);
+  if (authorityId) {
+    params.set('authority', authorityId);
+  }
   const qs = params.toString();
   const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/insights${qs ? `?${qs}` : ''}`);
   if (!res.ok) {
@@ -295,7 +315,9 @@ export function insightImageUrl(reference: string, authorityId: string | undefin
 // Review labels (the endpoint 404s unless review is enabled on the server).
 export async function fetchInsightLabels(reference: string, authorityId?: string): Promise<InsightLabel[]> {
   const params = new URLSearchParams();
-  if (authorityId) params.set('authority', authorityId);
+  if (authorityId) {
+    params.set('authority', authorityId);
+  }
   const qs = params.toString();
   const res = await fetch(`/api/applications/${encodeURIComponent(reference)}/insights/labels${qs ? `?${qs}` : ''}`);
   if (!res.ok) {
@@ -352,6 +374,8 @@ export function reviewsDownloadUrl(): string {
 // pruned (rejected pages are not kept in the gallery).
 export function reviewImageUrl(reference: string, authorityId: string | undefined, file: string, page: number): string {
   const params = new URLSearchParams({ file, page: String(page) });
-  if (authorityId) params.set('authority', authorityId);
+  if (authorityId) {
+    params.set('authority', authorityId);
+  }
   return `/api/applications/${encodeURIComponent(reference)}/insights/review/image?${params.toString()}`;
 }

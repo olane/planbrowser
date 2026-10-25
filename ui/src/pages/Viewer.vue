@@ -633,11 +633,19 @@ const contentSnippets = ref<Record<string, DocumentSnippet>>({});
 const searchingContent = ref(false);
 const searchContents = ref(true);
 const getStanceClass = (stance?: string) => {
-  if (!stance) return ui.toneGray;
+  if (!stance) {
+    return ui.toneGray;
+  }
   const lower = stance.toLowerCase();
-  if (lower.includes('object')) return ui.toneRed;
-  if (lower.includes('support')) return ui.toneGreen;
-  if (lower.includes('neutral')) return ui.toneYellow;
+  if (lower.includes('object')) {
+    return ui.toneRed;
+  }
+  if (lower.includes('support')) {
+    return ui.toneGreen;
+  }
+  if (lower.includes('neutral')) {
+    return ui.toneYellow;
+  }
   return ui.toneGray;
 };
 const selectedDocType = ref('All');
@@ -649,20 +657,28 @@ const tabClass = (tab: string) => (activeTab.value === tab ? styles.tabActive : 
 // Live progress text and bar while a scan runs, from the streamed counters.
 const insightsProgressLabel = computed(() => {
   const p = insightsProgress.value;
-  if (!p || p.documentsTotal === 0) return '';
+  if (!p || p.documentsTotal === 0) {
+    return '';
+  }
   return `Scanning ${Math.min(p.documentsAnalysed, p.documentsTotal)} of ${p.documentsTotal} documents`;
 });
 const insightsProgressPercent = computed<number | null>(() => {
   const p = insightsProgress.value;
-  if (!p || p.documentsTotal === 0) return null;
+  if (!p || p.documentsTotal === 0) {
+    return null;
+  }
   return Math.min(100, Math.round((p.documentsAnalysed / p.documentsTotal) * 100));
 });
 
 // The image list currently on show: the curated highlights, or every distinct
 // candidate found before the selection caps.
 const insightSourceImages = computed<ApplicationInsights['images']>(() => {
-  if (!insights.value) return [];
-  if (insightView.value === 'all') return insights.value.found ?? insights.value.images;
+  if (!insights.value) {
+    return [];
+  }
+  if (insightView.value === 'all') {
+    return insights.value.found ?? insights.value.images;
+  }
   return insights.value.images;
 });
 
@@ -670,9 +686,13 @@ const insightSourceImages = computed<ApplicationInsights['images']>(() => {
 // order rather than by score. `available` is how many of that kind were found
 // before the selection caps, so we can flag when the group is truncated.
 const insightGroups = computed(() => {
-  if (!insights.value) return [];
+  if (!insights.value) {
+    return [];
+  }
   const availableByKind: Record<string, number> = {};
-  for (const entry of insights.value.coverage?.images ?? []) availableByKind[entry.kind] = entry.available;
+  for (const entry of insights.value.coverage?.images ?? []) {
+    availableByKind[entry.kind] = entry.available;
+  }
   const groups = new Map<InsightImageKind, ApplicationInsights['images']>();
   for (const image of insightSourceImages.value) {
     const list = groups.get(image.kind) ?? [];
@@ -698,7 +718,9 @@ const hasAllFound = computed(() => (insights.value?.found?.length ?? 0) > (insig
 
 const locationNote = computed(() => {
   const loc = app.value?.location;
-  if (!loc) return '';
+  if (!loc) {
+    return '';
+  }
   const kind = loc.polygons?.length
     ? 'Site boundary'
     : loc.source === 'wfs'
@@ -722,13 +744,17 @@ const destroyLocationMap = () => {
 const buildLocationMap = () => {
   destroyLocationMap();
   const loc = app.value?.location;
-  if (!locationMapEl.value || !loc) return;
+  if (!locationMapEl.value || !loc) {
+    return;
+  }
   const map = createMap(locationMapEl.value);
   const bounds = L.latLngBounds([]);
   for (const rings of locationPolygons(loc)) {
     L.polygon(rings, { color: '#2563eb', weight: 2, fillColor: '#2563eb', fillOpacity: 0.2 }).addTo(map);
     for (const ring of rings) {
-      for (const latlng of ring) bounds.extend(latlng);
+      for (const latlng of ring) {
+        bounds.extend(latlng);
+      }
     }
   }
   L.marker([loc.center.lat, loc.center.lon]).addTo(map);
@@ -739,7 +765,9 @@ const buildLocationMap = () => {
 
 const osmLinkUrl = computed(() => {
   const loc = app.value?.location;
-  if (!loc) return '';
+  if (!loc) {
+    return '';
+  }
   return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(loc.center.lat)}&mlon=${encodeURIComponent(loc.center.lon)}#map=17/${encodeURIComponent(loc.center.lat)}/${encodeURIComponent(loc.center.lon)}`;
 });
 
@@ -759,7 +787,9 @@ watch(
 
 onBeforeUnmount(destroyLocationMap);
 const syncApp = async () => {
-  if (!app.value) return;
+  if (!app.value) {
+    return;
+  }
   syncing.value = true;
   syncError.value = '';
   syncMessage.value = '';
@@ -776,7 +806,9 @@ const syncApp = async () => {
 const savingFlags = ref(false);
 
 const toggleStar = async () => {
-  if (!app.value) return;
+  if (!app.value) {
+    return;
+  }
   savingFlags.value = true;
   try {
     const flags = await api.setApplicationFlags(
@@ -793,10 +825,14 @@ const toggleStar = async () => {
 };
 
 const toggleArchive = async () => {
-  if (!app.value) return;
+  if (!app.value) {
+    return;
+  }
   if (!app.value.archived) {
     const ok = window.confirm(`Archive "${app.value.reference}"? It will be hidden from the main list.`);
-    if (!ok) return;
+    if (!ok) {
+      return;
+    }
   }
   savingFlags.value = true;
   try {
@@ -814,13 +850,17 @@ const toggleArchive = async () => {
 };
 
 const enhancedAppDocuments = computed<EnhancedDocument[]>(() => {
-  if (!app.value?.documents) return [];
+  if (!app.value?.documents) {
+    return [];
+  }
   // The portal (and therefore metadata.json) can list the same file more than
   // once. Collapse duplicates by filename so every rendered row has a unique
   // key — duplicate keys in a v-for break Vue's diffing and leave stale rows.
   const seen = new Set<string>();
   const unique = app.value.documents.filter((d) => {
-    if (!d.localFilename || seen.has(d.localFilename)) return false;
+    if (!d.localFilename || seen.has(d.localFilename)) {
+      return false;
+    }
     seen.add(d.localFilename);
     return true;
   });
@@ -849,17 +889,23 @@ const enhancedAppDocuments = computed<EnhancedDocument[]>(() => {
 });
 
 const keyDocs = computed(() => {
-  if (!enhancedAppDocuments.value.length) return [];
+  if (!enhancedAppDocuments.value.length) {
+    return [];
+  }
   return enhancedAppDocuments.value.filter((d) => isKeyDocument(d));
 });
 
 const favouriteDocs = computed(() => {
-  if (!enhancedAppDocuments.value.length) return [];
+  if (!enhancedAppDocuments.value.length) {
+    return [];
+  }
   return enhancedAppDocuments.value.filter((d) => d.starred);
 });
 
 const onDocChanged = (doc: EnhancedDocument, payload: { starred: boolean; note: string }) => {
-  if (!app.value) return;
+  if (!app.value) {
+    return;
+  }
   const raw = app.value.documents.find((d) => d.localFilename === doc.localFilename);
   if (raw) {
     raw.starred = payload.starred;
@@ -868,11 +914,15 @@ const onDocChanged = (doc: EnhancedDocument, payload: { starred: boolean; note: 
 };
 
 const docTypesWithCounts = computed(() => {
-  if (!enhancedAppDocuments.value.length) return [];
+  if (!enhancedAppDocuments.value.length) {
+    return [];
+  }
   const counts: Record<string, number> = { All: enhancedAppDocuments.value.length };
   enhancedAppDocuments.value.forEach((d) => {
     const type = d.documentType;
-    if (type) counts[type] = (counts[type] || 0) + 1;
+    if (type) {
+      counts[type] = (counts[type] || 0) + 1;
+    }
   });
   const types = Array.from(
     new Set(enhancedAppDocuments.value.map((d) => d.documentType).filter(Boolean)),
@@ -885,7 +935,9 @@ const docTypesWithCounts = computed(() => {
 });
 
 const commentStancesWithCounts = computed(() => {
-  if (!commentsList.value.length) return [];
+  if (!commentsList.value.length) {
+    return [];
+  }
   const counts: Record<string, number> = { All: commentsList.value.length };
   commentsList.value.forEach((c) => {
     const stance = c.stance || 'None';
@@ -917,7 +969,9 @@ const filteredComments = computed(() => {
 });
 
 const filteredDocs = computed(() => {
-  if (!enhancedAppDocuments.value.length) return [];
+  if (!enhancedAppDocuments.value.length) {
+    return [];
+  }
   let docs = enhancedAppDocuments.value;
   if (selectedDocType.value !== 'All') {
     docs = docs.filter((d) => d.documentType === selectedDocType.value);
@@ -938,15 +992,21 @@ const filteredDocs = computed(() => {
 // into the same list.
 let contentSearchTimer: ReturnType<typeof setTimeout> | null = null;
 const runContentSearch = async (query: string) => {
-  if (!app.value || !searchContents.value) return;
+  if (!app.value || !searchContents.value) {
+    return;
+  }
   searchingContent.value = true;
   try {
     const hits: DocumentSearchHit[] = await api.searchDocuments(app.value.reference, query, app.value.authorityId);
     // Ignore stale responses if the user has since changed the query or toggled
     // content search off.
-    if (!searchContents.value || docSearch.value.trim() !== query) return;
+    if (!searchContents.value || docSearch.value.trim() !== query) {
+      return;
+    }
     const snippets: Record<string, DocumentSnippet> = {};
-    for (const hit of hits) snippets[hit.localFilename] = hit.snippet;
+    for (const hit of hits) {
+      snippets[hit.localFilename] = hit.snippet;
+    }
     contentSnippets.value = snippets;
   } catch (e) {
     console.error(e);
@@ -956,7 +1016,9 @@ const runContentSearch = async (query: string) => {
 };
 
 watch([docSearch, searchContents], () => {
-  if (contentSearchTimer) clearTimeout(contentSearchTimer);
+  if (contentSearchTimer) {
+    clearTimeout(contentSearchTimer);
+  }
   const query = docSearch.value.trim();
   if (!query || !searchContents.value) {
     contentSnippets.value = {};
@@ -1001,7 +1063,9 @@ const scanMoreInsights = () => {
 
 const fetchApp = async () => {
   const refNow = refParam.value;
-  if (fetchInFlight || !refNow) return;
+  if (fetchInFlight || !refNow) {
+    return;
+  }
   fetchInFlight = true;
   try {
     const fresh = await api.fetchApplication(refNow);
@@ -1044,7 +1108,9 @@ watch(queueItems, async () => {
 // If the user navigates from one application to another without leaving the
 // viewer, reset and load the new reference rather than showing stale content.
 watch(refParam, () => {
-  if (!refParam.value) return;
+  if (!refParam.value) {
+    return;
+  }
   resetInsights();
   app.value = null;
   insightView.value = 'highlights';

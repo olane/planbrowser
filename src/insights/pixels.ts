@@ -64,13 +64,17 @@ export function perceptualHash(pixels: Uint8ClampedArray | Uint8Array, width: nu
     }
   }
   let hex = '';
-  for (let i = 0; i < 64; i += 4) hex += parseInt(bits.slice(i, i + 4), 2).toString(16);
+  for (let i = 0; i < 64; i += 4) {
+    hex += parseInt(bits.slice(i, i + 4), 2).toString(16);
+  }
   return hex;
 }
 
 // Number of differing bits between two difference hashes (0 = identical).
 export function hammingDistance(a: string, b: string): number {
-  if (a.length !== b.length) return Number.POSITIVE_INFINITY;
+  if (a.length !== b.length) {
+    return Number.POSITIVE_INFINITY;
+  }
   let distance = 0;
   for (let i = 0; i < a.length; i++) {
     let xor = parseInt(a[i] ?? '0', 16) ^ parseInt(b[i] ?? '0', 16);
@@ -99,14 +103,22 @@ export function analysePixels(pixels: Uint8ClampedArray | Uint8Array, width: num
     const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
     const spread = (max - min) / 255;
     spreadSum += spread;
-    if (lum < BACKGROUND_LUM) ink++;
-    if (spread <= GREY_SPREAD) grey++;
+    if (lum < BACKGROUND_LUM) {
+      ink++;
+    }
+    if (spread <= GREY_SPREAD) {
+      grey++;
+    }
     const bucket = ((r >> 5) << 10) | ((g >> 5) << 5) | (b >> 5);
     colorCounts.set(bucket, (colorCounts.get(bucket) ?? 0) + 1);
   }
 
   let dominant = 0;
-  for (const count of colorCounts.values()) if (count > dominant) dominant = count;
+  for (const count of colorCounts.values()) {
+    if (count > dominant) {
+      dominant = count;
+    }
+  }
 
   let edges = 0;
   let pairs = 0;
@@ -122,11 +134,15 @@ export function analysePixels(pixels: Uint8ClampedArray | Uint8Array, width: num
       const here = lumAt(x, y);
       if (x + 1 < width) {
         pairs++;
-        if (Math.abs(here - lumAt(x + 1, y)) > EDGE_STEP) edges++;
+        if (Math.abs(here - lumAt(x + 1, y)) > EDGE_STEP) {
+          edges++;
+        }
       }
       if (y + 1 < height) {
         pairs++;
-        if (Math.abs(here - lumAt(x, y + 1)) > EDGE_STEP) edges++;
+        if (Math.abs(here - lumAt(x, y + 1)) > EDGE_STEP) {
+          edges++;
+        }
       }
     }
   }

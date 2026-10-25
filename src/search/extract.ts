@@ -36,6 +36,8 @@ const EXTRACTORS: Record<string, (filePath: string) => Promise<string>> = {
 export async function extractDocumentText(filePath: string): Promise<string | null> {
   const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
   const extractor = EXTRACTORS[ext];
-  if (!extractor) return null;
+  if (!extractor) {
+    return null;
+  }
   return extractor(filePath);
 }

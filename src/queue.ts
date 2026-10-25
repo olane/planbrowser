@@ -69,7 +69,9 @@ export class DownloadQueue {
     };
     return [...this.queue].sort((a, b) => {
       const byStatus = statusOrder[a.status] - statusOrder[b.status];
-      if (byStatus !== 0) return byStatus;
+      if (byStatus !== 0) {
+        return byStatus;
+      }
       return a.enqueuedAt.localeCompare(b.enqueuedAt);
     });
   }
@@ -145,13 +147,17 @@ export class DownloadQueue {
   }
 
   private async process() {
-    if (this.isProcessing) return;
+    if (this.isProcessing) {
+      return;
+    }
     this.isProcessing = true;
 
     try {
       while (true) {
         const item = this.queue.find((q) => q.status === 'pending');
-        if (!item) break;
+        if (!item) {
+          break;
+        }
 
         const runId = ++this.currentRunId;
         const abort = new AbortController();
@@ -166,7 +172,9 @@ export class DownloadQueue {
             item.reference,
             item.authorityId,
             (message, current, total) => {
-              if (this.currentRunId !== runId) return;
+              if (this.currentRunId !== runId) {
+                return;
+              }
               item.progress = {
                 message,
                 ...(current !== undefined ? { current } : {}),

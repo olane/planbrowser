@@ -194,12 +194,18 @@ const syncMenuRef = ref<HTMLElement | null>(null);
 // If the queue starts running while the menu is open, the toolbar is replaced by
 // the "view queue" button, so close the menu to avoid it reappearing afterwards.
 watch(queueBusy, (busy) => {
-  if (busy) syncMenuOpen.value = false;
+  if (busy) {
+    syncMenuOpen.value = false;
+  }
 });
 
 const runDefaultSync = () => {
-  if (scopeCount(defaultScope.value) === 0) return;
-  if (queueing.value) return;
+  if (scopeCount(defaultScope.value) === 0) {
+    return;
+  }
+  if (queueing.value) {
+    return;
+  }
   void runScopeSync(scopeMeta(defaultScope.value).scope);
 };
 
@@ -207,7 +213,9 @@ const runDefaultSync = () => {
 // happens when the main button is clicked.
 const chooseScope = (key: ScopeKey) => {
   syncMenuOpen.value = false;
-  if (scopeCount(key) === 0) return;
+  if (scopeCount(key) === 0) {
+    return;
+  }
   defaultScope.value = key;
   localStorage.setItem(SYNC_SCOPE_KEY, key);
 };
@@ -219,11 +227,15 @@ const onDocumentClick = (e: Event) => {
 };
 
 const onKeydown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape') syncMenuOpen.value = false;
+  if (e.key === 'Escape') {
+    syncMenuOpen.value = false;
+  }
 };
 
 const runScopeSync = async (scope: SyncScope) => {
-  if (queueing.value) return;
+  if (queueing.value) {
+    return;
+  }
   queueing.value = true;
   syncError.value = '';
   try {

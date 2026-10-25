@@ -50,7 +50,9 @@ const METRIC_RULES: MetricRule[] = [
 export function extractMetrics(text: string): Record<string, string> {
   const metrics: Record<string, string> = {};
   for (const rule of METRIC_RULES) {
-    if (metrics[rule.label] !== undefined) continue;
+    if (metrics[rule.label] !== undefined) {
+      continue;
+    }
     const m = rule.re.exec(text);
     if (m?.[1]) {
       const value = rule.transform ? rule.transform(m[1]) : m[1];
@@ -97,10 +99,16 @@ export function summariseDocuments(docs: SummaryDocument[]): string[] {
   const drawingCount = docs.filter((doc) => /drawing/.test(normalise(doc.documentType || ''))).length;
 
   const points: string[] = [];
-  if (drawingCount > 0) points.push(`${drawingCount} drawing${drawingCount === 1 ? '' : 's'}`);
+  if (drawingCount > 0) {
+    points.push(`${drawingCount} drawing${drawingCount === 1 ? '' : 's'}`);
+  }
   for (const rule of DOC_CATEGORY_RULES) {
-    if (points.length >= MAX_DOC_POINTS) break;
-    if (hay.some((h) => rule.re.test(h))) points.push(rule.label);
+    if (points.length >= MAX_DOC_POINTS) {
+      break;
+    }
+    if (hay.some((h) => rule.re.test(h))) {
+      points.push(rule.label);
+    }
   }
   return points;
 }
@@ -117,13 +125,19 @@ export function buildSummary(meta: ApplicationMeta, docs: SummaryDocument[] = []
 
 function stanceOf(comment: Comment): 'support' | 'object' | 'neutral' {
   const s = (comment.stance || '').toLowerCase();
-  if (s.includes('object')) return 'object';
-  if (s.includes('support')) return 'support';
+  if (s.includes('object')) {
+    return 'object';
+  }
+  if (s.includes('support')) {
+    return 'support';
+  }
   return 'neutral';
 }
 
 export function tallyComments(comments: Comment[]): InsightCommentTally {
   const tally: InsightCommentTally = { support: 0, object: 0, neutral: 0, total: comments.length };
-  for (const comment of comments) tally[stanceOf(comment)]++;
+  for (const comment of comments) {
+    tally[stanceOf(comment)]++;
+  }
   return tally;
 }

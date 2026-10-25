@@ -7,7 +7,9 @@ const fs = require('fs');
 const path = require('path');
 
 exports.default = async function afterPack(context) {
-  if (context.electronPlatformName !== 'darwin') return;
+  if (context.electronPlatformName !== 'darwin') {
+    return;
+  }
 
   const { appOutDir } = context;
   const appBundle = fs.readdirSync(appOutDir).find((f) => f.endsWith('.app'));

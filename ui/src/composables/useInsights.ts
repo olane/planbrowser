@@ -34,12 +34,18 @@ export function useInsights(reference: () => string, authorityId: () => string |
 
   const load = async () => {
     const ref0 = reference();
-    if (!ref0) return;
+    if (!ref0) {
+      return;
+    }
     try {
       const res = await api.fetchInsights(ref0, authorityId());
       // The route may have changed while the request was in flight.
-      if (reference() !== ref0) return;
-      if (res.progress) progress.value = res.progress;
+      if (reference() !== ref0) {
+        return;
+      }
+      if (res.progress) {
+        progress.value = res.progress;
+      }
       if (res.status === 'ready' && res.insights) {
         insights.value = res.insights;
         status.value = 'ready';
@@ -48,7 +54,9 @@ export function useInsights(reference: () => string, authorityId: () => string |
         // A deep scan or background refresh reports `running` but may carry the
         // previous result, or a partial snapshot streamed so far; keep it on
         // screen and keep polling.
-        if (res.insights) insights.value = res.insights;
+        if (res.insights) {
+          insights.value = res.insights;
+        }
         status.value = 'running';
         error.value = '';
         schedule();
@@ -60,7 +68,9 @@ export function useInsights(reference: () => string, authorityId: () => string |
         error.value = '';
       }
     } catch (e: any) {
-      if (reference() !== ref0) return;
+      if (reference() !== ref0) {
+        return;
+      }
       error.value = e.message || 'Failed to load insights';
       status.value = 'none';
     }
@@ -68,13 +78,17 @@ export function useInsights(reference: () => string, authorityId: () => string |
 
   const generate = async (deep = false) => {
     const ref0 = reference();
-    if (!ref0) return;
+    if (!ref0) {
+      return;
+    }
     error.value = '';
     progress.value = null;
     status.value = 'running';
     try {
       const res = await api.startInsights(ref0, authorityId(), deep);
-      if (reference() !== ref0) return;
+      if (reference() !== ref0) {
+        return;
+      }
       if (res.status === 'ready' && res.insights) {
         insights.value = res.insights;
         status.value = 'ready';
@@ -82,7 +96,9 @@ export function useInsights(reference: () => string, authorityId: () => string |
       }
       schedule();
     } catch (e: any) {
-      if (reference() !== ref0) return;
+      if (reference() !== ref0) {
+        return;
+      }
       error.value = e.message || 'Failed to generate insights';
       status.value = 'error';
     }

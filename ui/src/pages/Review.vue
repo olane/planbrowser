@@ -172,7 +172,9 @@ const foundKeys = computed(() => keysOf(insights.value?.found));
 // (whose assets were pruned) need the on-demand render endpoint.
 const foundByKey = computed(() => {
   const map = new Map<string, ApplicationInsights['images'][number]>();
-  for (const image of insights.value?.found ?? []) map.set(`${image.localFilename}#${image.page}`, image);
+  for (const image of insights.value?.found ?? []) {
+    map.set(`${image.localFilename}#${image.page}`, image);
+  }
   return map;
 });
 const thumbUrl = (page: InsightPage): string => {
@@ -190,11 +192,17 @@ const groups = computed(() => {
   const rejected: InsightPage[] = [];
   for (const page of pages) {
     const key = pageKey(page);
-    if (highlightKeys.value.has(key)) highlights.push(page);
-    else if (foundKeys.value.has(key)) found.push(page);
+    if (highlightKeys.value.has(key)) {
+      highlights.push(page);
+    } else if (foundKeys.value.has(key)) {
+      found.push(page);
+    }
     // A positive score that did not survive dedupe/caps is not a false negative.
-    else if (page.score > 0) dropped.push(page);
-    else rejected.push(page);
+    else if (page.score > 0) {
+      dropped.push(page);
+    } else {
+      rejected.push(page);
+    }
   }
   return [
     { key: 'highlights', title: 'Highlights', hint: '', pages: highlights },
@@ -230,7 +238,9 @@ const loadLabels = async () => {
 
 const persist = async (page: InsightPage) => {
   const entry = labels.value[pageKey(page)];
-  if (!entry) return;
+  if (!entry) {
+    return;
+  }
   const label: InsightLabel = {
     file: page.localFilename,
     page: page.page,
@@ -296,7 +306,9 @@ const setRank = (page: InsightPage, event: Event) => {
   const value = (event.target as HTMLSelectElement).value;
   const key = pageKey(page);
   const current = labels.value[key];
-  if (!value && !current) return;
+  if (!value && !current) {
+    return;
+  }
   if (!value) {
     // "No opinion": keep the verdict and kind, drop only the rank.
     labels.value[key] = {
@@ -319,7 +331,9 @@ const loadApp = async () => {
 };
 
 watch(refParam, async () => {
-  if (!refParam.value) return;
+  if (!refParam.value) {
+    return;
+  }
   reset();
   app.value = null;
   labels.value = {};

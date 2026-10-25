@@ -30,7 +30,9 @@ const listOnly = args.includes('--list');
 const filters = args.filter((a) => !a.startsWith('--'));
 
 if (listOnly) {
-  for (const s of manifest) console.log(`${s.reference}  (${s.authorityId})  ${s.shape}`);
+  for (const s of manifest) {
+    console.log(`${s.reference}  (${s.authorityId})  ${s.shape}`);
+  }
   process.exit(0);
 }
 
@@ -74,6 +76,8 @@ console.log(
   `\n${samples.length} sample(s): ${cached.length} cached, ${fetched.length} fetched, ${failed.length} failed`,
 );
 if (failed.length) {
-  for (const s of failed) console.error(`  failed: ${s.reference} (${s.authorityId})`);
+  for (const s of failed) {
+    console.error(`  failed: ${s.reference} (${s.authorityId})`);
+  }
   process.exit(1);
 }

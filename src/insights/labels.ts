@@ -42,14 +42,24 @@ const pageKey = (label: { file: string; page: number }): string => `${label.file
 // Validate untrusted request input into labels. Returns null when the shape is
 // wrong; individual malformed entries are dropped.
 export function sanitizeLabels(input: unknown): InsightLabel[] | null {
-  if (!Array.isArray(input)) return null;
+  if (!Array.isArray(input)) {
+    return null;
+  }
   const out: InsightLabel[] = [];
   for (const entry of input) {
-    if (!entry || typeof entry !== 'object') continue;
+    if (!entry || typeof entry !== 'object') {
+      continue;
+    }
     const { file, page, verdict, kind, rank } = entry as Record<string, unknown>;
-    if (typeof file !== 'string' || !file) continue;
-    if (typeof page !== 'number' || !Number.isInteger(page) || page < 1) continue;
-    if (verdict !== 'good' && verdict !== 'bad') continue;
+    if (typeof file !== 'string' || !file) {
+      continue;
+    }
+    if (typeof page !== 'number' || !Number.isInteger(page) || page < 1) {
+      continue;
+    }
+    if (verdict !== 'good' && verdict !== 'bad') {
+      continue;
+    }
     const label: InsightLabel = { file, page, verdict };
     // A kind and a rank only make sense for a page judged worth showing.
     if (verdict === 'good') {
@@ -67,13 +77,21 @@ export function sanitizeLabels(input: unknown): InsightLabel[] | null {
 
 // Validate untrusted request input into page references for a removal.
 export function sanitizePageRefs(input: unknown): { file: string; page: number }[] | null {
-  if (!Array.isArray(input)) return null;
+  if (!Array.isArray(input)) {
+    return null;
+  }
   const out: { file: string; page: number }[] = [];
   for (const entry of input) {
-    if (!entry || typeof entry !== 'object') continue;
+    if (!entry || typeof entry !== 'object') {
+      continue;
+    }
     const { file, page } = entry as Record<string, unknown>;
-    if (typeof file !== 'string' || !file) continue;
-    if (typeof page !== 'number' || !Number.isInteger(page) || page < 1) continue;
+    if (typeof file !== 'string' || !file) {
+      continue;
+    }
+    if (typeof page !== 'number' || !Number.isInteger(page) || page < 1) {
+      continue;
+    }
     out.push({ file, page });
   }
   return out;
@@ -97,7 +115,9 @@ function mergeInto(file: string, reference: string, incoming: InsightLabel[]): I
   const samples = (truth.samples ??= {});
   const spec = (samples[reference] ??= {});
   const byKey = new Map((spec.labels ?? []).map((label) => [pageKey(label), label]));
-  for (const label of incoming) byKey.set(pageKey(label), label);
+  for (const label of incoming) {
+    byKey.set(pageKey(label), label);
+  }
   spec.labels = [...byKey.values()].sort((a, b) => a.file.localeCompare(b.file) || a.page - b.page);
   atomicWrite(file, `${formatTruth(truth)}\n`);
   return spec.labels;

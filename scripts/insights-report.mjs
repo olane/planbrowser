@@ -24,21 +24,29 @@ const KINDS = ['render', 'map', 'elevation', 'plan', 'section', 'photo', 'other'
 
 function findApplications() {
   const apps = [];
-  if (!fs.existsSync(root)) return apps;
+  if (!fs.existsSync(root)) {
+    return apps;
+  }
   for (const authority of fs.readdirSync(root)) {
     const authorityDir = path.join(root, authority);
-    if (!fs.statSync(authorityDir).isDirectory()) continue;
+    if (!fs.statSync(authorityDir).isDirectory()) {
+      continue;
+    }
     for (const entry of fs.readdirSync(authorityDir)) {
       const dir = path.join(authorityDir, entry);
       const metaPath = path.join(dir, 'metadata.json');
-      if (!fs.existsSync(metaPath)) continue;
+      if (!fs.existsSync(metaPath)) {
+        continue;
+      }
       let meta;
       try {
         meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
       } catch {
         continue;
       }
-      if (filters.length && !filters.includes(meta.reference)) continue;
+      if (filters.length && !filters.includes(meta.reference)) {
+        continue;
+      }
       apps.push({ meta, dir });
     }
   }
@@ -69,7 +77,9 @@ for (const { meta, dir } of apps) {
       trace: (entry) => {
         traces.push(entry);
         const src = path.join(dir, 'insights', entry.imageFile);
-        if (fs.existsSync(src)) fs.copyFileSync(src, path.join(appOut, entry.imageFile));
+        if (fs.existsSync(src)) {
+          fs.copyFileSync(src, path.join(appOut, entry.imageFile));
+        }
       },
     });
   } catch (err) {
@@ -85,7 +95,9 @@ for (const { meta, dir } of apps) {
   const spec = truth[meta.reference] ?? {};
   const score = scoreSample(insights, spec);
   const byKind = {};
-  for (const img of insights.images) byKind[img.kind] = (byKind[img.kind] ?? 0) + 1;
+  for (const img of insights.images) {
+    byKind[img.kind] = (byKind[img.kind] ?? 0) + 1;
+  }
   console.log(
     `  ${insights.images.length} highlights / ${insights.found?.length ?? 0} found, ${traces.length} pages interpreted in ` +
       `${(ms / 1000).toFixed(0)}s [${insights.depth ?? 'quick'}] ${JSON.stringify(byKind)}`,
@@ -95,10 +107,11 @@ for (const { meta, dir } of apps) {
       `  labels: precision highlights ${pct(score.labels.highlightTally.precision)}, found ${pct(score.labels.foundTally.precision)}`,
     );
   }
-  for (const img of insights.images)
+  for (const img of insights.images) {
     console.log(
       `    [${img.kind}] ${img.label} — ${img.localFilename} p${img.page} (${img.score}) ${img.reason ?? ''}`,
     );
+  }
 
   const labels = new Map((spec.labels ?? []).map((l) => [pageKey(l.file, l.page), l]));
   const highlightKeys = new Set(insights.images.map((i) => pageKey(i.localFilename, i.page)));
@@ -107,7 +120,9 @@ for (const { meta, dir } of apps) {
   const tiles = { highlights: [], found: [], rejected: [] };
   for (const t of traces) {
     const key = pageKey(t.localFilename, t.page);
-    if (seen.has(key)) continue;
+    if (seen.has(key)) {
+      continue;
+    }
     seen.add(key);
     const image = foundByKey.get(key);
     const group = highlightKeys.has(key) ? 'highlights' : image ? 'found' : 'rejected';

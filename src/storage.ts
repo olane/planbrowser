@@ -18,19 +18,25 @@ export function getApplications(): ApplicationMeta[] {
   const topLevel = fs.readdirSync(getDownloadsDir());
   for (const dir of topLevel) {
     const appDir = path.join(getDownloadsDir(), dir);
-    if (!fs.statSync(appDir).isDirectory()) continue;
+    if (!fs.statSync(appDir).isDirectory()) {
+      continue;
+    }
     const metaPath = path.join(appDir, 'metadata.json');
     if (fs.existsSync(metaPath)) {
       // Legacy flat layout: downloads/<reference>/
       const meta = readMeta(metaPath);
-      if (meta) apps.push(withFlags(meta));
+      if (meta) {
+        apps.push(withFlags(meta));
+      }
     } else {
       // Namespaced layout: downloads/<authorityId>/<reference>/
       for (const sub of fs.readdirSync(appDir)) {
         const subMeta = path.join(appDir, sub, 'metadata.json');
         if (fs.existsSync(subMeta)) {
           const meta = readMeta(subMeta);
-          if (meta) apps.push(withFlags(meta));
+          if (meta) {
+            apps.push(withFlags(meta));
+          }
         }
       }
     }
@@ -75,23 +81,31 @@ export function resolveApplicationMeta(
   if (authorityId) {
     const dir = getApplicationDir(reference, authorityId);
     const meta = readMeta(path.join(dir, 'metadata.json'));
-    if (meta) return { meta, dir };
+    if (meta) {
+      return { meta, dir };
+    }
   }
 
   // Legacy flat layout fallback
   const legacyDir = path.join(getDownloadsDir(), safeRef);
   const legacyMeta = readMeta(path.join(legacyDir, 'metadata.json'));
-  if (legacyMeta) return { meta: legacyMeta, dir: legacyDir };
+  if (legacyMeta) {
+    return { meta: legacyMeta, dir: legacyDir };
+  }
 
   // Search any authority namespaced directory for this reference
   if (!authorityId && fs.existsSync(getDownloadsDir())) {
     for (const dir of fs.readdirSync(getDownloadsDir())) {
       const appDir = path.join(getDownloadsDir(), dir);
-      if (!fs.statSync(appDir).isDirectory()) continue;
+      if (!fs.statSync(appDir).isDirectory()) {
+        continue;
+      }
       if (!fs.existsSync(path.join(appDir, 'metadata.json'))) {
         const refDir = path.join(appDir, safeRef);
         const meta = readMeta(path.join(refDir, 'metadata.json'));
-        if (meta) return { meta, dir: refDir };
+        if (meta) {
+          return { meta, dir: refDir };
+        }
       }
     }
   }
@@ -132,7 +146,9 @@ function dedupeMeta(meta: ApplicationMeta): ApplicationMeta {
   return {
     ...meta,
     documents: (meta.documents || []).filter((d) => {
-      if (!d.localFilename || seen.has(d.localFilename)) return false;
+      if (!d.localFilename || seen.has(d.localFilename)) {
+        return false;
+      }
       seen.add(d.localFilename);
       return true;
     }),

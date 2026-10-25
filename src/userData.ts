@@ -56,7 +56,9 @@ function refreshCaches(): void {
 
 function readState(): StateFile {
   refreshCaches();
-  if (stateCache) return stateCache;
+  if (stateCache) {
+    return stateCache;
+  }
   try {
     if (fs.existsSync(statePath())) {
       const parsed = JSON.parse(fs.readFileSync(statePath(), 'utf-8'));
@@ -115,7 +117,9 @@ function docKey(reference: string, authorityId: string | undefined, filename: st
 
 function readDocState(): DocStateFile {
   refreshCaches();
-  if (docStateCache) return docStateCache;
+  if (docStateCache) {
+    return docStateCache;
+  }
   try {
     if (fs.existsSync(docStatePath())) {
       const parsed = JSON.parse(fs.readFileSync(docStatePath(), 'utf-8'));
@@ -169,7 +173,9 @@ export function setDocFlags(
 
 export function readActivity(): ActivityEvent[] {
   refreshCaches();
-  if (activityCache) return activityCache;
+  if (activityCache) {
+    return activityCache;
+  }
   try {
     if (fs.existsSync(activityPath())) {
       const parsed = JSON.parse(fs.readFileSync(activityPath(), 'utf-8'));

@@ -175,7 +175,9 @@ describe('insights pipeline on synthetic documents', () => {
     expect(render?.reason).toMatch(/^render from caption/);
     const plan = found.find((image) => image.localFilename === 'pack.pdf' && image.page === 2);
     expect(plan?.reason).toMatch(/qualified page title "PROPOSED GROUND FLOOR PLAN"/);
-    for (const image of found) expect(fs.existsSync(path.join(dir, 'insights', image.imageFile))).toBe(true);
+    for (const image of found) {
+      expect(fs.existsSync(path.join(dir, 'insights', image.imageFile))).toBe(true);
+    }
     expect(opens.count).toBeGreaterThan(0);
   });
 

@@ -96,7 +96,9 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (pollInterval) clearInterval(pollInterval);
+  if (pollInterval) {
+    clearInterval(pollInterval);
+  }
 });
 </script>
 

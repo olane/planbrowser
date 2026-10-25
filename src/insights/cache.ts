@@ -21,13 +21,17 @@ export function isValidAssetFile(name: string): boolean {
 }
 
 export function assetPath(appDir: string, imageFile: string): string {
-  if (!isValidAssetFile(imageFile)) throw new Error(`Invalid asset filename: ${imageFile}`);
+  if (!isValidAssetFile(imageFile)) {
+    throw new Error(`Invalid asset filename: ${imageFile}`);
+  }
   return path.join(insightsDir(appDir), imageFile);
 }
 
 export function atomicWrite(filePath: string, data: string | Buffer): void {
   const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
   const tmp = `${filePath}.tmp`;
   fs.writeFileSync(tmp, data);
   fs.renameSync(tmp, filePath);
@@ -57,7 +61,9 @@ export function writeInsights(appDir: string, insights: ApplicationInsights): vo
 
 export function writeAsset(appDir: string, imageFile: string, data: Buffer): void {
   const target = assetPath(appDir, imageFile);
-  if (fs.existsSync(target)) return;
+  if (fs.existsSync(target)) {
+    return;
+  }
   atomicWrite(target, data);
 }
 
@@ -65,9 +71,13 @@ export function writeAsset(appDir: string, imageFile: string, data: Buffer): voi
 // references, so the directory does not grow across regenerations/syncs.
 export function pruneAssets(appDir: string, keep: Set<string>): void {
   const dir = insightsDir(appDir);
-  if (!fs.existsSync(dir)) return;
+  if (!fs.existsSync(dir)) {
+    return;
+  }
   for (const name of fs.readdirSync(dir)) {
-    if (!isValidAssetFile(name) || keep.has(name)) continue;
+    if (!isValidAssetFile(name) || keep.has(name)) {
+      continue;
+    }
     try {
       fs.unlinkSync(path.join(dir, name));
     } catch {

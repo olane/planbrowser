@@ -40,7 +40,9 @@ export function escapeHtml(s: string): string {
 // ellipsis when anything was cut.
 export function truncate(s: string | undefined, words: number): string {
   const parts = (s || '').trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '';
+  if (parts.length === 0) {
+    return '';
+  }
   const cut = parts.slice(0, words).join(' ');
   return parts.length > words ? cut + '…' : cut;
 }

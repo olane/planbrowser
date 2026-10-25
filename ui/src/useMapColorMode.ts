@@ -10,7 +10,9 @@ export function useMapColorMode(
   let initial: ColorMode = fallback;
   try {
     const stored = localStorage.getItem(storageKey);
-    if (stored === 'type' || stored === 'outcome') initial = stored;
+    if (stored === 'type' || stored === 'outcome') {
+      initial = stored;
+    }
   } catch {
     // localStorage unavailable (e.g. private mode); just use the default.
   }

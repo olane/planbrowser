@@ -69,7 +69,9 @@ export function saveSearch(input: {
 export function deleteSavedSearch(id: string): boolean {
   const searches = readSearches();
   const next = searches.filter((s) => s.id !== id);
-  if (next.length === searches.length) return false;
+  if (next.length === searches.length) {
+    return false;
+  }
   writeSearches(next);
   return true;
 }
@@ -77,7 +79,9 @@ export function deleteSavedSearch(id: string): boolean {
 export function recordSearchRun(id: string, references: string[]): SavedSearch | undefined {
   const searches = readSearches();
   const search = searches.find((s) => s.id === id);
-  if (!search) return undefined;
+  if (!search) {
+    return undefined;
+  }
   search.lastRunAt = new Date().toISOString();
   search.lastReferences = references;
   writeSearches(searches);

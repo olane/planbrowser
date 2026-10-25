@@ -5,6 +5,7 @@
     "correctness": "error"
   },
   "rules": {
+    "curly": "error",
     "eslint/no-unused-vars": "error",
     "eslint/no-useless-escape": "error",
     "eslint/no-shadow": "error",

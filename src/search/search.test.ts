@@ -52,7 +52,9 @@ function minimalPdf(text: string): Buffer {
   });
   const xrefStart = Buffer.byteLength(pdf);
   pdf += `xref\n0 ${parts.length + 1}\n0000000000 65535 f \n`;
-  for (const off of offsets) pdf += `${String(off).padStart(10, '0')} 00000 n \n`;
+  for (const off of offsets) {
+    pdf += `${String(off).padStart(10, '0')} 00000 n \n`;
+  }
   pdf += `trailer\n<< /Size ${parts.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
   return Buffer.from(pdf, 'latin1');
 }

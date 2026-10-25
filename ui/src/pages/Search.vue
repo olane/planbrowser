@@ -331,7 +331,9 @@ const LAST_SEARCH_KEY = 'planbrowser.lastSearch';
 function loadLastSearch(): { postcode: string; radius: string } | null {
   try {
     const raw = localStorage.getItem(LAST_SEARCH_KEY);
-    if (!raw) return null;
+    if (!raw) {
+      return null;
+    }
     const parsed = JSON.parse(raw);
     if (typeof parsed?.postcode === 'string' && typeof parsed?.radius === 'string') {
       return { postcode: parsed.postcode, radius: parsed.radius };
@@ -426,17 +428,25 @@ const buildFilters = (): SearchFilters => {
   const filters: SearchFilters = {};
   for (const key of simpleFilterKeys) {
     const value = searchForm.value[key];
-    if (value) filters[key] = value;
+    if (value) {
+      filters[key] = value;
+    }
   }
   for (const group of timeGroups) {
     if (timeModes.value[group.key] === 'recent') {
       const value = searchForm.value[group.recentKey];
-      if (value) filters[group.recentKey] = value;
+      if (value) {
+        filters[group.recentKey] = value;
+      }
     } else {
       const from = searchForm.value[group.fromKey];
       const to = searchForm.value[group.toKey];
-      if (from) filters[group.fromKey] = from;
-      if (to) filters[group.toKey] = to;
+      if (from) {
+        filters[group.fromKey] = from;
+      }
+      if (to) {
+        filters[group.toKey] = to;
+      }
     }
   }
   return filters;
@@ -504,7 +514,9 @@ const FILTER_LABELS: Partial<Record<keyof SearchFilters, string>> = {
 const summariseFilters = (filters: SearchFilters): string => {
   const parts: string[] = [];
   for (const [key, value] of Object.entries(filters)) {
-    if (!value) continue;
+    if (!value) {
+      continue;
+    }
     const label = FILTER_LABELS[key as keyof SearchFilters];
     parts.push(label ? `${label} ${value}` : value);
   }
@@ -532,12 +544,17 @@ const showOnMap = (uid: string) => {
 
 const resultRefs = new Map<string, HTMLElement>();
 const setResultRef = (uid: string, el: unknown) => {
-  if (el instanceof HTMLElement) resultRefs.set(uid, el);
-  else resultRefs.delete(uid);
+  if (el instanceof HTMLElement) {
+    resultRefs.set(uid, el);
+  } else {
+    resultRefs.delete(uid);
+  }
 };
 const scrollToResult = (uid: string) => {
   const el = resultRefs.get(uid);
-  if (!el) return;
+  if (!el) {
+    return;
+  }
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   el.classList.add(styles.resultHighlight);
   setTimeout(() => el.classList.remove(styles.resultHighlight), 2000);
@@ -555,12 +572,16 @@ const fetchQueue = async () => {
 
 const getQueueStatusText = (reference: string) => {
   const status = getQueueStatus(reference);
-  if (status === 'pending') return 'Queued';
+  if (status === 'pending') {
+    return 'Queued';
+  }
   if (status === 'in_progress') {
     const item = queueItems.value.find((q) => q.reference === reference && q.status === 'in_progress');
     return item?.progress ? progressText(item.progress) : 'Downloading...';
   }
-  if (status === 'failed') return 'Failed — retry';
+  if (status === 'failed') {
+    return 'Failed — retry';
+  }
   return 'Download';
 };
 
@@ -570,7 +591,9 @@ const getQueueError = (reference: string) => {
 };
 
 const lookupReference = async () => {
-  if (!directReference.value) return;
+  if (!directReference.value) {
+    return;
+  }
   const refValue = directReference.value.trim().toUpperCase();
 
   if (isDownloaded(refValue)) {
@@ -596,7 +619,9 @@ const lookupReference = async () => {
 };
 
 const searchPlanIt = async () => {
-  if (!searchForm.value.postcode) return;
+  if (!searchForm.value.postcode) {
+    return;
+  }
 
   const postcode = normalizePostcode(searchForm.value.postcode);
   const radius = searchForm.value.radius;
@@ -631,7 +656,9 @@ const searchPlanIt = async () => {
 };
 
 const saveCurrentSearch = async () => {
-  if (!searchForm.value.postcode) return;
+  if (!searchForm.value.postcode) {
+    return;
+  }
 
   isSaving.value = true;
   saveSearchMessage.value = '';

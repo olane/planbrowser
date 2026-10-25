@@ -45,7 +45,9 @@ export function readSearchText(dir: string): SearchTextFile {
 }
 
 export function writeSearchText(dir: string, file: SearchTextFile): void {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
   const target = cachePath(dir);
   const tmp = `${target}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(file, null, 2));

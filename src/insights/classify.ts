@@ -40,7 +40,9 @@ export function isFlatGraphic(stats: PagePixelStats): boolean {
 // drawings have short, fragmented labels; prose has several long lines. Text
 // alone is not enough (drawings carry notes), so require weak drawing structure.
 export function isProsePage(text: string, stats: PagePixelStats): boolean {
-  if (!text) return false;
+  if (!text) {
+    return false;
+  }
   const longLines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -84,12 +86,20 @@ function namedKind(profile: DocumentProfile, titles: TitleCandidate[], text: str
     title: title.text,
   });
   const strong = titles.find((title) => title.strong);
-  if (strong) return fromTitle(strong, 'qualified');
+  if (strong) {
+    return fromTitle(strong, 'qualified');
+  }
   const [docKind] = profile.kinds;
-  if (docKind && profile.kinds.length === 1) return { kind: docKind, why: `document name (${docKind})` };
+  if (docKind && profile.kinds.length === 1) {
+    return { kind: docKind, why: `document name (${docKind})` };
+  }
   const weak = titles.find((title) => profile.kinds.includes(title.kind)) ?? titles[0];
-  if (weak) return fromTitle(weak, 'page title');
-  if (docKind) return { kind: docKind, why: `document name (${profile.kinds.join('/')})` };
+  if (weak) {
+    return fromTitle(weak, 'page title');
+  }
+  if (docKind) {
+    return { kind: docKind, why: `document name (${profile.kinds.join('/')})` };
+  }
   const textKind = kindFromText(text);
   return textKind ? { kind: textKind, why: 'drawing word in page text' } : undefined;
 }
@@ -112,7 +122,9 @@ export function classifyPage(
   });
 
   // --- Appearance -----------------------------------------------------------
-  if (isFlatGraphic(stats)) return reject('flat graphic (cover or divider)');
+  if (isFlatGraphic(stats)) {
+    return reject('flat graphic (cover or divider)');
+  }
   const prose = isProsePage(text, stats);
   const photographic = isPhotographic(stats);
   const fullBleed = isFullBleed(stats);
@@ -131,7 +143,9 @@ export function classifyPage(
     `${evidence.kind} from ${evidence.why}${appearance ? ` [${appearance}]` : ''}`;
   // Trusted drawing documents (whose pages are often note-heavy) are exempt
   // from the prose test.
-  if (!photographic && !figure && !profile.drawing && prose) return reject('prose page');
+  if (!photographic && !figure && !profile.drawing && prose) {
+    return reject('prose page');
+  }
 
   // --- Evidence -------------------------------------------------------------
   // A document's name and its pages' drawing titles are only reliable for
@@ -166,7 +180,9 @@ export function classifyPage(
       // word (a render captioned "the masterplan"); an unnamed photographic
       // page is the only signal for image-based drawings whose text is curves.
       evidence = unnamedVisual(profile.designVisual || !profile.referenceVolume);
-      if (!evidence) return reject(`unnamed visual in a reference volume [${appearance}]`);
+      if (!evidence) {
+        return reject(`unnamed visual in a reference volume [${appearance}]`);
+      }
     }
     // Otherwise an explicit plan/map/elevation/section is kept: a rendered
     // elevation is still an elevation, and a coloured site plan is still a plan.
@@ -174,14 +190,17 @@ export function classifyPage(
     // A non-photographic embedded figure is only a render when a caption says so
     // or the document legitimately holds scheme visuals.
     evidence = unnamedVisual(profile.designVisual);
-    if (!evidence) return reject(`embedded figure with no render/photo evidence [${appearance}]`);
+    if (!evidence) {
+      return reject(`embedded figure with no render/photo evidence [${appearance}]`);
+    }
   }
 
   // Ambiguous pages of a drawing document are kept as `other`; anything else
   // without a kind (a plain text page, a form, a letter) is dropped.
   if (!evidence) {
-    if (profile.referenceVolume || (!profile.drawing && !photographic))
+    if (profile.referenceVolume || (!profile.drawing && !photographic)) {
       return reject(`no visual kind${appearance ? ` [${appearance}]` : ''}`);
+    }
     evidence = { kind: 'other', why: 'drawing document page' };
   }
   const kind = evidence.kind;
@@ -193,11 +212,17 @@ export function classifyPage(
   let score = KIND_BASE[kind];
   score += stats.edgeDensity * 25;
   score += Math.min(stats.inkRatio, 0.9) * 8;
-  if (proposed) score += 6;
+  if (proposed) {
+    score += 6;
+  }
   // "Existing" deprioritises an existing-condition drawing, but a render or
   // photo that merely mentions existing trees should not be penalised.
-  if (existing && !proposed && !isVisualKind(kind)) score -= 45;
-  if (profile.superseded) score -= 50;
+  if (existing && !proposed && !isVisualKind(kind)) {
+    score -= 45;
+  }
+  if (profile.superseded) {
+    score -= 50;
+  }
 
   // Label with the page's own title for this kind, if it has one. A full-bleed
   // page's text is usually body copy, not a title.

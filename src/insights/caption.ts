@@ -75,8 +75,12 @@ interface ImagePlacement {
 }
 
 const pixelArea = (fn: number | undefined, args: unknown, ops: ImageOps): number => {
-  if (!Array.isArray(args)) return 0;
-  if (fn === ops.paintImageXObject) return (Number(args[1]) || 0) * (Number(args[2]) || 0);
+  if (!Array.isArray(args)) {
+    return 0;
+  }
+  if (fn === ops.paintImageXObject) {
+    return (Number(args[1]) || 0) * (Number(args[2]) || 0);
+  }
   if (fn === ops.paintInlineImageXObject) {
     const image = args[0] as { width?: unknown; height?: unknown } | undefined;
     return (Number(image?.width) || 0) * (Number(image?.height) || 0);
@@ -108,7 +112,9 @@ export function imagePlacements(fnArray: number[], argsArray: unknown[], ops: Im
       case ops.paintFormXObjectBegin: {
         stack.push(ctm);
         const matrix = Array.isArray(args) ? args[0] : undefined;
-        if (matrix) ctm = multiply(ctm, asMatrix(matrix));
+        if (matrix) {
+          ctm = multiply(ctm, asMatrix(matrix));
+        }
         break;
       }
       case ops.paintFormXObjectEnd:
@@ -142,12 +148,18 @@ export function captionForBox(items: TextItem[], box: Box, pageHeight: number, g
   const scored: { text: string; distance: number; x: number; y: number }[] = [];
   for (const item of items) {
     const text = (item.str ?? '').trim();
-    if (!text) continue;
+    if (!text) {
+      continue;
+    }
     const b = itemBox(item);
     const dx = Math.max(box.x0 - b.x1, b.x0 - box.x1, 0);
     const dy = Math.max(box.y0 - b.y1, b.y0 - box.y1, 0);
-    if (dx > 0) continue; // no horizontal overlap at all
-    if (dy > gap) continue;
+    if (dx > 0) {
+      continue;
+    } // no horizontal overlap at all
+    if (dy > gap) {
+      continue;
+    }
     scored.push({ text, distance: dy, x: b.x0, y: b.y0 });
   }
   scored.sort((a, b) => a.distance - b.distance || b.y - a.y || a.x - b.x);

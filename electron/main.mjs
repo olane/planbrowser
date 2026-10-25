@@ -56,7 +56,9 @@ if (process.env.PLANBROWSER_SCRAPER_MODE === '1') {
   } else {
     app.on('second-instance', () => {
       if (mainWindow) {
-        if (mainWindow.isMinimized()) mainWindow.restore();
+        if (mainWindow.isMinimized()) {
+          mainWindow.restore();
+        }
         mainWindow.focus();
       }
     });
@@ -66,7 +68,9 @@ if (process.env.PLANBROWSER_SCRAPER_MODE === '1') {
       createWindow(port);
 
       app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) createWindow(port);
+        if (BrowserWindow.getAllWindows().length === 0) {
+          createWindow(port);
+        }
       });
       return undefined;
     });
@@ -108,10 +112,14 @@ if (process.env.PLANBROWSER_SCRAPER_MODE === '1') {
   }
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
   });
 
   app.on('before-quit', () => {
-    if (server) server.close();
+    if (server) {
+      server.close();
+    }
   });
 }

@@ -47,10 +47,16 @@ export function titleCandidates(lines: PageLine[]): TitleCandidate[] {
   const out: TitleCandidate[] = [];
   for (const line of lines) {
     const text = line.str.trim();
-    if (text.length < 4 || text.length > 90) continue;
-    if (!TITLE_KEYWORD.test(text) || CHROME.test(text) || NOTE.test(text)) continue;
+    if (text.length < 4 || text.length > 90) {
+      continue;
+    }
+    if (!TITLE_KEYWORD.test(text) || CHROME.test(text) || NOTE.test(text)) {
+      continue;
+    }
     const kind = kindFromText(text);
-    if (!kind) continue;
+    if (!kind) {
+      continue;
+    }
     out.push({ text, kind, strong: QUALIFIER.test(text), size: line.size });
   }
   // Strong titles first, then the larger font, then page order.
@@ -74,6 +80,8 @@ export function isDrawingRegister(candidates: TitleCandidate[]): boolean {
 // title, 0 = none (or a drawing register listing every title).
 export function pageTitleScore(lines: PageLine[]): number {
   const candidates = titleCandidates(lines);
-  if (candidates.length === 0 || isDrawingRegister(candidates)) return 0;
+  if (candidates.length === 0 || isDrawingRegister(candidates)) {
+    return 0;
+  }
   return candidates[0]?.strong ? 2 : 1;
 }

@@ -141,8 +141,11 @@ const snippetFor = (filename: string): DocumentSnippet | undefined => props.snip
 const openTitles = reactive(new Set<string>());
 const isOpen = (title: string) => openTitles.has(title);
 const toggle = (title: string) => {
-  if (openTitles.has(title)) openTitles.delete(title);
-  else openTitles.add(title);
+  if (openTitles.has(title)) {
+    openTitles.delete(title);
+  } else {
+    openTitles.add(title);
+  }
 };
 
 // Keep filtered lists fully visible, including groups that stream in later.
@@ -151,7 +154,9 @@ watch(
   ([yes]) => {
     if (yes) {
       entries.value.forEach((e) => {
-        if (e.kind === 'group') openTitles.add(e.title);
+        if (e.kind === 'group') {
+          openTitles.add(e.title);
+        }
       });
     }
   },
@@ -188,7 +193,9 @@ const groupType = (entry: DocumentListEntry<EnhancedDocument>): string | undefin
 
 // Header pill, e.g. "17 parts" or "2 sheets", matching whatever the group is.
 const groupCountLabel = (entry: DocumentListEntry<EnhancedDocument>): string => {
-  if (entry.kind !== 'group') return '';
+  if (entry.kind !== 'group') {
+    return '';
+  }
   const unit = multipartUnit(entry.parts[0]?.description);
   const n = entry.parts.length;
   return `${n} ${unit}${n === 1 ? '' : 's'}`;
@@ -208,7 +215,9 @@ const groupSomeStarred = (entry: DocumentListEntry<EnhancedDocument>): boolean =
 const savingGroup = ref(false);
 
 async function toggleGroupStar(entry: DocumentListEntry<EnhancedDocument>) {
-  if (entry.kind !== 'group' || savingGroup.value) return;
+  if (entry.kind !== 'group' || savingGroup.value) {
+    return;
+  }
   const next = !groupAllStarred(entry);
   savingGroup.value = true;
   try {

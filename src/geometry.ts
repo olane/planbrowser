@@ -49,7 +49,9 @@ function ringFrom($: cheerio.CheerioAPI, el: cheerio.Cheerio<AnyNode>): Coordina
   const points: Coordinate[] = [];
   el.find('gml\\:pos').each((_, pos) => {
     const pair = pairList($(pos).text(), declaredDimension($(pos)))[0];
-    if (pair) points.push(pair);
+    if (pair) {
+      points.push(pair);
+    }
   });
   return points;
 }
@@ -69,21 +71,31 @@ export function parseWfsGeometry(xml: string): WfsGeometry {
         const wrapper = $(part);
         const ringEl = wrapper.find('gml\\:LinearRing').first();
         const ring = ringFrom($, ringEl.length > 0 ? ringEl : wrapper);
-        if (ring.length >= 3) rings.push(ring);
+        if (ring.length >= 3) {
+          rings.push(ring);
+        }
       });
     if (rings.length === 0) {
       // Some servers emit a bare LinearRing without exterior/interior wrappers.
       const ring = ringFrom($, $(poly).find('gml\\:LinearRing').first());
-      if (ring.length >= 3) rings.push(ring);
+      if (ring.length >= 3) {
+        rings.push(ring);
+      }
     }
-    if (rings.length > 0) result.polygons.push(rings);
+    if (rings.length > 0) {
+      result.polygons.push(rings);
+    }
   });
 
   $('gml\\:Point').each((_, point) => {
     const pos = $(point).find('gml\\:pos').first();
-    if (pos.length === 0) return;
+    if (pos.length === 0) {
+      return;
+    }
     const pair = pairList(pos.text(), declaredDimension(pos))[0];
-    if (pair) result.points.push(pair);
+    if (pair) {
+      result.points.push(pair);
+    }
   });
 
   // Safety net for servers that emit bare gml:posList/gml:pos without a
@@ -91,11 +103,15 @@ export function parseWfsGeometry(xml: string): WfsGeometry {
   if (result.polygons.length === 0 && result.points.length === 0) {
     $('gml\\:posList').each((_, el) => {
       const ring = pairList($(el).text(), declaredDimension($(el)));
-      if (ring.length >= 3) result.polygons.push([ring]);
+      if (ring.length >= 3) {
+        result.polygons.push([ring]);
+      }
     });
     $('gml\\:pos').each((_, el) => {
       const pair = pairList($(el).text(), declaredDimension($(el)))[0];
-      if (pair) result.points.push(pair);
+      if (pair) {
+        result.points.push(pair);
+      }
     });
   }
 
@@ -138,10 +154,14 @@ const projectCoordinate = ([x, y]: Coordinate): Coordinate => {
 export function geometryToLocation(geometry: WfsGeometry): ApplicationLocation | null {
   const flat: Coordinate[] = [];
   for (const poly of geometry.polygons) {
-    for (const ring of poly) flat.push(...ring);
+    for (const ring of poly) {
+      flat.push(...ring);
+    }
   }
   flat.push(...geometry.points);
-  if (flat.length === 0) return null;
+  if (flat.length === 0) {
+    return null;
+  }
 
   const loc = coordsToLocation(flat);
   if (geometry.polygons.length > 0) {

@@ -15,10 +15,14 @@ async function requestPostcode(postcode: string, fetchFn: typeof fetch = fetch):
     const res = await fetchFn(`${POSTCODES_IO_URL}/${encodeURIComponent(postcode)}`, {
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      return null;
+    }
     const body = (await res.json()) as { result?: { latitude?: number | null; longitude?: number | null } };
     const { latitude, longitude } = body.result ?? {};
-    if (typeof latitude !== 'number' || typeof longitude !== 'number') return null;
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return null;
+    }
     return { latitude, longitude };
   } catch {
     // Offline, the service is down, or the response is malformed. Best-effort
@@ -34,7 +38,9 @@ export interface PostcodePoint {
 
 export async function geocodePostcode(postcode: string, fetchFn: typeof fetch = fetch): Promise<PostcodePoint | null> {
   const coords = await requestPostcode(normalizePostcode(postcode), fetchFn);
-  if (!coords) return null;
+  if (!coords) {
+    return null;
+  }
   return { lat: coords.latitude, lon: coords.longitude };
 }
 
@@ -46,9 +52,13 @@ export async function locationFromAddress(
   fetchFn: typeof fetch = fetch,
 ): Promise<ApplicationLocation | null> {
   const postcode = extractPostcode(address);
-  if (!postcode) return null;
+  if (!postcode) {
+    return null;
+  }
   const coords = await geocodePostcode(postcode, fetchFn);
-  if (!coords) return null;
+  if (!coords) {
+    return null;
+  }
   return {
     center: coords,
     // A postcode lookup has no site geometry, so collapse the bbox to the

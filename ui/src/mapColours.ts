@@ -39,15 +39,33 @@ export const APP_TYPE_COLORS: Record<AppType, string> = {
 // Idox "Application Type" (e.g. "Full Planning Application") into a bucket.
 export function normaliseAppType(raw?: string): AppType {
   const s = (raw || '').toLowerCase();
-  if (!s) return 'Other';
-  if (/\btrees?\b|tree works|arboricult|\btpo\b/.test(s)) return 'Trees';
-  if (/advert/.test(s)) return 'Advertising';
-  if (/telecom|\btele\b/.test(s)) return 'Telecoms';
-  if (/listed building|conservation area|heritage|historic building/.test(s)) return 'Heritage';
-  if (/condition/.test(s)) return 'Conditions';
-  if (/amendment|non-material|non material/.test(s)) return 'Amendment';
-  if (/outline|reserved matters/.test(s)) return 'Outline';
-  if (/\bfull\b|householder/.test(s)) return 'Full';
+  if (!s) {
+    return 'Other';
+  }
+  if (/\btrees?\b|tree works|arboricult|\btpo\b/.test(s)) {
+    return 'Trees';
+  }
+  if (/advert/.test(s)) {
+    return 'Advertising';
+  }
+  if (/telecom|\btele\b/.test(s)) {
+    return 'Telecoms';
+  }
+  if (/listed building|conservation area|heritage|historic building/.test(s)) {
+    return 'Heritage';
+  }
+  if (/condition/.test(s)) {
+    return 'Conditions';
+  }
+  if (/amendment|non-material|non material/.test(s)) {
+    return 'Amendment';
+  }
+  if (/outline|reserved matters/.test(s)) {
+    return 'Outline';
+  }
+  if (/\bfull\b|householder/.test(s)) {
+    return 'Full';
+  }
   return 'Other';
 }
 
@@ -98,9 +116,15 @@ export const OUTCOME_COLORS: Record<Outcome, string> = {
 // …) into a coarse outcome.
 export function normaliseOutcome(label?: string): Outcome {
   const s = (label || '').toLowerCase();
-  if (/refus|reject|declin|not permit/.test(s)) return 'Refused';
-  if (/permit|grant|approv|condition|allow/.test(s)) return 'Permitted';
-  if (/withdraw/.test(s)) return 'Withdrawn';
+  if (/refus|reject|declin|not permit/.test(s)) {
+    return 'Refused';
+  }
+  if (/permit|grant|approv|condition|allow/.test(s)) {
+    return 'Permitted';
+  }
+  if (/withdraw/.test(s)) {
+    return 'Withdrawn';
+  }
   if (!s || /await|pending|undecided|consideration|registered|consult|unresolved|live|current/.test(s)) {
     return 'Pending';
   }
@@ -118,7 +142,9 @@ export function presentBuckets<T extends string>(
   order: readonly T[],
 ): T[] {
   const seen = new Set<T>();
-  for (const raw of raws) seen.add(normalise(raw));
+  for (const raw of raws) {
+    seen.add(normalise(raw));
+  }
   return order.filter((value) => seen.has(value));
 }
 

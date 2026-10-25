@@ -59,7 +59,9 @@ for (const reference of references) {
     continue;
   }
   const s = scoreSample(insights, spec);
-  if (!s.ok) failed = true;
+  if (!s.ok) {
+    failed = true;
+  }
   const secs = ((Date.now() - started) / 1000).toFixed(0);
   const l = s.labels;
   console.log(
@@ -89,18 +91,26 @@ for (const reference of references) {
         `low in highlights ${l.rank.highlightsLow}/${l.rank.lowTotal}`,
     );
   }
-  for (const e of s.misses)
+  for (const e of s.misses) {
     console.log(`    MISS  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''}${e.note ? ` — ${e.note}` : ''}`);
-  for (const e of s.notHighlighted)
+  }
+  for (const e of s.notHighlighted) {
     console.log(`    NOT IN HIGHLIGHTS  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''}`);
-  for (const e of s.leaks)
+  }
+  for (const e of s.leaks) {
     console.log(
       `    LEAK  ${e.kind ?? 'any'} ${e.doc}${e.page ? ` p${e.page}` : ''} — ${e.reason ?? 'should not appear'}`,
     );
-  if (s.emptyFail) console.log(`    LEAK  expected no images, found ${s.found}`);
-  for (const i of l.badHighlights)
+  }
+  if (s.emptyFail) {
+    console.log(`    LEAK  expected no images, found ${s.found}`);
+  }
+  for (const i of l.badHighlights) {
     console.log(`    BAD HIGHLIGHT  ${i.kind} ${i.localFilename} p${i.page} — ${i.reason ?? ''}`);
-  for (const m of l.missedGood) console.log(`    MISSED GOOD  ${m.kind ?? 'any'} ${m.file} p${m.page}`);
+  }
+  for (const m of l.missedGood) {
+    console.log(`    MISSED GOOD  ${m.kind ?? 'any'} ${m.file} p${m.page}`);
+  }
 }
 
 if (totals.good + totals.bad) {
@@ -119,7 +129,9 @@ if (totals.highTotal || totals.lowTotal) {
 const unlabelled = loadManifest()
   .map((s) => s.reference)
   .filter((ref) => !truth[ref]);
-if (unlabelled.length) console.log(`\nNo ground truth yet: ${unlabelled.join(', ')} (label them in the contact sheet)`);
+if (unlabelled.length) {
+  console.log(`\nNo ground truth yet: ${unlabelled.join(', ')} (label them in the contact sheet)`);
+}
 
 console.log(failed ? '\nFAILED' : '\nOK');
 process.exit(failed ? 1 : 0);

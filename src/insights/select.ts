@@ -38,7 +38,9 @@ function dedupe(candidates: InsightImage[]): InsightImage[] {
   const byId = new Map<string, InsightImage>();
   for (const c of candidates) {
     const existing = byId.get(c.id);
-    if (!existing || c.score > existing.score) byId.set(c.id, c);
+    if (!existing || c.score > existing.score) {
+      byId.set(c.id, c);
+    }
   }
 
   const sorted = [...byId.values()].sort((a, b) => b.score - a.score);
@@ -51,7 +53,9 @@ function dedupe(candidates: InsightImage[]): InsightImage[] {
     ) {
       continue;
     }
-    if (candidate.phash) keptHashes.push(candidate.phash);
+    if (candidate.phash) {
+      keptHashes.push(candidate.phash);
+    }
     kept.push(candidate);
   }
   return kept;
@@ -67,17 +71,25 @@ export function selectImages(candidates: InsightImage[], opts: SelectOptions = {
 
   const deduped = dedupe(candidates);
   const available = emptyCounts();
-  for (const candidate of deduped) available[candidate.kind]++;
+  for (const candidate of deduped) {
+    available[candidate.kind]++;
+  }
 
   const counts: Partial<Record<InsightImageKind, number>> = {};
   const perDocument: Record<string, number> = {};
   const chosen: InsightImage[] = [];
   for (const candidate of deduped) {
-    if (chosen.length >= total) break;
+    if (chosen.length >= total) {
+      break;
+    }
     const used = counts[candidate.kind] ?? 0;
-    if (used >= (caps[candidate.kind] ?? 3)) continue;
+    if (used >= (caps[candidate.kind] ?? 3)) {
+      continue;
+    }
     const docUsed = perDocument[candidate.localFilename] ?? 0;
-    if (docUsed >= maxPerDocument) continue;
+    if (docUsed >= maxPerDocument) {
+      continue;
+    }
     counts[candidate.kind] = used + 1;
     perDocument[candidate.localFilename] = docUsed + 1;
     chosen.push(candidate);

@@ -11,7 +11,9 @@ export function useApplicationsMap(apps: Ref<ApplicationMeta[]>) {
   const unmappedCount = computed(() => apps.value.length - mappedApps.value.length);
 
   watch(mappedCount, (count) => {
-    if (count === 0) showAppsMap.value = false;
+    if (count === 0) {
+      showAppsMap.value = false;
+    }
   });
 
   return { showAppsMap, mappedApps, mappedCount, unmappedCount };

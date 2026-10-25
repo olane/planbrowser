@@ -50,7 +50,9 @@ export async function downloadDocuments(
   const headerNames = await page.evaluate(() => {
     const table = document.querySelector('#Documents');
     const headerRow = table?.querySelector('tr');
-    if (!headerRow) return [] as string[];
+    if (!headerRow) {
+      return [] as string[];
+    }
     return Array.from(headerRow.querySelectorAll('th, td')).map((c) => c.textContent?.trim() ?? '');
   });
   const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, ' ');
@@ -139,7 +141,9 @@ export async function downloadDocuments(
   // reuses the exact stored filename instead of guessing from the rendered name.
   const previousByDocId = new Map<string, DocumentMeta>();
   for (const pd of previousDocs ?? []) {
-    if (pd.docId) previousByDocId.set(pd.docId, pd);
+    if (pd.docId) {
+      previousByDocId.set(pd.docId, pd);
+    }
   }
 
   const missingDocs = [];
@@ -212,14 +216,18 @@ export async function downloadDocuments(
     const dot = name.lastIndexOf('.');
     if (dot <= 0) {
       let candidate = name;
-      for (let i = 2; usedNames.has(candidate); i++) candidate = `${name} (${i})`;
+      for (let i = 2; usedNames.has(candidate); i++) {
+        candidate = `${name} (${i})`;
+      }
       usedNames.add(candidate);
       return candidate;
     }
     const stem = name.slice(0, dot);
     const ext = name.slice(dot);
     let candidate = name;
-    for (let i = 2; usedNames.has(candidate); i++) candidate = `${stem} (${i})${ext}`;
+    for (let i = 2; usedNames.has(candidate); i++) {
+      candidate = `${stem} (${i})${ext}`;
+    }
     usedNames.add(candidate);
     return candidate;
   };
@@ -235,7 +243,9 @@ export async function downloadDocuments(
 
   const CHUNK_SIZE = 25;
   for (let i = 0; i < bulkDownloadable.length; i += CHUNK_SIZE) {
-    if (signal?.aborted) throw new Error('Download cancelled');
+    if (signal?.aborted) {
+      throw new Error('Download cancelled');
+    }
     const chunk = bulkDownloadable.slice(i, i + CHUNK_SIZE);
     console.log(`Downloading bulk batch ${Math.floor(i / CHUNK_SIZE) + 1} with ${chunk.length} documents...`);
 
@@ -300,7 +310,9 @@ export async function downloadDocuments(
   }
 
   for (const doc of individualDownloadable) {
-    if (signal?.aborted) throw new Error('Download cancelled');
+    if (signal?.aborted) {
+      throw new Error('Download cancelled');
+    }
     console.log(`Downloading individually: ${doc.baseName}`);
     try {
       const { filePath, filename } = await download(() => doc.linkLocator.click(), 30000);
@@ -327,7 +339,9 @@ export async function downloadDocuments(
   const produced = new Set(docs.map((d) => d.localFilename));
   const leftoversToRemove = new Set<string>();
   for (const doc of uniqueDocs) {
-    if ((rowsPerBaseName.get(doc.baseName) ?? 0) <= 1) continue;
+    if ((rowsPerBaseName.get(doc.baseName) ?? 0) <= 1) {
+      continue;
+    }
     for (const f of existingFiles) {
       if (f.startsWith(doc.baseName + '.') && !reusedFiles.has(f) && !produced.has(f)) {
         leftoversToRemove.add(f);
@@ -418,7 +432,9 @@ export async function scrapeLocation(
         return await res.text();
       }, url);
       const location = geometryToLocation(parseWfsGeometry(xml));
-      if (!location) continue;
+      if (!location) {
+        continue;
+      }
       if (location.polygons && location.polygons.length > 0) {
         const points = location.polygons.reduce((n, poly) => n + poly.reduce((m, ring) => m + ring.length, 0), 0);
         console.log(`Found site boundary (${location.polygons.length} polygon(s), ${points} points) for ${reference}`);
@@ -540,7 +556,9 @@ export function resolvePortalUrl(currentUrl: string, hrefs: string[]): string {
   }
   const isDetailLink = (href: string) => /applicationDetails\.do/.test(href) && /keyVal=/.test(href);
   const summary = hrefs.find((href) => isDetailLink(href) && /activeTab=summary/.test(href));
-  if (summary) return summary;
+  if (summary) {
+    return summary;
+  }
   const first = hrefs.find(isDetailLink);
   return first ?? currentUrl;
 }
@@ -750,7 +768,9 @@ export async function downloadApplication(
         persist();
       }
     } catch (err) {
-      if (signal?.aborted) throw err;
+      if (signal?.aborted) {
+        throw err;
+      }
       console.error('Failed to scrape comments (continuing):', err);
     }
     throwIfAborted();

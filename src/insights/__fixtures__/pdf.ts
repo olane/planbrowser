@@ -75,7 +75,9 @@ export function buildPdf(pages: TestPage[]): Buffer {
       resources += ` /XObject << /Im1 ${imageId} 0 R >>`;
       content += `q ${img.w} 0 0 ${img.h} ${img.x} ${img.y} cm /Im1 Do Q\n`;
     }
-    for (const [x1, y1, x2, y2] of page.lines ?? []) content += `${x1} ${y1} m ${x2} ${y2} l S\n`;
+    for (const [x1, y1, x2, y2] of page.lines ?? []) {
+      content += `${x1} ${y1} m ${x2} ${y2} l S\n`;
+    }
     for (const t of page.texts ?? []) {
       content += `BT /F1 ${t.size} Tf ${t.x} ${t.y} Td (${escapeText(t.str)}) Tj ET\n`;
     }

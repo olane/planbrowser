@@ -28,7 +28,9 @@ reviewRouter.get('/api/insights/reviews', (req, res) => {
   const samples: Record<string, InsightLabel[]> = {};
   for (const [reference, spec] of Object.entries(readReviewStore().samples ?? {})) {
     const labels = spec.labels ?? [];
-    if (labels.length) samples[reference] = labels;
+    if (labels.length) {
+      samples[reference] = labels;
+    }
   }
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', 'attachment; filename="insights-reviews.json"');
@@ -65,7 +67,9 @@ reviewRouter.post('/api/applications/:ref/insights/labels', (req, res) => {
   const labels = parsed.filter((label) => known.has(label.file));
   const remove = removals.filter((ref) => known.has(ref.file));
   try {
-    if (remove.length) removeReviewLabels(found.meta.reference, remove);
+    if (remove.length) {
+      removeReviewLabels(found.meta.reference, remove);
+    }
     const remaining = labels.length
       ? mergeReviewLabels(found.meta.reference, labels)
       : readReviewLabels(found.meta.reference);

@@ -24,9 +24,15 @@ watch(
 );
 
 const buttonText = computed(() => {
-  if (selected.value.length === 0) return props.placeholder || 'Any';
-  if (selected.value.length === props.options.length) return 'All';
-  if (selected.value.length <= 2) return selected.value.join(', ');
+  if (selected.value.length === 0) {
+    return props.placeholder || 'Any';
+  }
+  if (selected.value.length === props.options.length) {
+    return 'All';
+  }
+  if (selected.value.length <= 2) {
+    return selected.value.join(', ');
+  }
   return `${selected.value.length} selected`;
 });
 
