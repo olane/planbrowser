@@ -112,7 +112,7 @@
           </span>
         </h3>
         <div ref="mapWrapRef">
-          <SearchResultsMap v-if="resultsWithLocations.length > 0" ref="mapRef" :results="searchResults" :class="$style.resultsMap" @select="scrollToResult" />
+          <SearchResultsMap v-if="resultsWithLocations.length > 0 || searchArea" ref="mapRef" :results="searchResults" :area="searchArea" :class="$style.resultsMap" @select="scrollToResult" />
         </div>
         <div :class="$style.resultsList">
           <div v-for="res in searchResults" :key="res.uid" :ref="(el) => setResultRef(res.uid, el)" :class="$style.resultCard">
@@ -239,6 +239,9 @@ const searchResults = ref<PlanItRecord[]>([])
 const totalResults = ref<number | undefined>(undefined)
 const isSearching = ref(false)
 const hasSearched = ref(false)
+// Snapshot of the search area so editing the radius does not move the circle
+// until the next search runs. Null when the postcode could not be geocoded.
+const searchArea = ref<{ lat: number; lon: number; radiusKm: number } | null>(null)
 
 // Saved searches, plus the set of references that are new since the last run
 // (used to badge freshly-appeared results when re-running a saved search).
@@ -264,9 +267,36 @@ const fetchSavedSearches = async () => {
 const { apps: downloadedApps, fetchApps } = useApplications()
 const isDownloaded = (reference: string) => downloadedApps.value.some(app => app.reference === reference)
 
+// Persist the last search's location across visits.
+const LAST_SEARCH_KEY = 'planbrowser.lastSearch'
+
+function loadLastSearch(): { postcode: string; radius: string } | null {
+  try {
+    const raw = localStorage.getItem(LAST_SEARCH_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.postcode === 'string' && typeof parsed?.radius === 'string') {
+      return { postcode: parsed.postcode, radius: parsed.radius }
+    }
+  } catch {
+    // localStorage unavailable or the stored value is malformed; use defaults.
+  }
+  return null
+}
+
+function saveLastSearch(postcode: string, radius: string) {
+  try {
+    localStorage.setItem(LAST_SEARCH_KEY, JSON.stringify({ postcode, radius }))
+  } catch {
+    // Ignore persistence failures.
+  }
+}
+
+const lastSearch = loadLastSearch()
+
 const searchForm = ref({
-  postcode: '',
-  radius: '2',
+  postcode: lastSearch?.postcode ?? '',
+  radius: lastSearch?.radius ?? '2',
   search: '',
   developer: '',
   app_type: '',
@@ -492,24 +522,33 @@ const lookupReference = async () => {
 const searchPlanIt = async () => {
   if (!searchForm.value.postcode) return
 
-  searchForm.value.postcode = normalizePostcode(searchForm.value.postcode)
+  const postcode = normalizePostcode(searchForm.value.postcode)
+  const radius = searchForm.value.radius
+  searchForm.value.postcode = postcode
+  saveLastSearch(postcode, radius)
 
   isSearching.value = true
   hasSearched.value = false
   searchError.value = ''
   newUids.value = new Set()
+  searchArea.value = null
 
   try {
     const filters = buildFilters()
-    const data = await api.searchPlanIt(searchForm.value.postcode, searchForm.value.radius, filters, buildSort())
+    const [data, center] = await Promise.all([
+      api.searchPlanIt(postcode, radius, filters, buildSort()),
+      api.geocodePostcode(postcode).catch(() => null)
+    ])
     searchResults.value = data.records || []
     totalResults.value = data.total
+    searchArea.value = center && Number(radius) > 0 ? { ...center, radiusKm: Number(radius) } : null
     hasSearched.value = true
   } catch (e: any) {
     console.error(e)
     searchError.value = e.message || 'Failed to search'
     searchResults.value = []
     totalResults.value = undefined
+    searchArea.value = null
   } finally {
     isSearching.value = false
   }
@@ -543,12 +582,18 @@ const runSavedSearch = async (saved: SavedSearch) => {
   runningSearchId.value = saved.id
   searchError.value = ''
   saveSearchError.value = ''
+  searchArea.value = null
 
   try {
     applySearchToForm(saved)
-    const { records, previousReferences, total } = await api.runSavedSearch(saved.id)
+    saveLastSearch(saved.postcode, saved.radius)
+    const [{ records, previousReferences, total }, center] = await Promise.all([
+      api.runSavedSearch(saved.id),
+      api.geocodePostcode(saved.postcode).catch(() => null)
+    ])
     searchResults.value = records
     totalResults.value = total
+    searchArea.value = center && Number(saved.radius) > 0 ? { ...center, radiusKm: Number(saved.radius) } : null
     hasSearched.value = true
     const previous = new Set(previousReferences)
     newUids.value = new Set(records.filter((r) => !previous.has(r.uid)).map((r) => r.uid))
@@ -559,6 +604,7 @@ const runSavedSearch = async (saved: SavedSearch) => {
     searchResults.value = []
     totalResults.value = undefined
     newUids.value = new Set()
+    searchArea.value = null
   } finally {
     runningSearchId.value = null
   }
