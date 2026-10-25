@@ -209,7 +209,7 @@ const savingGroup = ref(false);
 
 async function toggleGroupStar(entry: DocumentListEntry<EnhancedDocument>) {
   if (entry.kind !== 'group' || savingGroup.value) return;
-  const next = groupAllStarred(entry) ? false : true;
+  const next = !groupAllStarred(entry);
   savingGroup.value = true;
   try {
     await Promise.all(
