@@ -117,7 +117,7 @@ const renderMapLayers = () => {
     marker.bindPopup(popupContent);
     marker.on('popupopen', (e) => {
       const link = e.popup.getElement()?.querySelector('.jump-link') as HTMLElement | null;
-      if (link) link.onclick = () => emit('select', p.rec.uid);
+      if (link) link.addEventListener('click', () => emit('select', p.rec.uid));
     });
     bounds.extend([p.lat, p.lon] as L.LatLngExpression);
   }

@@ -106,7 +106,7 @@ const bindInteractions = (layer: L.Layer, app: ApplicationMeta) => {
   layer.bindPopup(popupContent(app));
   layer.on('popupopen', (e: L.PopupEvent) => {
     const link = e.popup.getElement()?.querySelector('.open-link') as HTMLElement | null;
-    if (link) link.onclick = () => emit('select', app.reference);
+    if (link) link.addEventListener('click', () => emit('select', app.reference));
     setPolygonHighlight(app, true);
   });
   layer.on('popupclose', () => setPolygonHighlight(app, false));
