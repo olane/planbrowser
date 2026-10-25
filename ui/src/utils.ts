@@ -86,9 +86,10 @@ export function insightsProgressText(progress: InsightsProgress): string {
 export function insightsProgressPercent(progress: InsightsProgress): number {
   if (progress.phase === 'finalising') return 100
   if (progress.documentsTotal === 0) return 100
-  const page = progress.currentDocumentPages
-    ? (progress.currentPage ?? 0) / progress.currentDocumentPages
-    : 0
+  // `currentPage` is the page being rendered, so only the pages before it have
+  // actually finished.
+  const finishedPage = Math.max(0, (progress.currentPage ?? 1) - 1)
+  const page = progress.currentDocumentPages ? finishedPage / progress.currentDocumentPages : 0
   const completed = progress.documentsProcessed + page
   return Math.min(100, Math.round((completed / progress.documentsTotal) * 100))
 }

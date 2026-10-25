@@ -431,7 +431,9 @@ Notes / known rough edges:
 - A cold generation is CPU-heavy (~1 min for a 94-document application). Scans run through a
   serial in-process queue (`queue.ts`) shared by manual scans and automatic refreshes, so the UI
   can show pending work and two scans never compete for CPU. There is no cross-process queue.
-  Warm re-runs are near-instant.
+  Requests made while a scan runs are applied as a follow-up (a deep upgrade or regenerate);
+  cancelling a scan suppresses automatic stale-cache refreshes until the user starts one
+  explicitly. Warm re-runs are near-instant.
 - **Live progress and streaming partials.** While a run is in flight the `GET` reports live
   counters and, when there is no complete result to fall back on, a partial snapshot the pipeline
   publishes (throttled to ~2 s) via `onSnapshot`. `documentsTotal` is the documents the run

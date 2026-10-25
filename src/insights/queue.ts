@@ -34,6 +34,11 @@ export class InsightsQueue {
   private failures = new Map<string, string>();
   // References whose next run must bypass the current cache.
   private forced = new Set<string>();
+  // Requests made while a scan was already running, applied once it settles.
+  private followUps = new Map<string, { deep: boolean; force: boolean }>();
+  // References the user cancelled, which suppresses automatic stale-cache
+  // refreshes until they explicitly start a scan again.
+  private suppressed = new Set<string>();
   private isProcessing = false;
   private currentRunId = 0;
   private currentAbort: AbortController | undefined;
@@ -47,10 +52,20 @@ export class InsightsQueue {
 
   enqueue(reference: string, authorityId?: string, options: EnqueueOptions = {}): InsightsQueueItem {
     let item = this.items.find((entry) => entry.reference === reference);
+    if (options.force) this.suppressed.delete(reference);
 
     if (item && item.status === 'in_progress') {
-      // A run is already underway; a manual request joins it rather than
-      // starting a competing scan. Depth changes take effect on the next run.
+      // A run is already underway. A manual request joins it, and any upgrade
+      // (more depth or a forced regenerate) runs as a follow-up afterwards.
+      const upgrade = (options.deep === true && item.depth !== 'deep') || options.force === true;
+      if (upgrade) {
+        const followUp = this.followUps.get(reference);
+        this.followUps.set(reference, {
+          deep: item.depth === 'deep' || Boolean(options.deep) || Boolean(followUp?.deep),
+          force: Boolean(options.force) || Boolean(followUp?.force)
+        });
+      }
+      this.failures.delete(reference);
       return item;
     }
 
@@ -109,11 +124,18 @@ export class InsightsQueue {
     return this.failures.get(reference);
   }
 
+  // True after the user cancelled a scan, until they start one explicitly.
+  // Automatic stale-cache refreshes must leave the stale cache alone meanwhile.
+  isSuppressed(reference: string): boolean {
+    return this.suppressed.has(reference);
+  }
+
   retry(id: string): InsightsQueueItem | undefined {
     const item = this.items.find((entry) => entry.id === id);
     if (!item || item.status !== 'failed') return undefined;
     this.resetToPending(item);
     this.forced.add(item.reference);
+    this.suppressed.delete(item.reference);
     this.failures.delete(item.reference);
     this.snapshots.delete(item.reference);
     this.kick();
@@ -135,6 +157,8 @@ export class InsightsQueue {
     this.forced.delete(item.reference);
     this.failures.delete(item.reference);
     this.snapshots.delete(item.reference);
+    this.followUps.delete(item.reference);
+    this.suppressed.add(item.reference);
 
     if (wasInProgress) {
       this.currentRunId++;
@@ -149,6 +173,7 @@ export class InsightsQueue {
     if (!item || item.status !== 'cancelled') return undefined;
     this.resetToPending(item);
     this.forced.add(item.reference);
+    this.suppressed.delete(item.reference);
     this.failures.delete(item.reference);
     this.snapshots.delete(item.reference);
     this.kick();
@@ -181,7 +206,8 @@ export class InsightsQueue {
 
     try {
       while (true) {
-        const item = this.items.find((entry) => entry.status === 'pending');
+        // Match the order the UI shows: earliest enqueued pending item first.
+        const item = this.getQueue().find((entry) => entry.status === 'pending');
         if (!item) break;
 
         const runId = ++this.currentRunId;
@@ -231,6 +257,17 @@ export class InsightsQueue {
             this.currentAbort = undefined;
             this.forced.delete(ref);
             this.snapshots.delete(ref);
+
+            // A request made while this run was in flight (Scan more or
+            // Regenerate) is honoured now, in the queue's normal order.
+            const followUp = this.followUps.get(ref);
+            if (followUp) {
+              this.followUps.delete(ref);
+              this.resetToPending(item);
+              item.depth = followUp.deep ? 'deep' : 'quick';
+              if (followUp.force) this.forced.add(ref);
+              this.failures.delete(ref);
+            }
           }
         }
       }

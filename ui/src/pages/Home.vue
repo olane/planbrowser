@@ -21,7 +21,7 @@
             </svg>
             <span>{{ showAppsMap ? 'Hide map' : 'View map' }}</span>
           </button>
-          <div v-if="hasSyncCandidates || activeQueueCount > 0">
+          <div v-if="hasSyncCandidates || activeDownloadCount > 0">
             <button
               v-if="queueBusy"
               @click="router.push('/queue')"
@@ -43,7 +43,7 @@
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                 ></path>
               </svg>
-              <span>Syncing {{ activeQueueCount }} left — view queue</span>
+              <span>Syncing {{ activeDownloadCount }} left — view queue</span>
             </button>
             <div v-else ref="syncMenuRef" :class="$style.syncGroup">
               <button
@@ -141,15 +141,16 @@ const scopeOptions: { key: ScopeKey; label: string; scope: SyncScope; titlePart:
 ];
 const scopeMeta = (key: ScopeKey) => scopeOptions.find((o) => o.key === key)!;
 
-const isScopeKey = (v: string | null): v is ScopeKey => v === 'all' || v === 'starred' || v === 'awaitingDecision';
-import { refreshQueue, activeQueueCount, getQueueStatus } from '../queueStore';
-import { useApplications } from '../composables/useApplications';
-import { useApplicationsMap } from '../composables/useApplicationsMap';
-import * as api from '../api';
-import { useRouter } from 'vue-router';
-import ApplicationsMapPanel from '../components/ApplicationsMapPanel.vue';
-import ApplicationCard from '../components/ApplicationCard.vue';
-import ui from '../styles/primitives.module.css';
+const isScopeKey = (v: string | null): v is ScopeKey =>
+  v === 'all' || v === 'starred' || v === 'awaitingDecision'
+import { refreshQueue, activeDownloadCount, getQueueStatus } from '../queueStore'
+import { useApplications } from '../composables/useApplications'
+import { useApplicationsMap } from '../composables/useApplicationsMap'
+import * as api from '../api'
+import { useRouter } from 'vue-router'
+import ApplicationsMapPanel from '../components/ApplicationsMapPanel.vue'
+import ApplicationCard from '../components/ApplicationCard.vue'
+import ui from '../styles/primitives.module.css'
 
 const router = useRouter();
 
@@ -168,11 +169,11 @@ const syncError = ref('');
 
 const awaitingDecisionCount = computed(
   () => downloadedApps.value.filter((a) => !a.archived && isAwaitingDecision(a)).length,
-);
-const starredCount = computed(() => downloadedApps.value.filter((a) => !a.archived && a.starred).length);
-const everythingCount = computed(() => downloadedApps.value.filter((a) => !a.archived).length);
-const hasSyncCandidates = computed(() => everythingCount.value > 0 || activeQueueCount.value > 0);
-const queueBusy = computed(() => activeQueueCount.value > 0 && !queueing.value);
+)
+const starredCount = computed(() => downloadedApps.value.filter((a) => !a.archived && a.starred).length)
+const everythingCount = computed(() => downloadedApps.value.filter((a) => !a.archived).length)
+const hasSyncCandidates = computed(() => everythingCount.value > 0 || activeDownloadCount.value > 0)
+const queueBusy = computed(() => activeDownloadCount.value > 0 && !queueing.value)
 
 const syncOptions = scopeOptions.map(({ key, label }) => ({ key, label }));
 const scopeCount = (key: ScopeKey) =>

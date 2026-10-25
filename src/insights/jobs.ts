@@ -59,6 +59,13 @@ export function getInsightsState(reference: string, authorityId?: string): Insig
     return { status: 'error', error: failure };
   }
 
+  // A cancelled scan suppresses automatic refreshes until the user explicitly
+  // starts one again. Serve the existing cache (possibly stale) rather than
+  // immediately restarting the scan the user just cancelled.
+  if (insightsQueue.isSuppressed(reference)) {
+    return cached ? { status: 'ready', insights: cached } : { status: 'none' };
+  }
+
   if (cached) {
     // Preserve the depth of the cached result on an automatic refresh.
     startInsights(reference, authorityId, { force: false, deep: cached.depth === 'deep' });

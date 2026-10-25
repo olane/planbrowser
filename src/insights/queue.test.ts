@@ -81,6 +81,40 @@ describe('InsightsQueue', () => {
     expect(queue.getFailure('24/0001/FUL')).toBeUndefined();
   });
 
+  it('runs a deep follow-up requested while a quick scan is in flight', async () => {
+    const runs: { deep: boolean | undefined; force: boolean | undefined }[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const queue = new InsightsQueue({
+      generate: async (_reference, _authority, options) => {
+        runs.push({ deep: options?.deep, force: options?.force });
+        if (runs.length === 1) await gate;
+        return null;
+      }
+    });
+
+    const item = queue.enqueue('24/0001/FUL', undefined, { force: true });
+    await waitFor(() => item.status === 'in_progress');
+    queue.enqueue('24/0001/FUL', undefined, { deep: true, force: true });
+    release();
+    await waitFor(() => runs.length === 2 && item.status === 'completed');
+
+    expect(item.depth).toBe('deep');
+    expect(runs.map((run) => run.deep)).toEqual([false, true]);
+  });
+
+  it('suppresses automatic refreshes after a cancel until started again', () => {
+    const queue = new InsightsQueue({ autoStart: false });
+    const item = queue.enqueue('24/0001/FUL');
+    queue.cancel(item.id);
+    expect(queue.isSuppressed('24/0001/FUL')).toBe(true);
+
+    queue.enqueue('24/0001/FUL', undefined, { force: true });
+    expect(queue.isSuppressed('24/0001/FUL')).toBe(false);
+  });
+
   it('cancels a running scan cooperatively', async () => {
     const queue = new InsightsQueue({
       generate: (_reference, _authority, options) =>
