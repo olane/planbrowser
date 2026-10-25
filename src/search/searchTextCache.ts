@@ -38,7 +38,7 @@ export function readSearchText(dir: string): SearchTextFile {
       }
       return { version: parsed.version ?? 1, documents };
     }
-  } catch (e) {
+  } catch {
     // Missing or unreadable cache: start fresh.
   }
   return { version: 1, documents: {} };

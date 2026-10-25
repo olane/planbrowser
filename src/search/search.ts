@@ -60,7 +60,7 @@ export async function searchApplicationDocuments(
     let stat: fs.Stats;
     try {
       stat = fs.statSync(filePath);
-    } catch (e) {
+    } catch {
       // File not on disk yet (e.g. a download still in progress): skip it and
       // let a later search pick it up once it lands.
       continue;
@@ -71,7 +71,7 @@ export async function searchApplicationDocuments(
     let text = '';
     try {
       text = (await extractDocumentText(filePath)) ?? '';
-    } catch (e) {
+    } catch {
       text = '';
     }
     cache.documents[doc.localFilename] = { text, mtimeMs: stat.mtimeMs, size: stat.size };

@@ -42,7 +42,7 @@ function readMeta(metaPath: string): ApplicationMeta | null {
   try {
     const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8')) as ApplicationMeta;
     return meta ? dedupeMeta(meta) : null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }

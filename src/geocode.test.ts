@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { geocodePostcode, locationFromAddress } from './geocode.js';
 
 type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;

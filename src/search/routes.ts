@@ -18,7 +18,7 @@ documentSearchRouter.get('/api/applications/:ref/documents/search', async (req, 
     if (rawAuthority) {
       try {
         authorityId = resolveAuthority(rawAuthority).id;
-      } catch (e) {
+      } catch {
         // Unknown authority: fall back to searching all authorities.
       }
     }

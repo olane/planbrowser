@@ -23,7 +23,7 @@ describe('saved searches', () => {
 
   it('saves a search with the newest first and persists it', () => {
     const first = saveSearch({ postcode: 'CB1 2JW', radius: '2', filters: { app_state: 'Undecided' } });
-    const second = saveSearch({ postcode: 'CB2 1AB', radius: '5', filters: {} });
+    saveSearch({ postcode: 'CB2 1AB', radius: '5', filters: {} });
 
     expect(first.id).toBeDefined();
     expect(first.createdAt).toBeDefined();

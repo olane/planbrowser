@@ -292,7 +292,7 @@ export function createApp(): express.Express {
       if (rawAuthority) {
         try {
           authorityId = resolveAuthority(rawAuthority).id;
-        } catch (e) {
+        } catch {
           // Unknown authority filter: fall back to searching all authorities
         }
       }

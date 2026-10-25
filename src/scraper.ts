@@ -253,13 +253,13 @@ export async function downloadDocuments(
         undefined,
         { timeout: 5000 },
       );
-    } catch (e) {
+    } catch {
       // Force enable if the page scripts failed to do so
       await btn.evaluate((node) => node.removeAttribute('disabled'));
     }
 
     try {
-      const { filePath: zipPath, filename: zipName } = await download(() => btn.click({ noWaitAfter: true }), 300000);
+      const { filePath: zipPath } = await download(() => btn.click({ noWaitAfter: true }), 300000);
 
       const zip = new AdmZip(zipPath);
 

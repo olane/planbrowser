@@ -84,7 +84,7 @@ describe('activity feed', () => {
       message: 'Application added',
       changes: [],
     });
-    const second = recordActivity({
+    recordActivity({
       reference: '24/0002/FUL',
       authorityId: 'cambridge',
       message: 'Application updated',
