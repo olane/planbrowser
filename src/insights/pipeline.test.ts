@@ -241,10 +241,11 @@ describe('insights pipeline on synthetic documents', () => {
       onSnapshot: (s) => snapshots.push(s),
     });
 
-    // The finished result is marked complete; counters reach the document total.
+    // The finished result is marked complete; counters reach the planned total.
     expect(insights?.complete).toBe(true);
     expect(progress.length).toBeGreaterThanOrEqual(2);
-    expect(progress.at(-1)?.documentsTotal).toBe(3);
+    expect(progress.every((entry) => entry.documentsTotal === 3)).toBe(true);
+    expect(progress.at(-1)?.documentsProcessed).toBe(3);
     expect(progress.at(-1)?.documentsAnalysed).toBe(3);
 
     // Partial snapshots are marked incomplete and only reference thumbnails that

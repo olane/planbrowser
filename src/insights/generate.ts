@@ -85,6 +85,9 @@ export interface GenerateOptions {
   force?: boolean;
   // Scan more documents and pages. Slower, but finds visuals a quick run misses.
   deep?: boolean;
+  // Cooperative cancellation, checked between documents and pages. An aborted
+  // run throws and never writes a complete cache.
+  signal?: AbortSignal;
   trace?: (entry: PageTrace) => void;
   // Live counters, called after every page. Cheap; safe to call often.
   onProgress?: (progress: InsightsProgress) => void;
@@ -92,6 +95,15 @@ export interface GenerateOptions {
   // pipeline. Carries `complete: false`; the caller decides what to do with it
   // (the server writes it to the cache so the UI can stream images in).
   onSnapshot?: (insights: ApplicationInsights) => void;
+}
+
+function abortIfCancelled(signal: AbortSignal | undefined): void {
+  if (!signal?.aborted) {
+    return;
+  }
+  const error = new Error('Insights generation cancelled');
+  error.name = 'AbortError';
+  throw error;
 }
 
 // How often a partial snapshot is published during a run. Bounds the disk write
@@ -182,6 +194,23 @@ export function rankDocuments(docs: DocumentMeta[]): { doc: DocumentMeta; profil
     );
 }
 
+// The documents this run will actually consider: ranked, capped to the
+// document budget, and limited to PDFs whose name/role makes scanning useful.
+// Progress is reported against this list (not the application's whole document
+// set), so it starts at a meaningful total and reaches it when the run ends.
+function planDocuments(
+  ranked: { doc: DocumentMeta; profile: DocumentProfile }[],
+  budget: Budget,
+): { doc: DocumentMeta; profile: DocumentProfile }[] {
+  return ranked.slice(0, budget.maxDocs).filter(({ doc, profile }) => {
+    if (!isPdf(doc.localFilename)) {
+      return false;
+    }
+    const { frontPages } = documentRole(profile);
+    return frontPages || Boolean(profile.visualName);
+  });
+}
+
 // Pre-scan a document's pages for the embedded-image signal without rasterising
 // them. Every page is checked (a statement mixes body text with figures, so
 // text length is not a safe filter); `takeBudget` meters pages across the run.
@@ -190,11 +219,13 @@ async function scanDocumentPages(
   textLengths: number[],
   maxPages: number,
   takeBudget: () => boolean,
+  signal: AbortSignal | undefined,
 ): Promise<{ scanned: ScannedPage[]; scans: Map<number, PageScan> }> {
   const limit = Math.min(Math.max(textLengths.length, 1), maxPages);
   const scanned: ScannedPage[] = [];
   const scans = new Map<number, PageScan>();
   for (let page = 1; page <= limit; page++) {
+    abortIfCancelled(signal);
     let imageCount = 0;
     let largestImageArea = 0;
     if (takeBudget()) {
@@ -215,6 +246,7 @@ interface RunCounters {
   pagesRendered: number;
   photoPagesRendered: number;
   documentsAnalysed: number;
+  documentsProcessed: number;
   prescanPages: number;
   capped: boolean;
 }
@@ -226,7 +258,10 @@ interface Analysis {
   counters: RunCounters;
   candidates: InsightImage[];
   interpreted: InsightPage[];
+  signal: AbortSignal | undefined;
   trace: ((entry: PageTrace) => void) | undefined;
+  // Record how far through the current document's chosen pages we are.
+  setPage: (page: number, total: number) => void;
   // Report live counters (called after every rendered page).
   report: () => void;
   // Publish a throttled partial snapshot (no-op when no sink is configured).
@@ -245,6 +280,7 @@ function takePrescanBudget(counters: RunCounters, budget: Budget): boolean {
 // and classify them, and collect the accepted images. Counters are advanced in
 // place; the caller decides whether there is budget to reach the next document.
 async function analyseDocument(doc: DocumentMeta, profile: DocumentProfile, run: Analysis): Promise<void> {
+  abortIfCancelled(run.signal);
   const { frontPages, isPhotoDoc } = documentRole(profile);
   const { counters, budget, store } = run;
 
@@ -270,6 +306,7 @@ async function analyseDocument(doc: DocumentMeta, profile: DocumentProfile, run:
           lines.map((page) => page.reduce((sum, line) => sum + line.str.length + 1, 0)),
           budget.prescanPagesPerDoc,
           () => takePrescanBudget(counters, budget),
+          run.signal,
         );
     const pageCap = frontPages ? budget.pagesPerDoc : profile.designAndAccess ? budget.dasPages : budget.visualDocPages;
     const titleScores = frontPages ? lines.map(pageTitleScore) : [];
@@ -277,10 +314,12 @@ async function analyseDocument(doc: DocumentMeta, profile: DocumentProfile, run:
     if (pages.length === 0) {
       return;
     }
+    run.setPage(0, pages.length);
 
     const renderedPages: number[] = [];
     let docImages = 0;
     for (const page of pages) {
+      abortIfCancelled(run.signal);
       if (counters.pagesRendered >= budget.maxPages) {
         counters.capped = true;
         break;
@@ -296,6 +335,7 @@ async function analyseDocument(doc: DocumentMeta, profile: DocumentProfile, run:
         counters.photoPagesRendered++;
       }
       renderedPages.push(page);
+      run.setPage(renderedPages.length, pages.length);
       run.report();
 
       const render = await handle.render(page, THUMB_WIDTH);
@@ -375,12 +415,13 @@ export async function generateInsights(
   const store = new FeatureStore(dir, { captionMinArea: LARGE_IMAGE_AREA });
 
   const rankedAll = rankDocuments(docs);
-  const ranked = rankedAll.slice(0, budget.maxDocs);
+  const planned = planDocuments(rankedAll, budget);
 
   const counters: RunCounters = {
     pagesRendered: 0,
     photoPagesRendered: 0,
     documentsAnalysed: 0,
+    documentsProcessed: 0,
     prescanPages: 0,
     // Documents beyond maxDocs were never considered, so the run is partial.
     capped: rankedAll.length > budget.maxDocs,
@@ -393,10 +434,18 @@ export async function generateInsights(
   const summary = buildSummary(meta, docs);
   const comments = tallyComments(readComments(dir));
 
+  let phase: InsightsProgress['phase'] = 'scanning';
+  let currentDocument: string | undefined;
+  let currentPage: number | undefined;
+  let currentDocumentPages: number | undefined;
   const liveProgress = (): InsightsProgress => ({
+    phase,
     documentsAnalysed: counters.documentsAnalysed,
-    documentsTotal: docs.length,
+    documentsProcessed: counters.documentsProcessed,
+    documentsTotal: planned.length,
     pagesRendered: counters.pagesRendered,
+    ...(currentDocument ? { currentDocument } : {}),
+    ...(currentPage !== undefined && currentDocumentPages !== undefined ? { currentPage, currentDocumentPages } : {}),
   });
 
   // Build an ApplicationInsights from the candidates gathered so far. Used for
@@ -463,39 +512,45 @@ export async function generateInsights(
     counters,
     candidates,
     interpreted,
+    signal: opts.signal,
     trace: opts.trace,
+    setPage: (page, total) => {
+      currentPage = page;
+      currentDocumentPages = total;
+    },
     report,
     snapshot: publishSnapshot,
   };
   const startedAt = Date.now();
 
-  insightsLog(`${reference}: ${docs.length} documents, ${depth} scan of up to ${ranked.length}`);
+  insightsLog(`${reference}: ${docs.length} documents, ${depth} scan of ${planned.length}`);
 
-  for (const { doc, profile } of ranked) {
+  report();
+  for (const { doc, profile } of planned) {
+    abortIfCancelled(opts.signal);
+    currentDocument = doc.description || doc.localFilename;
+    report();
+
+    const { isPhotoDoc } = documentRole(profile);
     if (counters.pagesRendered >= budget.maxPages) {
       counters.capped = true;
-      break;
-    }
-    if (!isPdf(doc.localFilename)) {
-      continue;
-    }
-    const { frontPages, isPhotoDoc } = documentRole(profile);
-    // Visual-impact photo appendices add little once the photo budget is spent,
-    // and would otherwise crowd out plans and renders.
-    if (isPhotoDoc && counters.photoPagesRendered >= budget.photoPageQuota) {
+    } else if (isPhotoDoc && counters.photoPagesRendered >= budget.photoPageQuota) {
+      // Visual-impact photo appendices add little once the photo budget is
+      // spent, and would otherwise crowd out plans and renders.
       counters.capped = true;
-      continue;
-    }
-    // Named drawings/photos, and drawing-typed files with a cryptic name (a
-    // drawing number), carry their visual on their front/titled pages. Other
-    // documents are pre-scanned for embedded figures, but only if their name
-    // looks visual at all (transport/geo reports would be scanned for nothing).
-    if (!frontPages && !profile.visualName) {
-      continue;
+    } else {
+      await analyseDocument(doc, profile, run);
     }
 
-    await analyseDocument(doc, profile, run);
+    counters.documentsProcessed++;
+    currentDocument = undefined;
+    currentPage = undefined;
+    currentDocumentPages = undefined;
+    report();
   }
+
+  phase = 'finalising';
+  report();
 
   const selection = selectImages(candidates);
   const images = selection.images;
@@ -504,6 +559,7 @@ export async function generateInsights(
   // Every found image needs its thumbnail on disk. A cached page whose asset
   // was pruned earlier (it was not in the gallery then) is re-rendered here.
   for (const image of found) {
+    abortIfCancelled(opts.signal);
     if (fs.existsSync(assetPath(dir, image.imageFile))) {
       continue;
     }
@@ -515,11 +571,13 @@ export async function generateInsights(
       image.id = imageFile.replace(/\.png$/, '');
     }
   }
+  abortIfCancelled(opts.signal);
   store.save();
   // Keep every distinct candidate's thumbnail (not just the curated highlights)
   // so the UI can offer "show all found"; unreferenced assets are pruned.
   pruneAssets(dir, new Set(found.map((image) => image.imageFile)));
 
+  abortIfCancelled(opts.signal);
   const insights = buildInsights(selection, true);
   writeInsights(dir, insights);
   const { work } = store;

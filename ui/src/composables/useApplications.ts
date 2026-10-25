@@ -1,7 +1,7 @@
 import { ref, watch } from 'vue';
 import type { ApplicationMeta } from '../../../src/types.js';
 import * as api from '../api';
-import { queueItems, activeQueueCount } from '../queueStore';
+import { queueItems, activeDownloadCount } from '../queueStore';
 
 // The downloaded applications, fetched from the API and kept fresh while the
 // download queue runs. Shared by the downloaded/archived list pages and the
@@ -29,7 +29,7 @@ export function useApplications(options: { liveUpdates?: boolean } = {}) {
     const previousCompleted = new Set((oldItems ?? []).filter((q) => q.status === 'completed').map((q) => q.id));
     const currentCompleted = items.filter((q) => q.status === 'completed').map((q) => q.id);
     const justCompleted = currentCompleted.some((id) => !previousCompleted.has(id));
-    if (justCompleted || (options.liveUpdates && activeQueueCount.value > 0)) {
+    if (justCompleted || (options.liveUpdates && activeDownloadCount.value > 0)) {
       fetchApps();
     }
   });

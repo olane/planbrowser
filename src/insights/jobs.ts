@@ -1,7 +1,8 @@
 import type { ApplicationInsights, InsightsProgress } from '../types.js';
 import { resolveApplicationMeta } from '../storage.js';
 import { readInsights } from './cache.js';
-import { documentList, generateInsights, isCurrent, sourceSignature, type GenerateOptions } from './generate.js';
+import { documentList, isCurrent, sourceSignature, type GenerateOptions } from './generate.js';
+import { insightsQueue } from './queue.js';
 
 type InsightsStatus = 'none' | 'running' | 'ready' | 'error';
 
@@ -13,46 +14,13 @@ interface InsightsState {
   error?: string;
 }
 
-// An in-flight generation, its latest counters and its partial result.
-interface Running {
-  progress?: InsightsProgress;
-  // The most recent partial result, held in memory only. The on-disk cache
-  // always holds the last *complete* result, so a scan in progress never
-  // corrupts it, and a refresh can keep the previous result on screen (below)
-  // while a fresh generation streams its images in.
-  snapshot?: ApplicationInsights;
-}
-
-// Generation is CPU-heavy, so the API starts it in the background and the UI
-// polls. Track in-flight work and the last failure per application. The key is
-// the reference alone (not the authority), so an application cannot be
-// generated twice in parallel via two different authority spellings.
-const inFlight = new Map<string, Running>();
-const lastError = new Map<string, string>();
-
+// Queue a generation. The queue deduplicates by reference, so a request while a
+// run is in flight simply joins it (and a pending deep request upgrades it).
 export function startInsights(reference: string, authorityId?: string, opts: GenerateOptions = {}): void {
-  if (inFlight.has(reference)) {
-    return;
-  }
-  lastError.delete(reference);
-  const running: Running = {};
-  inFlight.set(reference, running);
-  generateInsights(reference, authorityId, {
-    ...opts,
-    onProgress: (progress) => {
-      running.progress = progress;
-    },
-    // Stream partial results as they are found; the GET below hands them to the
-    // UI while the run continues. They are marked `complete: false` so they are
-    // never mistaken for a finished result.
-    onSnapshot: (insights) => {
-      running.snapshot = insights;
-    },
-  })
-    .catch((err: unknown) => {
-      lastError.set(reference, err instanceof Error ? err.message : String(err));
-    })
-    .finally(() => inFlight.delete(reference));
+  insightsQueue.enqueue(reference, authorityId, {
+    ...(opts.deep !== undefined ? { deep: opts.deep } : {}),
+    ...(opts.force !== undefined ? { force: opts.force } : {}),
+  });
 }
 
 // Current state for the API: returns a ready result only when the cache is
@@ -68,17 +36,17 @@ export function getInsightsState(reference: string, authorityId?: string): Insig
   const source = sourceSignature(dir, documentList(meta));
   const cached = readInsights(dir);
 
-  // A generation in flight (a "scan more" deep run, or an automatic refresh)
-  // must be reported as running even when a fresh cache already exists. Reading
-  // the cache first would otherwise report `ready` and stop the UI polling while
-  // the scan continues in the background. The existing complete result (or, for
-  // a fresh generation, the partial snapshot streamed so far) is returned
-  // alongside the live counters, so the UI streams images in and shows real
-  // progress rather than a bare spinner.
-  const running = inFlight.get(reference);
-  if (running) {
-    const insights = cached ?? running.snapshot;
-    const progress = running.progress ?? running.snapshot?.progress;
+  // A generation queued or in flight (a "scan more" deep run, or an automatic
+  // refresh) must be reported as running even when a fresh cache already exists.
+  // Reading the cache first would otherwise report `ready` and stop the UI
+  // polling while the scan continues in the background. The existing complete
+  // result (or the partial snapshot streamed so far) is returned alongside the
+  // live counters, so the UI streams images in and shows real progress.
+  const active = insightsQueue.getActive(reference);
+  if (active) {
+    const snapshot = insightsQueue.getSnapshot(reference);
+    const insights = cached ?? snapshot;
+    const progress = active.progress ?? snapshot?.progress;
     return { status: 'running', ...(insights ? { insights } : {}), ...(progress ? { progress } : {}) };
   }
 
@@ -86,9 +54,16 @@ export function getInsightsState(reference: string, authorityId?: string): Insig
     return { status: 'ready', insights: cached };
   }
 
-  const previousError = lastError.get(reference);
-  if (previousError) {
-    return { status: 'error', error: previousError };
+  const failure = insightsQueue.getFailure(reference);
+  if (failure) {
+    return { status: 'error', error: failure };
+  }
+
+  // A cancelled scan suppresses automatic refreshes until the user explicitly
+  // starts one again. Serve the existing cache (possibly stale) rather than
+  // immediately restarting the scan the user just cancelled.
+  if (insightsQueue.isSuppressed(reference)) {
+    return cached ? { status: 'ready', insights: cached } : { status: 'none' };
   }
 
   if (cached) {

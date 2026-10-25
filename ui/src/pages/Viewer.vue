@@ -561,7 +561,14 @@
 import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick, useCssModule } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { timeAgo, progressText, isKeyDocument, shortDocumentName } from '../utils';
+import {
+  timeAgo,
+  progressText,
+  insightsProgressText,
+  insightsProgressPercent as insightsPercent,
+  isKeyDocument,
+  shortDocumentName,
+} from '../utils';
 import type {
   ApplicationMeta,
   ApplicationInsights,
@@ -657,17 +664,11 @@ const tabClass = (tab: string) => (activeTab.value === tab ? styles.tabActive : 
 // Live progress text and bar while a scan runs, from the streamed counters.
 const insightsProgressLabel = computed(() => {
   const p = insightsProgress.value;
-  if (!p || p.documentsTotal === 0) {
-    return '';
-  }
-  return `Scanning ${Math.min(p.documentsAnalysed, p.documentsTotal)} of ${p.documentsTotal} documents`;
+  return p ? insightsProgressText(p) : '';
 });
 const insightsProgressPercent = computed<number | null>(() => {
   const p = insightsProgress.value;
-  if (!p || p.documentsTotal === 0) {
-    return null;
-  }
-  return Math.min(100, Math.round((p.documentsAnalysed / p.documentsTotal) * 100));
+  return p ? insightsPercent(p) : null;
 });
 
 // The image list currently on show: the curated highlights, or every distinct

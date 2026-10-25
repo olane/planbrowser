@@ -3,6 +3,7 @@ import type {
   PlanItResponse,
   Comment,
   QueueItem,
+  InsightsQueueItem,
   SearchFilters,
   ApplicationFlags,
   ActivityEvent,
@@ -166,6 +167,45 @@ export async function requeueQueueItem(id: string): Promise<void> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Failed to re-queue download');
+  }
+}
+
+export async function fetchInsightsQueue(): Promise<InsightsQueueItem[]> {
+  const res = await fetch('/api/insights/queue');
+  if (!res.ok) {
+    throw new Error('Failed to fetch insights queue');
+  }
+  return res.json();
+}
+
+export async function clearInsightsQueue(): Promise<void> {
+  const res = await fetch('/api/insights/queue/clear', { method: 'POST' });
+  if (!res.ok) {
+    throw new Error('Failed to clear insights queue');
+  }
+}
+
+export async function retryInsightsQueueItem(id: string): Promise<void> {
+  const res = await fetch(`/api/insights/queue/${encodeURIComponent(id)}/retry`, { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to retry insights scan');
+  }
+}
+
+export async function cancelInsightsQueueItem(id: string): Promise<void> {
+  const res = await fetch(`/api/insights/queue/${encodeURIComponent(id)}/cancel`, { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to cancel insights scan');
+  }
+}
+
+export async function requeueInsightsQueueItem(id: string): Promise<void> {
+  const res = await fetch(`/api/insights/queue/${encodeURIComponent(id)}/requeue`, { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to re-queue insights scan');
   }
 }
 
