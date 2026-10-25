@@ -224,6 +224,7 @@ export function shortDocumentName(name: string): string {
 
 const KEY_DOC_KEYWORDS = [
   'design and access',
+  'design code',
   'planning statement',
   'heritage statement',
   'decision notice',

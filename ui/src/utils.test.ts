@@ -98,6 +98,11 @@ describe('isKeyDocument', () => {
     expect(isKeyDocument({ documentType: 'Application Information', description: 'DESIGN &amp; ACCESS STATEMENT PART 4' })).toBe(true);
   });
 
+  it('matches a design code', () => {
+    expect(isKeyDocument({ documentType: 'Application Information', description: 'DESIGN CODE' })).toBe(true);
+    expect(isKeyDocument({ documentType: 'Application Information', description: 'DESIGN CODES PART 1' })).toBe(true);
+  });
+
   it('rejects ordinary documents', () => {
     expect(isKeyDocument({ documentType: 'Drawings', description: 'PROPOSED SITE PLAN' })).toBe(false);
     expect(isKeyDocument({ documentType: 'Application Information', description: 'FEE CALCULATION' })).toBe(false);
