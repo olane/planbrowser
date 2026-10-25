@@ -145,7 +145,7 @@ export function readReviewStore(): TruthFile {
 // Keep the file's hand-written style: one line per flat entry.
 function formatTruth(truth: TruthFile): string {
   return JSON.stringify(truth, null, 2).replace(
-    /\{\n\s+([^{}\[\]]*?)\n\s*\}/g,
+    /\{\n\s+([^{}[\]]*?)\n\s*\}/g,
     (_, body: string) => `{ ${body.replace(/,\n\s+/g, ', ')} }`,
   );
 }
