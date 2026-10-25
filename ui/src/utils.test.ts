@@ -238,12 +238,7 @@ describe('groupDocuments', () => {
   it('is case-insensitive when matching bases', () => {
     const docs = [doc('Design and Access Statement part 1'), doc('DESIGN AND ACCESS STATEMENT PART 2')];
     const entries = groupDocuments(docs);
-    expect(entries).toHaveLength(1);
-    expect(entries[0].kind).toBe('group');
-    if (entries[0].kind === 'group') {
-      expect(entries[0].title).toBe('Design and Access Statement');
-      expect(entries[0].parts).toHaveLength(2);
-    }
+    expect(entries).toEqual([{ kind: 'group', title: 'Design and Access Statement', parts: [docs[0], docs[1]] }]);
   });
 
   it('groups in the position of the first member and preserves document order elsewhere', () => {
@@ -255,12 +250,11 @@ describe('groupDocuments', () => {
       'B',
       'C',
     ]);
-    if (entries[1].kind === 'group') {
-      expect(entries[1].parts.map((p) => p.description)).toEqual([
-        'HERITAGE STATEMENT PART 1',
-        'HERITAGE STATEMENT PART 2',
-      ]);
-    }
+    expect(entries[1]).toEqual({
+      kind: 'group',
+      title: 'HERITAGE STATEMENT',
+      parts: [docs[3], docs[1]],
+    });
   });
 
   it('does not merge distinct-but-similar titles', () => {
@@ -282,14 +276,13 @@ describe('groupDocuments', () => {
       doc('BUILDING D ELEVATIONS - SHEET 1 OF 10'),
     ];
     const entries = groupDocuments(docs);
-    expect(entries).toHaveLength(1);
-    if (entries[0].kind === 'group') {
-      expect(entries[0].parts.map((p) => p.description)).toEqual([
-        'BUILDING D ELEVATIONS - SHEET 1 OF 10',
-        'BUILDING D ELEVATIONS - SHEET 2 OF 10',
-        'BUILDING D ELEVATIONS - SHEET 10 OF 10',
-      ]);
-    }
+    expect(entries).toEqual([
+      {
+        kind: 'group',
+        title: 'BUILDING D ELEVATIONS',
+        parts: [docs[2], docs[1], docs[0]],
+      },
+    ]);
   });
 
   it('groups bare N of M documents sharing a base', () => {

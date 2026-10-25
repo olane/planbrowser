@@ -7,7 +7,8 @@
   "rules": {
     "eslint/no-unused-vars": "error",
     "eslint/no-useless-escape": "error",
-    "unicorn/no-empty-file": "error"
+    "unicorn/no-empty-file": "error",
+    "vitest/no-conditional-expect": "error"
   },
   "ignorePatterns": ["dist", "release", "downloads", "ui/dist"]
 }
