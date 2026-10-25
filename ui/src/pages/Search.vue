@@ -13,6 +13,10 @@
             <label :class="$style.label">Radius (km)</label>
             <input v-model="searchForm.radius" required type="number" step="0.1" :class="ui.input" />
           </div>
+          <div :class="$style.colType">
+            <label :class="$style.label">Application type</label>
+            <MultiSelect v-model="searchForm.app_type" :options="APP_TYPES" placeholder="Any type" />
+          </div>
           <button type="submit" :disabled="isSearching" :class="[ui.btn, ui.btnPrimary, $style.submit]">
             {{ isSearching ? 'Searching...' : 'Search' }}
           </button>
@@ -47,10 +51,6 @@
             <div>
               <label :class="$style.label">Developer / Agent</label>
               <input v-model="searchForm.developer" type="text" placeholder="e.g. company name" :class="ui.input" />
-            </div>
-            <div>
-              <label :class="$style.label">Application type</label>
-              <MultiSelect v-model="searchForm.app_type" :options="APP_TYPES" placeholder="Any type" />
             </div>
             <div>
               <label :class="$style.label">Decision status</label>
@@ -299,7 +299,7 @@ const searchForm = ref({
   radius: lastSearch?.radius ?? '2',
   search: '',
   developer: '',
-  app_type: '',
+  app_type: 'Full,Outline',
   app_state: '',
   app_size: '',
   recent: '365',
@@ -686,6 +686,16 @@ onMounted(() => {
 @media (min-width: 640px) {
   .colRadius {
     width: 8rem;
+  }
+}
+
+.colType {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .colType {
+    width: 12rem;
   }
 }
 
