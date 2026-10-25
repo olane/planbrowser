@@ -6,7 +6,8 @@
   },
   "rules": {
     "eslint/no-unused-vars": "error",
-    "eslint/no-useless-escape": "error"
+    "eslint/no-useless-escape": "error",
+    "unicorn/no-empty-file": "error"
   },
   "ignorePatterns": ["dist", "release", "downloads", "ui/dist"]
 }
