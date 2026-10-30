@@ -70,6 +70,8 @@ export interface ApplicationMeta {
   location?: ApplicationLocation;
   starred?: boolean;
   archived?: boolean;
+  // User-defined title shown instead of the reference across the UI.
+  customName?: string;
 }
 
 export interface ApplicationFlags {
@@ -77,6 +79,7 @@ export interface ApplicationFlags {
   archived: boolean;
   starredAt?: string;
   archivedAt?: string;
+  customName?: string;
 }
 
 export interface ChangeEntry {

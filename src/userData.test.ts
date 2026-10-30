@@ -49,6 +49,19 @@ describe('application flags', () => {
     const updated = setFlags('24/0001/FUL', 'cambridge', { archived: false });
     expect(updated.archivedAt).toBeUndefined();
   });
+
+  it('persists a trimmed custom name', () => {
+    const updated = setFlags('24/0001/FUL', 'cambridge', { customName: '  Shed at 1 High Street  ' });
+    expect(updated.customName).toBe('Shed at 1 High Street');
+    expect(getFlags('24/0001/FUL', 'cambridge').customName).toBe('Shed at 1 High Street');
+  });
+
+  it('removes the custom name when set to blank', () => {
+    setFlags('24/0001/FUL', 'cambridge', { customName: 'My name' });
+    const updated = setFlags('24/0001/FUL', 'cambridge', { customName: '   ' });
+    expect(updated.customName).toBeUndefined();
+    expect(getFlags('24/0001/FUL', 'cambridge').customName).toBeUndefined();
+  });
 });
 
 describe('document flags', () => {

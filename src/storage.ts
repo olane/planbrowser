@@ -55,12 +55,18 @@ function readMeta(metaPath: string): ApplicationMeta | null {
 
 function withFlags(meta: ApplicationMeta): ApplicationMeta {
   const flags = getFlags(meta.reference, meta.authorityId);
-  return {
+  const app: ApplicationMeta = {
     ...meta,
     starred: flags.starred,
     archived: flags.archived,
     documents: (meta.documents || []).map((d) => withDocFlags(d, meta.reference, meta.authorityId)),
   };
+  if (flags.customName !== undefined) {
+    app.customName = flags.customName;
+  } else {
+    delete app.customName;
+  }
+  return app;
 }
 
 function withDocFlags(doc: DocumentMeta, reference: string, authorityId?: string): DocumentMeta {

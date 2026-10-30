@@ -61,7 +61,40 @@
       <div v-if="app" :class="$style.card">
         <div :class="$style.summaryGrid">
           <div>
-            <h2 :class="$style.appTitle">{{ app.reference }}</h2>
+            <div v-if="editingName" :class="$style.nameEditor">
+              <input
+                ref="nameInputEl"
+                v-model="nameDraft"
+                type="text"
+                maxlength="120"
+                placeholder="Custom name"
+                :class="$style.nameInput"
+                @keyup.enter="saveName"
+                @keyup.esc="cancelEditingName"
+              />
+              <button @click="saveName" :disabled="savingName" :class="[ui.btn, ui.btnPrimary]">
+                {{ savingName ? 'Saving…' : 'Save' }}
+              </button>
+              <button @click="cancelEditingName" :disabled="savingName" :class="[ui.btn, ui.btnOutline]">Cancel</button>
+            </div>
+            <div v-else :class="$style.titleRow">
+              <h2 :class="$style.appTitle">{{ app.customName || app.reference }}</h2>
+              <button
+                @click="startEditingName"
+                :title="app.customName ? 'Rename application' : 'Give this application a custom name'"
+                :class="$style.renameButton"
+              >
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"
+                  />
+                </svg>
+              </button>
+            </div>
+            <p v-if="app.customName && !editingName" :class="$style.appReference">{{ app.reference }}</p>
+            <p v-if="nameError" :class="$style.errorText">{{ nameError }}</p>
             <p :class="$style.appAddress">{{ app.address }}</p>
             <p :class="$style.appDesc">{{ app.description }}</p>
             <div :class="$style.statusWrap">
@@ -805,6 +838,48 @@ const syncApp = async () => {
 };
 
 const savingFlags = ref(false);
+const editingName = ref(false);
+const nameDraft = ref('');
+const nameError = ref('');
+const savingName = ref(false);
+const nameInputEl = ref<HTMLInputElement | null>(null);
+
+const startEditingName = async () => {
+  nameDraft.value = app.value?.customName ?? '';
+  nameError.value = '';
+  editingName.value = true;
+  await nextTick();
+  nameInputEl.value?.focus();
+  nameInputEl.value?.select();
+};
+
+const cancelEditingName = () => {
+  editingName.value = false;
+  nameError.value = '';
+};
+
+const saveName = async () => {
+  if (!app.value) {
+    return;
+  }
+  const name = nameDraft.value.trim();
+  if (name.length > 120) {
+    nameError.value = 'Name must be 120 characters or fewer.';
+    return;
+  }
+  savingName.value = true;
+  try {
+    const flags = await api.setApplicationFlags(app.value.reference, { customName: name }, app.value.authorityId);
+    app.value.customName = flags.customName;
+    document.title = `PlanBrowser | ${app.value.customName || app.value.reference}`;
+    editingName.value = false;
+    nameError.value = '';
+  } catch (e: any) {
+    nameError.value = e.message || 'Failed to rename application';
+  } finally {
+    savingName.value = false;
+  }
+};
 
 const toggleStar = async () => {
   if (!app.value) {
@@ -1073,7 +1148,7 @@ const fetchApp = async () => {
     const firstLoad = app.value === null;
     app.value = fresh;
     error.value = '';
-    document.title = `PlanBrowser | ${fresh.reference}`;
+    document.title = `PlanBrowser | ${fresh.customName || fresh.reference}`;
     await loadComments();
     await loadInsights();
     if (firstLoad && keyDocs.value.length > 0 && activeTab.value === 'documents') {
@@ -1121,6 +1196,8 @@ watch(refParam, () => {
   docSearch.value = '';
   contentSnippets.value = {};
   searchingContent.value = false;
+  editingName.value = false;
+  nameError.value = '';
   lastWasDownloading = false;
   loading.value = true;
   fetchApp();
@@ -1286,11 +1363,72 @@ onMounted(async () => {
   }
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.titleRow .appTitle {
+  margin-bottom: 0;
+}
+
 .appTitle {
   margin-bottom: 0.5rem;
   font-size: 1.5rem;
   line-height: 2rem;
   font-weight: 700;
+}
+
+.renameButton {
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: var(--color-gray-400);
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+}
+
+.renameButton:hover {
+  color: var(--color-blue-600);
+  background: var(--color-gray-100);
+}
+
+.renameButton svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.nameEditor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.nameInput {
+  flex: 1 1 16rem;
+  min-width: 0;
+  padding: 0.375rem 0.5rem;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+}
+
+.nameInput:focus {
+  border-color: var(--color-blue-500);
+}
+
+.appReference {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-gray-500);
 }
 
 .appAddress {

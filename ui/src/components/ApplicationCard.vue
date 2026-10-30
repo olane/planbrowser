@@ -21,9 +21,10 @@
             ></path>
           </svg>
         </button>
-        <router-link :to="`/app/${encodeURIComponent(app.reference)}`" :class="$style.appLink">{{
-          app.reference
+        <router-link :to="`/app/${encodeURIComponent(app.reference)}`" :class="$style.appLink" :title="app.reference">{{
+          app.customName || app.reference
         }}</router-link>
+        <span v-if="app.customName" :class="$style.reference">{{ app.reference }}</span>
         <span v-if="app.archived" :class="$style.archivedBadge">Archived</span>
       </h3>
       <div :class="$style.meta">
@@ -268,6 +269,14 @@ async function syncApp() {
 
 .appLink:hover {
   color: var(--color-blue-800);
+}
+
+.reference {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 400;
+  color: var(--color-gray-400);
 }
 
 .archivedBadge {

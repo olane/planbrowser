@@ -105,6 +105,14 @@ export function setFlags(
   } else if (flags.archived === false) {
     delete updated.archivedAt;
   }
+  if (flags.customName !== undefined) {
+    const name = flags.customName.trim();
+    if (name) {
+      updated.customName = name;
+    } else {
+      delete updated.customName;
+    }
+  }
 
   state.apps[key] = updated;
   writeState(state);
