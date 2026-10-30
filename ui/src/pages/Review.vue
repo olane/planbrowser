@@ -41,6 +41,7 @@
         </span>
         <label :class="$style.toggle"> <input type="checkbox" v-model="hideLabelled" /> Hide labelled </label>
         <span :class="$style.progress">{{ labelledCount }} labelled</span>
+        <span v-if="justFinished" :class="$style.finished">Insights up to date</span>
         <a :href="api.reviewsDownloadUrl()" download :class="$style.linkButton">Download reviews</a>
         <span v-if="saveState === 'saving'" :class="$style.saving">Saving…</span>
         <span v-else-if="saveState === 'saved'" :class="$style.saved">Saved</span>
@@ -145,7 +146,7 @@ const refParam = computed(() => route.params.ref as string);
 const app = ref<ApplicationMeta | null>(null);
 const appError = ref('');
 
-const { insights, status, error, load, generate, reset } = useInsights(
+const { insights, status, error, justFinished, load, generate, reset } = useInsights(
   () => refParam.value,
   () => app.value?.authorityId,
 );
@@ -435,6 +436,10 @@ onMounted(async () => {
 
 .saved {
   color: var(--color-green-600, #16a34a);
+}
+
+.finished {
+  color: var(--color-green-700, #15803d);
 }
 
 .saving {
