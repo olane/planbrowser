@@ -215,6 +215,7 @@
                     >
                       Scan more documents
                     </button>
+                    <span v-if="insightsJustFinished" :class="$style.insightsFinished">Insights up to date</span>
                   </div>
                 </div>
 
@@ -603,6 +604,7 @@ const {
   progress: insightsProgress,
   status: insightsStatus,
   error: insightsError,
+  justFinished: insightsJustFinished,
   load: loadInsights,
   generate: generateInsights,
   reset: resetInsights,
@@ -1825,8 +1827,14 @@ onMounted(async () => {
 .insightsActions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
   margin-top: 1rem;
+}
+
+.insightsFinished {
+  color: var(--color-green-700);
+  font-size: 0.8125rem;
 }
 
 .insightsActions button {

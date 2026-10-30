@@ -8,6 +8,11 @@ type InsightsStatus = 'loading' | 'none' | 'running' | 'ready' | 'error';
 // feel live; the server writes them at most every couple of seconds.
 const POLL_MS = 1500;
 
+// How long the "up to date" confirmation stays on screen after a generation
+// finishes. Warm re-runs complete almost instantly, so without this the spinner
+// merely flashes and the user cannot tell that anything happened.
+const FINISHED_MS = 4000;
+
 // Shared insights state: fetch, generate and poll until a generation finishes.
 // Used by the viewer's Insights tab and by the review tool, so neither page
 // reimplements the running/ready/polling dance.
@@ -16,13 +21,39 @@ export function useInsights(reference: () => string, authorityId: () => string |
   const progress = ref<InsightsProgress | null>(null);
   const status = ref<InsightsStatus>('loading');
   const error = ref('');
+  // True for a few seconds after a requested generation finishes, so a warm
+  // (near-instant) re-run still gives visible feedback.
+  const justFinished = ref(false);
   let poll: ReturnType<typeof setTimeout> | null = null;
+  let finishedTimer: ReturnType<typeof setTimeout> | null = null;
+  // Set while a generate() request is in flight or being polled, so only our own
+  // generation (not the initial load) raises the confirmation.
+  let generationRequested = false;
 
   const stop = () => {
     if (poll) {
       clearTimeout(poll);
       poll = null;
     }
+  };
+
+  const clearFinished = () => {
+    if (finishedTimer) {
+      clearTimeout(finishedTimer);
+      finishedTimer = null;
+    }
+    justFinished.value = false;
+  };
+
+  const showFinished = () => {
+    justFinished.value = true;
+    if (finishedTimer) {
+      clearTimeout(finishedTimer);
+    }
+    finishedTimer = setTimeout(() => {
+      justFinished.value = false;
+      finishedTimer = null;
+    }, FINISHED_MS);
   };
 
   const schedule = () => {
@@ -50,6 +81,10 @@ export function useInsights(reference: () => string, authorityId: () => string |
         insights.value = res.insights;
         status.value = 'ready';
         error.value = '';
+        if (generationRequested) {
+          generationRequested = false;
+          showFinished();
+        }
       } else if (res.status === 'running') {
         // A deep scan or background refresh reports `running` but may carry the
         // previous result, or a partial snapshot streamed so far; keep it on
@@ -61,9 +96,11 @@ export function useInsights(reference: () => string, authorityId: () => string |
         error.value = '';
         schedule();
       } else if (res.status === 'error') {
+        generationRequested = false;
         status.value = 'error';
         error.value = res.error || 'Failed to generate insights';
       } else {
+        generationRequested = false;
         status.value = 'none';
         error.value = '';
       }
@@ -71,6 +108,7 @@ export function useInsights(reference: () => string, authorityId: () => string |
       if (reference() !== ref0) {
         return;
       }
+      generationRequested = false;
       error.value = e.message || 'Failed to load insights';
       status.value = 'none';
     }
@@ -84,6 +122,8 @@ export function useInsights(reference: () => string, authorityId: () => string |
     error.value = '';
     progress.value = null;
     status.value = 'running';
+    generationRequested = true;
+    clearFinished();
     try {
       const res = await api.startInsights(ref0, authorityId(), deep);
       if (reference() !== ref0) {
@@ -92,6 +132,8 @@ export function useInsights(reference: () => string, authorityId: () => string |
       if (res.status === 'ready' && res.insights) {
         insights.value = res.insights;
         status.value = 'ready';
+        generationRequested = false;
+        showFinished();
         return;
       }
       schedule();
@@ -99,6 +141,7 @@ export function useInsights(reference: () => string, authorityId: () => string |
       if (reference() !== ref0) {
         return;
       }
+      generationRequested = false;
       error.value = e.message || 'Failed to generate insights';
       status.value = 'error';
     }
@@ -106,13 +149,18 @@ export function useInsights(reference: () => string, authorityId: () => string |
 
   const reset = () => {
     stop();
+    clearFinished();
+    generationRequested = false;
     insights.value = null;
     progress.value = null;
     status.value = 'loading';
     error.value = '';
   };
 
-  onUnmounted(stop);
+  onUnmounted(() => {
+    stop();
+    clearFinished();
+  });
 
-  return { insights, progress, status, error, load, generate, reset, stop };
+  return { insights, progress, status, error, justFinished, load, generate, reset, stop };
 }
