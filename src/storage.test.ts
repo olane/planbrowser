@@ -3,6 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { getApplicationDir, getApplications, getApplication, saveApplicationMeta } from './storage.js';
+import { setFlags } from './userData.js';
 import type { ApplicationMeta } from './types.js';
 
 let tmpDir: string;
@@ -57,6 +58,13 @@ describe('saveApplicationMeta / getApplication', () => {
   it('finds an application without a known authority', () => {
     saveApplicationMeta('24/00123/FUL', meta('24/00123/FUL', 'cambridge'), 'cambridge');
     expect(getApplication('24/00123/FUL')?.reference).toBe('24/00123/FUL');
+  });
+
+  it('attaches a custom name from the user state', () => {
+    saveApplicationMeta('24/00123/FUL', meta('24/00123/FUL', 'cambridge'), 'cambridge');
+    setFlags('24/00123/FUL', 'cambridge', { customName: 'Corner plot' });
+    expect(getApplication('24/00123/FUL', 'cambridge')?.customName).toBe('Corner plot');
+    expect(getApplications()[0]?.customName).toBe('Corner plot');
   });
 
   it('returns null for an unknown reference', () => {

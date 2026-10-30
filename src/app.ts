@@ -156,6 +156,12 @@ export function createApp(): express.Express {
       if (typeof body.archived === 'boolean') {
         flags.archived = body.archived;
       }
+      if (typeof body.customName === 'string') {
+        if (body.customName.length > 120) {
+          return res.status(400).json({ error: 'Name must be 120 characters or fewer' });
+        }
+        flags.customName = body.customName;
+      }
       const updated = setFlags(ref, authorityId, flags);
       res.json({ success: true, flags: updated });
     } catch (err: any) {
