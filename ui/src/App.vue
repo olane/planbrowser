@@ -46,6 +46,13 @@
     <main :class="$style.main">
       <router-view></router-view>
     </main>
+    <footer :class="$style.footer">
+      <div :class="$style.footerContent">
+        <span :class="$style.version" :title="`PlanBrowser ${appVersion} (${appCommit})`">
+          v{{ appVersion }} · {{ appCommit }}
+        </span>
+      </div>
+    </footer>
   </div>
 </template>
 
@@ -57,6 +64,8 @@ import { activeQueueCount, refreshQueue } from './queueStore';
 const route = useRoute();
 const styles = useCssModule();
 const menuOpen = ref(false);
+const appVersion = __APP_VERSION__;
+const appCommit = __APP_COMMIT__;
 
 interface NavItem {
   to: string;
@@ -255,5 +264,37 @@ onUnmounted(() => {
     padding-left: 2rem;
     padding-right: 2rem;
   }
+}
+
+.footer {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 1rem 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .footer {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .footer {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+.footerContent {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.version {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-gray-500);
+  font-variant-numeric: tabular-nums;
 }
 </style>

@@ -1,6 +1,8 @@
 FROM node:22-bookworm AS build
+ARG GIT_SHA=unknown
 WORKDIR /app
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+    GIT_SHA=$GIT_SHA
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json ./
