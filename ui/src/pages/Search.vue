@@ -486,7 +486,7 @@ const applyFilters = (filters: SearchFilters) => {
 
 const applySearchToForm = (saved: SavedSearch) => {
   searchForm.value.postcode = saved.postcode;
-  searchForm.value.radius = normalizeRadius(saved.radius);
+  searchForm.value.radius = saved.radius;
   searchForm.value.sortField = saved.sort?.field ?? 'start_date';
   searchForm.value.sortOrder = saved.sort?.order ?? 'desc';
   applyFilters(saved.filters);
