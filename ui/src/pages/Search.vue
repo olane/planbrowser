@@ -430,23 +430,23 @@ const buildFilters = (): SearchFilters => {
   for (const key of simpleFilterKeys) {
     const value = searchForm.value[key];
     if (value) {
-      filters[key] = value;
+      filters[key] = String(value);
     }
   }
   for (const group of timeGroups) {
     if (timeModes.value[group.key] === 'recent') {
       const value = searchForm.value[group.recentKey];
       if (value) {
-        filters[group.recentKey] = value;
+        filters[group.recentKey] = String(value);
       }
     } else {
       const from = searchForm.value[group.fromKey];
       const to = searchForm.value[group.toKey];
       if (from) {
-        filters[group.fromKey] = from;
+        filters[group.fromKey] = String(from);
       }
       if (to) {
-        filters[group.toKey] = to;
+        filters[group.toKey] = String(to);
       }
     }
   }
