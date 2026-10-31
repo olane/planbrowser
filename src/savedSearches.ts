@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type { SavedSearch, SearchFilters, SortSpec } from './types.js';
 import { getDownloadsDir } from './config.js';
+import { normalizeRadius } from './radius.js';
 
 function searchesPath(): string {
   return path.join(getDownloadsDir(), '_savedSearches.json');
@@ -23,7 +24,10 @@ function readSearches(): SavedSearch[] {
     if (fs.existsSync(searchesPath())) {
       const parsed = JSON.parse(fs.readFileSync(searchesPath(), 'utf-8'));
       if (parsed && Array.isArray(parsed.searches)) {
-        return parsed.searches as SavedSearch[];
+        return (parsed.searches as SavedSearch[]).map((search) => ({
+          ...search,
+          radius: normalizeRadius(search.radius),
+        }));
       }
     }
   } catch (e) {
@@ -48,7 +52,7 @@ export function getSavedSearch(id: string): SavedSearch | undefined {
 
 export function saveSearch(input: {
   postcode: string;
-  radius: string;
+  radius: number;
   filters: SearchFilters;
   sort: SortSpec;
 }): SavedSearch {
@@ -56,7 +60,7 @@ export function saveSearch(input: {
   const search: SavedSearch = {
     id: Math.random().toString(36).substring(2, 10),
     postcode: input.postcode,
-    radius: input.radius,
+    radius: normalizeRadius(input.radius),
     filters: input.filters,
     sort: input.sort,
     createdAt: new Date().toISOString(),

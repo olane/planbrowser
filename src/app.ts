@@ -14,6 +14,7 @@ import { documentSearchRouter } from './search/routes.js';
 import { insightsRouter } from './insights/routes.js';
 import { reviewRouter } from './insights/routes.review.js';
 import { listSavedSearches, getSavedSearch, saveSearch, deleteSavedSearch, recordSearchRun } from './savedSearches.js';
+import { normalizeRadius } from './radius.js';
 import type { SearchFilters, SortSpec, ApplicationFlags, DocumentFlags, QueueItem, ApplicationMeta } from './types.js';
 
 function enqueueApplications(apps: ApplicationMeta[]): QueueItem[] {
@@ -55,7 +56,7 @@ export function createApp(): express.Express {
   app.get('/api/search', async (req, res) => {
     try {
       const postcode = req.query.postcode as string;
-      const radius = (req.query.radius as string) || '2';
+      const radius = normalizeRadius(req.query.radius);
       if (!postcode) {
         return res.status(400).json({ error: 'Postcode is required' });
       }
@@ -256,7 +257,7 @@ export function createApp(): express.Express {
       if (!postcode) {
         return res.status(400).json({ error: 'Postcode is required' });
       }
-      const radius = typeof body.radius === 'string' && body.radius ? body.radius : '2';
+      const radius = normalizeRadius(body.radius);
       const saved = saveSearch({
         postcode,
         radius,

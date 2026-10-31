@@ -220,7 +220,7 @@ export interface QueueItem {
 export interface SavedSearch {
   id: string;
   postcode: string;
-  radius: string;
+  radius: number;
   filters: SearchFilters;
   sort?: SortSpec;
   createdAt: string;

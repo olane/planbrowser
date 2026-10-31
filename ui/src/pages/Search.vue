@@ -11,7 +11,7 @@
           </div>
           <div :class="$style.colRadius">
             <label :class="$style.label">Radius (km)</label>
-            <input v-model="searchForm.radius" required type="number" step="0.1" :class="ui.input" />
+            <input v-model="searchForm.radius" required type="number" min="0.1" step="0.1" :class="ui.input" />
           </div>
           <div :class="$style.colType">
             <label :class="$style.label">Application type</label>
@@ -266,6 +266,7 @@ import { queueItems, refreshQueue, getQueueStatus } from '../queueStore';
 import { useApplications } from '../composables/useApplications';
 import { AUTHORITIES, DEFAULT_AUTHORITY_ID, isKnownAuthority } from '../../../src/authorities.js';
 import { normalizePostcode } from '../../../src/postcode.js';
+import { normalizeRadius } from '../../../src/radius.js';
 import * as api from '../api';
 import { useRouter } from 'vue-router';
 import MultiSelect from '../components/MultiSelect.vue';
@@ -328,15 +329,15 @@ const isDownloaded = (reference: string) => downloadedApps.value.some((app) => a
 // Persist the last search's location across visits.
 const LAST_SEARCH_KEY = 'planbrowser.lastSearch';
 
-function loadLastSearch(): { postcode: string; radius: string } | null {
+function loadLastSearch(): { postcode: string; radius: number } | null {
   try {
     const raw = localStorage.getItem(LAST_SEARCH_KEY);
     if (!raw) {
       return null;
     }
     const parsed = JSON.parse(raw);
-    if (typeof parsed?.postcode === 'string' && typeof parsed?.radius === 'string') {
-      return { postcode: parsed.postcode, radius: parsed.radius };
+    if (typeof parsed?.postcode === 'string') {
+      return { postcode: parsed.postcode, radius: normalizeRadius(parsed.radius) };
     }
   } catch {
     // localStorage unavailable or the stored value is malformed; use defaults.
@@ -344,7 +345,7 @@ function loadLastSearch(): { postcode: string; radius: string } | null {
   return null;
 }
 
-function saveLastSearch(postcode: string, radius: string) {
+function saveLastSearch(postcode: string, radius: number) {
   try {
     localStorage.setItem(LAST_SEARCH_KEY, JSON.stringify({ postcode, radius }));
   } catch {
@@ -356,7 +357,7 @@ const lastSearch = loadLastSearch();
 
 const searchForm = ref({
   postcode: lastSearch?.postcode ?? '',
-  radius: lastSearch?.radius ?? '2',
+  radius: lastSearch?.radius ?? 2,
   search: '',
   developer: '',
   app_type: 'Full,Outline',
@@ -485,7 +486,7 @@ const applyFilters = (filters: SearchFilters) => {
 
 const applySearchToForm = (saved: SavedSearch) => {
   searchForm.value.postcode = saved.postcode;
-  searchForm.value.radius = saved.radius;
+  searchForm.value.radius = normalizeRadius(saved.radius);
   searchForm.value.sortField = saved.sort?.field ?? 'start_date';
   searchForm.value.sortOrder = saved.sort?.order ?? 'desc';
   applyFilters(saved.filters);
@@ -624,8 +625,9 @@ const searchPlanIt = async () => {
   }
 
   const postcode = normalizePostcode(searchForm.value.postcode);
-  const radius = searchForm.value.radius;
+  const radius = normalizeRadius(searchForm.value.radius);
   searchForm.value.postcode = postcode;
+  searchForm.value.radius = radius;
   saveLastSearch(postcode, radius);
 
   isSearching.value = true;
@@ -665,9 +667,11 @@ const saveCurrentSearch = async () => {
   saveSearchError.value = '';
 
   try {
+    const radius = normalizeRadius(searchForm.value.radius);
+    searchForm.value.radius = radius;
     const saved = await api.saveSavedSearch({
       postcode: searchForm.value.postcode,
-      radius: searchForm.value.radius,
+      radius,
       filters: buildFilters(),
       sort: buildSort(),
     });
