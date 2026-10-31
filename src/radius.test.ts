@@ -6,7 +6,7 @@ describe('normalizeRadius', () => {
     expect(normalizeRadius(4)).toBe(4);
   });
 
-  it('accepts a numeric string from older data or query params', () => {
+  it('accepts a numeric string from query params', () => {
     expect(normalizeRadius('4')).toBe(4);
   });
 
