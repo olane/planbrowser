@@ -21,16 +21,19 @@ function enqueueApplications(apps: ApplicationMeta[]): QueueItem[] {
   return apps.map((a) => downloadQueue.enqueue(a.reference, a.authorityId || DEFAULT_AUTHORITY_ID));
 }
 
-// Keep only known filter keys with a non-empty string value, so callers can pass
+// Keep only known filter keys with a non-empty value, so callers can pass
 // arbitrary query/body objects without leaking unknown or blank entries into a
-// saved search.
-function sanitizeFilters(input: unknown): SearchFilters {
+// saved search. Numeric values are coerced to strings because number inputs
+// (such as the "last N days" fields) are bound as numbers in the UI.
+export function sanitizeFilters(input: unknown): SearchFilters {
   const filters: SearchFilters = {};
   if (input && typeof input === 'object') {
     for (const key of SEARCH_FILTER_KEYS) {
       const value = (input as Record<string, unknown>)[key];
       if (typeof value === 'string' && value !== '') {
         filters[key] = value;
+      } else if (typeof value === 'number' && Number.isFinite(value)) {
+        filters[key] = String(value);
       }
     }
   }
