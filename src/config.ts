@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 
 // Where downloaded documents and all persistent state live. Defaults to the
 // repo's `downloads/` directory (matching the Docker/CLI behaviour), but can be

@@ -91,7 +91,8 @@ const REFERENCE_TYPE_CODES: Record<string, AppType> = {
 };
 
 export function appTypeFromReference(reference?: string): AppType {
-  const suffix = (reference || '').split(/[/\\]/).filter(Boolean).pop()?.toUpperCase() ?? '';
+  const parts = (reference || '').split(/[/\\]/).filter(Boolean);
+  const suffix = parts[parts.length - 1]?.toUpperCase() ?? '';
   return REFERENCE_TYPE_CODES[suffix] ?? 'Other';
 }
 

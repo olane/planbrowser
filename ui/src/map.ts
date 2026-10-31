@@ -30,7 +30,7 @@ export function createMap(el: HTMLElement): L.Map {
 }
 
 export function escapeHtml(s: string): string {
-  return s.replace(
+  return s.replaceAll(
     /[<>&'"]/g,
     (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;' })[c] as string,
   );
@@ -44,5 +44,5 @@ export function truncate(s: string | undefined, words: number): string {
     return '';
   }
   const cut = parts.slice(0, words).join(' ');
-  return parts.length > words ? cut + '…' : cut;
+  return parts.length > words ? `${cut}…` : cut;
 }

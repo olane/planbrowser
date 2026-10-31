@@ -15,9 +15,9 @@
 // sandbox it additionally needs the extracted shared libraries and a
 // fontconfig file described in docs/insights.md.
 
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getApplicationDir } from '../dist/storage.js';
 import { downloadApplication } from '../dist/scraper.js';
 

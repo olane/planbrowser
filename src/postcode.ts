@@ -28,11 +28,11 @@ export function extractPostcode(text: string): string | null {
 
 export function normalizePostcode(input: string): string {
   const upper = input.trim().toUpperCase();
-  const compact = upper.replace(/\s+/g, '');
+  const compact = upper.replaceAll(/\s+/g, '');
   // Outward code is 2-4 chars ("A9", "AA99", "A9A", "AA9A"), inward is always
   // "9AA", so a full postcode is 5-7 characters with no spaces in between.
   if (/^[A-Z]{1,2}\d[A-Z\d]?\d[A-Z]{2}$/.test(compact)) {
     return `${compact.slice(0, -3)} ${compact.slice(-3)}`;
   }
-  return upper.replace(/\s+/g, ' ');
+  return upper.replaceAll(/\s+/g, ' ');
 }

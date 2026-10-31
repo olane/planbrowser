@@ -1059,7 +1059,7 @@ const filteredDocs = computed(() => {
     docs = docs.filter((d) => {
       const haystack =
         `${d.description || ''} ${d.documentType || ''} ${d.localFilename || ''} ${d.datePublished || ''} ${d.note || ''}`.toLowerCase();
-      return haystack.includes(q) || Object.prototype.hasOwnProperty.call(contentSnippets.value, d.localFilename);
+      return haystack.includes(q) || Object.hasOwn(contentSnippets.value, d.localFilename);
     });
   }
   return docs;

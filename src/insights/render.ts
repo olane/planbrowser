@@ -1,4 +1,4 @@
-import fs from 'fs';
+import fs from 'node:fs';
 import { getDocumentProxy, getResolvedPDFJS, renderPageAsImage } from 'unpdf';
 import { boxArea, captionForBox, imagePlacements, type ImageOps, type TextItem } from './caption.js';
 import type { PageLine } from './title.js';
@@ -55,7 +55,7 @@ export function groupLines(items: TextItem[]): PageLine[] {
   const lines: PageLine[] = [];
   let current: { str: string; size: number; y: number; right: number } | undefined;
   const flush = (): void => {
-    const str = current?.str.replace(/\s+/g, ' ').trim();
+    const str = current?.str.replaceAll(/\s+/g, ' ').trim();
     if (current && str) {
       lines.push({ str, size: Math.round(current.size * 10) / 10 });
     }

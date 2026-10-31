@@ -17,10 +17,10 @@ type NamedDocument = Pick<DocumentMeta, 'documentType' | 'description' | 'localF
 export function normalise(input: string): string {
   return input
     .toLowerCase()
-    .replace(/&amp;/g, 'and')
-    .replace(/&/g, 'and')
-    .replace(/[^a-z0-9.]+/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replaceAll('&amp;', 'and')
+    .replaceAll('&', 'and')
+    .replaceAll(/[^a-z0-9.]+/g, ' ')
+    .replaceAll(/\s+/g, ' ')
     .trim();
 }
 

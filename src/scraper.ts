@@ -1,14 +1,14 @@
 import type { DocumentMeta, ApplicationMeta, Comment, ApplicationLocation, AuthorityConfig } from './types.js';
 import AdmZip from 'adm-zip';
-import fs from 'fs';
-import os from 'os';
+import fs from 'node:fs';
+import os from 'node:os';
 import { saveApplicationMeta, saveComments, getApplicationDir, getApplication } from './storage.js';
 import { recordActivity } from './userData.js';
 import { parseWfsGeometry, geometryToLocation, escapeXml } from './geometry.js';
 import { diffMeta } from './diff.js';
 import { _electron as electron, chromium } from 'playwright';
 import type { Page } from 'playwright';
-import path from 'path';
+import path from 'node:path';
 import { getAuthority, DEFAULT_AUTHORITY_ID } from './authorities.js';
 import { locationFromAddress } from './geocode.js';
 
@@ -55,7 +55,7 @@ export async function downloadDocuments(
     }
     return Array.from(headerRow.querySelectorAll('th, td')).map((c) => c.textContent?.trim() ?? '');
   });
-  const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, ' ');
+  const normalize = (s: string) => s.toLowerCase().replaceAll(/\s+/g, ' ');
   const findIdx = (match: RegExp) => headerNames.findIndex((h) => match.test(normalize(h)));
   const dateIdx = findIdx(/date/);
   const typeIdx = findIdx(/type/);
@@ -87,7 +87,7 @@ export async function downloadDocuments(
 
     const linkLocator = row.locator('td').nth(VIEW).locator('a');
     if ((await linkLocator.count()) > 0) {
-      const baseName = `${date.replace(/\//g, '-')} - ${type.replace(/\//g, '-').trim()} - ${description.replace(/[^a-zA-Z0-9 -]/g, '').trim()}`;
+      const baseName = `${date.replaceAll('/', '-')} - ${type.replaceAll('/', '-').trim()} - ${description.replaceAll(/[^a-zA-Z0-9 -]/g, '').trim()}`;
 
       const viewHref = (await linkLocator.getAttribute('href')) ?? '';
 
@@ -172,7 +172,7 @@ export async function downloadDocuments(
   for (const doc of uniqueDocs) {
     const recorded = doc.docId ? previousByDocId.get(doc.docId) : undefined;
     const sharesName = (rowsPerBaseName.get(doc.baseName) ?? 0) > 1;
-    const fileOnDisk = existingFiles.find((f) => f.startsWith(doc.baseName + '.'));
+    const fileOnDisk = existingFiles.find((f) => f.startsWith(`${doc.baseName}.`));
 
     // Same document as a previous scrape and its file is still there: re-use it.
     if (recorded && existingFiles.includes(recorded.localFilename)) {
@@ -343,7 +343,7 @@ export async function downloadDocuments(
       continue;
     }
     for (const f of existingFiles) {
-      if (f.startsWith(doc.baseName + '.') && !reusedFiles.has(f) && !produced.has(f)) {
+      if (f.startsWith(`${doc.baseName}.`) && !reusedFiles.has(f) && !produced.has(f)) {
         leftoversToRemove.add(f);
       }
     }
@@ -374,7 +374,8 @@ export async function scrapeComments(page: Page, reference: string, authorityId:
           nodes.map((node) => {
             const address = (node.querySelector('.consultationAddress') as HTMLElement)?.innerText?.trim() || '';
             const stance =
-              (node.querySelector('.consultationStance') as HTMLElement)?.innerText?.replace(/[()]/g, '').trim() || '';
+              (node.querySelector('.consultationStance') as HTMLElement)?.innerText?.replaceAll(/[()]/g, '').trim() ||
+              '';
             let dateText = (node.querySelector('.comment-wrapper h2') as HTMLElement)?.innerText?.trim() || '';
             dateText = dateText.replace('Comment submitted date:', '').trim();
             const text = (node.querySelector('.comment-text') as HTMLElement)?.innerText?.trim() || '';
@@ -395,9 +396,8 @@ export async function scrapeComments(page: Page, reference: string, authorityId:
         saveComments(reference, allComments, authorityId);
         console.log(`Saved ${allComments.length} comments`);
         return true;
-      } else {
-        console.log('No comments found on the comments tab.');
       }
+      console.log('No comments found on the comments tab.');
     } else {
       console.log('No neighbour comments sub-tab found.');
     }
@@ -507,7 +507,9 @@ async function createElectronPage(): Promise<PageHandle> {
         if (file) {
           return { filePath: path.join(downloadDir, file), filename: file };
         }
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => {
+          setTimeout(r, 200);
+        });
       }
       throw new Error('Download timed out');
     },
@@ -637,7 +639,7 @@ export async function downloadApplication(
     );
 
     const meta: ApplicationMeta = {
-      reference: reference,
+      reference,
       authorityId: authority.id,
       address: '',
       description: '',

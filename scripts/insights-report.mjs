@@ -10,9 +10,9 @@
 // its kind), then "Download labels" and merge them with
 // `node scripts/insights-labels.mjs <downloaded labels.json>`.
 
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import { generateInsights } from '../dist/insights/generate.js';
 import { loadTruth, pageKey, pct, root, scoreSample } from './insights-truth.mjs';
 
@@ -54,7 +54,7 @@ function findApplications() {
 }
 
 const escape = (s) =>
-  String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  String(s ?? '').replaceAll(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 const { samples: truth } = loadTruth();
 const apps = findApplications();
@@ -66,7 +66,7 @@ for (const { meta, dir } of apps) {
   process.stdout.write(`\n=== ${meta.reference} (${meta.documents?.length ?? 0} docs) ...\n`);
   // Copy each rendered page as it is interpreted: rejected pages' thumbnails
   // are pruned from the application's cache when generation finishes.
-  const appOut = path.join(outDir, meta.reference.replace(/\//g, '-'));
+  const appOut = path.join(outDir, meta.reference.replaceAll('/', '-'));
   fs.mkdirSync(appOut, { recursive: true });
   const traces = [];
   let insights;
