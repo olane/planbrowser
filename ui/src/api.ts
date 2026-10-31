@@ -59,11 +59,11 @@ export async function fetchApplication(reference: string): Promise<ApplicationMe
 
 export async function searchPlanIt(
   postcode: string,
-  radius: string,
+  radius: number,
   filters: SearchFilters = {},
   sort?: SortSpec,
 ): Promise<PlanItResponse> {
-  const params = new URLSearchParams({ postcode, radius });
+  const params = new URLSearchParams({ postcode, radius: String(radius) });
   for (const [key, value] of Object.entries(filters)) {
     if (value) {
       params.set(key, value);
@@ -277,7 +277,7 @@ export async function fetchSavedSearches(): Promise<SavedSearch[]> {
 
 export async function saveSavedSearch(input: {
   postcode: string;
-  radius: string;
+  radius: number;
   filters: SearchFilters;
   sort?: SortSpec;
 }): Promise<SavedSearch> {

@@ -22,8 +22,8 @@ describe('saved searches', () => {
   });
 
   it('saves a search with the newest first and persists it', () => {
-    const first = saveSearch({ postcode: 'CB1 2JW', radius: '2', filters: { app_state: 'Undecided' } });
-    saveSearch({ postcode: 'CB2 1AB', radius: '5', filters: {} });
+    const first = saveSearch({ postcode: 'CB1 2JW', radius: 2, filters: { app_state: 'Undecided' } });
+    saveSearch({ postcode: 'CB2 1AB', radius: 5, filters: {} });
 
     expect(first.id).toBeDefined();
     expect(first.createdAt).toBeDefined();
@@ -34,14 +34,14 @@ describe('saved searches', () => {
   });
 
   it('deletes a saved search', () => {
-    const saved = saveSearch({ postcode: 'CB1 2JW', radius: '2', filters: {} });
+    const saved = saveSearch({ postcode: 'CB1 2JW', radius: 2, filters: {} });
     expect(deleteSavedSearch(saved.id)).toBe(true);
     expect(listSavedSearches()).toEqual([]);
     expect(deleteSavedSearch(saved.id)).toBe(false);
   });
 
   it('records a run with its references and timestamp', () => {
-    const saved = saveSearch({ postcode: 'CB1 2JW', radius: '2', filters: {} });
+    const saved = saveSearch({ postcode: 'CB1 2JW', radius: 2, filters: {} });
     const updated = recordSearchRun(saved.id, ['24/0001/FUL', '24/0002/FUL']);
 
     expect(updated?.lastRunAt).toBeDefined();
