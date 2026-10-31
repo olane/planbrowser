@@ -7,7 +7,7 @@
 // and file formatting live in src/insights/labels.ts, shared with the review
 // tool, so there is one implementation.
 
-import fs from 'fs';
+import fs from 'node:fs';
 import { mergeLabels, readLabels, truthFile } from '../dist/insights/labels.js';
 
 const file = process.argv[2];

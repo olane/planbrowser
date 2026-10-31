@@ -272,14 +272,13 @@ export class InsightsQueue {
             if (abort.signal.aborted) {
               item.status = 'cancelled';
               item.cancelledAt = new Date().toISOString();
-              delete item.progress;
             } else {
               const message = err instanceof Error ? err.message : String(err);
               item.status = 'failed';
               item.error = message;
               this.failures.set(ref, message);
-              delete item.progress;
             }
+            delete item.progress;
           }
         } finally {
           if (this.currentRunId === runId) {

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { searchApplicationDocuments } from './search.js';
 import { extractDocumentText } from './extract.js';
 import { saveApplicationMeta } from '../storage.js';
@@ -60,7 +60,7 @@ function minimalPdf(text: string): Buffer {
 }
 
 function writeDoc(reference: string, filename: string, contents: Buffer): void {
-  const dir = path.join(tmpDir, 'cambridge', reference.replace(/\//g, '-'));
+  const dir = path.join(tmpDir, 'cambridge', reference.replaceAll('/', '-'));
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, filename), contents);
 }

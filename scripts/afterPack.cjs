@@ -2,9 +2,9 @@
 // "unidentified developer" prompt (with a right-click > Open bypass) instead
 // of "damaged". Runs via electron-builder's afterPack hook, after the .app is
 // assembled but before the dmg/zip are created.
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const { execSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 
 exports.default = async function afterPack(context) {
   if (context.electronPlatformName !== 'darwin') {

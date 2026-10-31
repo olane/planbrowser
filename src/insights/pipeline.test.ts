@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import type { ApplicationInsights, ApplicationMeta, InsightsProgress } from '../types.js';
 import { buildPdf, photoFill, type TestPage } from './__fixtures__/pdf.js';
 import type { PageTrace } from './generate.js';

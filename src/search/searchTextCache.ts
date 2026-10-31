@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Extracted text for an application's documents, cached to disk so each file is
 // parsed once. Each entry records the file's mtime/size so a file that changes

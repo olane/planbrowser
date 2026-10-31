@@ -13,8 +13,8 @@
 //   optional `"high"`/`"low"` priority on a good page; the rank metric reports
 //   how many high/low pages reached the highlights.
 
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export const root = process.env.DOWNLOADS_DIR
   ? path.resolve(process.env.DOWNLOADS_DIR)
@@ -34,7 +34,7 @@ export function loadManifest() {
 export function normalise(value) {
   return String(value ?? '')
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
+    .replaceAll(/[^a-z0-9]+/g, ' ')
     .trim();
 }
 
@@ -43,7 +43,7 @@ export function findApplication(reference) {
     return null;
   }
   for (const authority of fs.readdirSync(root)) {
-    const dir = path.join(root, authority, reference.replace(/\//g, '-'));
+    const dir = path.join(root, authority, reference.replaceAll('/', '-'));
     const metaPath = path.join(dir, 'metadata.json');
     if (!fs.existsSync(metaPath)) {
       continue;

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { generateInsights, isCurrent, rankDocuments, STRATEGY } from './generate.js';
 import { getInsightsState, startInsights } from './jobs.js';
 import type { ApplicationInsights, ApplicationMeta, DocumentMeta, InsightsProgress } from '../types.js';
@@ -51,7 +51,9 @@ describe('generateInsights caching', () => {
 
   it('regenerates when a source document changes', async () => {
     const first = await generateInsights(REFERENCE);
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    await new Promise((resolve) => {
+      setTimeout(resolve, 5);
+    });
     fs.writeFileSync(path.join(dir, 'plan.txt'), 'changed content that alters size and mtime');
     const second = await generateInsights(REFERENCE);
     expect(second?.generatedAt).not.toBe(first?.generatedAt);
@@ -155,7 +157,9 @@ describe('getInsightsState', () => {
     // An interrupted run reports as running (and is refreshed), not ready.
     expect(getInsightsState(REFERENCE)?.status).toBe('running');
     // Let the background refresh settle before the temp dir is removed.
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => {
+      setTimeout(resolve, 20);
+    });
   });
 
   it('reports running with the cached result while a scan is in flight', async () => {
@@ -167,6 +171,8 @@ describe('getInsightsState', () => {
     // ...and the previous result stays available so the UI need not blank out.
     expect(state?.insights).toBeTruthy();
     // Let the background job settle before the temp dir is removed.
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => {
+      setTimeout(resolve, 20);
+    });
   });
 });

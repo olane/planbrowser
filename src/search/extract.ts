@@ -1,4 +1,4 @@
-import fs from 'fs';
+import fs from 'node:fs';
 import { extractText, getDocumentProxy } from 'unpdf';
 import mammoth from 'mammoth';
 
@@ -6,7 +6,7 @@ import mammoth from 'mammoth';
 // and stable to search (PDF extraction often fragments words across lines and
 // spans).
 function normalise(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
+  return text.replaceAll(/\s+/g, ' ').trim();
 }
 
 async function extractPdf(filePath: string): Promise<string> {

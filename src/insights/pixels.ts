@@ -65,7 +65,7 @@ export function perceptualHash(pixels: Uint8ClampedArray | Uint8Array, width: nu
   }
   let hex = '';
   for (let i = 0; i < 64; i += 4) {
-    hex += parseInt(bits.slice(i, i + 4), 2).toString(16);
+    hex += Number.parseInt(bits.slice(i, i + 4), 2).toString(16);
   }
   return hex;
 }
@@ -77,7 +77,7 @@ export function hammingDistance(a: string, b: string): number {
   }
   let distance = 0;
   for (let i = 0; i < a.length; i++) {
-    let xor = parseInt(a[i] ?? '0', 16) ^ parseInt(b[i] ?? '0', 16);
+    let xor = Number.parseInt(a[i] ?? '0', 16) ^ Number.parseInt(b[i] ?? '0', 16);
     while (xor) {
       distance += xor & 1;
       xor >>= 1;

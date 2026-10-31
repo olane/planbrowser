@@ -35,7 +35,7 @@ function pairList(text: string, dimension: number): Coordinate[] {
 function declaredDimension(el: cheerio.Cheerio<AnyNode>): number {
   const own = el.attr('srsDimension');
   const inherited = own ?? el.parents('[srsDimension]').first().attr('srsDimension');
-  const dim = inherited ? Number.parseInt(inherited, 10) : NaN;
+  const dim = inherited ? Number.parseInt(inherited, 10) : Number.NaN;
   return Number.isInteger(dim) && dim >= 2 ? dim : 2;
 }
 
@@ -171,7 +171,7 @@ export function geometryToLocation(geometry: WfsGeometry): ApplicationLocation |
 }
 
 export function escapeXml(s: string): string {
-  return s.replace(
+  return s.replaceAll(
     /[<>&'"]/g,
     (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[c] as string,
   );

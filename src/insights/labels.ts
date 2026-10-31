@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { getDownloadsDir } from '../config.js';
 import type { InsightImageKind, InsightLabel, InsightRank } from '../types.js';
 import { atomicWrite } from './cache.js';
@@ -164,8 +164,8 @@ export function readReviewStore(): TruthFile {
 
 // Keep the file's hand-written style: one line per flat entry.
 function formatTruth(truth: TruthFile): string {
-  return JSON.stringify(truth, null, 2).replace(
+  return JSON.stringify(truth, null, 2).replaceAll(
     /\{\n\s+([^{}[\]]*?)\n\s*\}/g,
-    (_, body: string) => `{ ${body.replace(/,\n\s+/g, ', ')} }`,
+    (_, body: string) => `{ ${body.replaceAll(/,\n\s+/g, ', ')} }`,
   );
 }

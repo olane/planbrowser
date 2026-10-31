@@ -16,7 +16,9 @@ async function waitFor(predicate: () => boolean, timeoutMs = 1000): Promise<void
     if (Date.now() - started > timeoutMs) {
       throw new Error('Timed out waiting for the queue');
     }
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    await new Promise((resolve) => {
+      setTimeout(resolve, 5);
+    });
   }
 }
 
@@ -48,7 +50,9 @@ describe('InsightsQueue', () => {
         maxActive = Math.max(maxActive, active);
         order.push(reference);
         options?.onProgress?.(progress(0, 1));
-        await new Promise((resolve) => setTimeout(resolve, 5));
+        await new Promise((resolve) => {
+          setTimeout(resolve, 5);
+        });
         active--;
         return null;
       },

@@ -5,7 +5,7 @@ export function timeAgo(dateStr: string | undefined): string {
     return 'Unknown';
   }
   const date = new Date(dateStr);
-  if (isNaN(date.getTime())) {
+  if (Number.isNaN(date.getTime())) {
     return 'Unknown';
   }
 
@@ -159,7 +159,7 @@ function matchPart(description?: string): PartMatch | null {
   if (!m[1] && !m[3]) {
     return null;
   }
-  return { label: m[0].trim(), number: parseInt(m[2], 10) };
+  return { label: m[0].trim(), number: Number.parseInt(m[2], 10) };
 }
 
 export function partNumber(description?: string): number | null {
@@ -199,7 +199,7 @@ export function multipartBase(description?: string): string | null {
   if (!m[1] && !m[3]) {
     return null;
   }
-  return name.slice(0, m.index).replace(/[\s\-–—:;,.]+$/g, '');
+  return name.slice(0, m.index).replaceAll(/[\s\-–—:;,.]+$/g, '');
 }
 
 // The grouping identity of a document. For numbered parts it is the shared base
@@ -344,7 +344,7 @@ export function isKeyDocument(doc: { documentType?: string; description?: string
     .filter(Boolean)
     .join(' ')
     .toLowerCase()
-    .replace(/&amp;/g, 'and')
-    .replace(/&/g, 'and');
+    .replaceAll('&amp;', 'and')
+    .replaceAll('&', 'and');
   return KEY_DOC_KEYWORDS.some((keyword) => haystack.includes(keyword));
 }

@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { ActivityEvent, ApplicationFlags, DocumentFlags } from './types.js';
 import { DEFAULT_AUTHORITY_ID } from './authorities.js';
 import { getDownloadsDir } from './config.js';

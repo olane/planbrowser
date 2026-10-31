@@ -1,7 +1,7 @@
 // Test-only helper: build small but real PDFs (text, vector lines, an embedded
 // raster) so the extraction layer can be exercised against pdf.js without
 // shipping sample documents. Not imported by production code.
-import zlib from 'zlib';
+import zlib from 'node:zlib';
 
 interface TestText {
   x: number;
@@ -32,7 +32,7 @@ export interface TestPage {
 }
 
 function escapeText(str: string): string {
-  return str.replace(/[\\()]/g, (c) => `\\${c}`);
+  return str.replaceAll(/[\\()]/g, (c) => `\\${c}`);
 }
 
 export function buildPdf(pages: TestPage[]): Buffer {
@@ -101,10 +101,9 @@ export function buildPdf(pages: TestPage[]): Buffer {
     chunks.push(chunk);
     length += chunk.length;
   });
-  const xref =
-    `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n` +
-    offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('') +
-    `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${length}\n%%EOF\n`;
+  const xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets
+    .map((o) => `${String(o).padStart(10, '0')} 00000 n \n`)
+    .join('')}trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${length}\n%%EOF\n`;
   chunks.push(Buffer.from(xref));
   return Buffer.concat(chunks);
 }
